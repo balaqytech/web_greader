@@ -30,6 +30,15 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->font(
+                'expo',
+                url: asset('css/filament/fonts.css'),
+                provider: \Filament\FontProviders\LocalFontProvider::class,
+            )
+            ->brandName(config('app.name'))
+            ->brandLogo(asset('logo.png'))
+            ->brandLogoHeight('4rem')
+            ->favicon(asset('logo.png'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
