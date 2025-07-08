@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Addon extends Model
+{
+    protected $fillable = [
+        'name',
+        'description',
+        'price',
+        'type',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'type' => \App\Enums\AddonType::class,
+        'is_active' => 'boolean',
+    ];
+}
