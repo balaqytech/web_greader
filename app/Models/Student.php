@@ -9,6 +9,7 @@ class Student extends Model
 {
     protected $fillable = [
         'parent_account_id',
+        'branch_id',
         'name',
         'gender',
         'date_of_birth',
@@ -27,6 +28,11 @@ class Student extends Model
     public function parentAccount()
     {
         return $this->belongsTo(ParentAccount::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function getAgeAttribute()

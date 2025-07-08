@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('parent_account_id')
                 ->constrained('parent_accounts')
                 ->onDelete('cascade');
+            $table->string('branch_id')
+                ->constrained('branches')
+                ->onDelete('cascade');
             $table->string('name');
             $table->string('gender');
             $table->date('date_of_birth');
