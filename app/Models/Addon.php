@@ -18,4 +18,9 @@ class Addon extends Model
         'type' => \App\Enums\AddonType::class,
         'is_active' => 'boolean',
     ];
+
+    public function enrollments()
+    {
+        return $this->belongsToMany(Enrollment::class, 'enrollment_addon');
+    }
 }
