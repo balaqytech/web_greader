@@ -40,4 +40,9 @@ class Student extends Model
     {
         return now()->diffInYears($this->date_of_birth);
     }
+
+    public function getFullNameAttribute()
+    {
+        return $this->name . ' ' . $this->parentAccount->name;
+    }
 }
