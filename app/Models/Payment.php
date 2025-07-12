@@ -17,6 +17,8 @@ class Payment extends Model
     ];
 
     protected $casts = [
+        'amount' => \App\Casts\AmountCast::class,
+        'payment_date' => 'datetime',
         'method' => \App\Enums\PaymentMethod::class,
         'status' => \App\Enums\PaymentStatus::class,
     ];

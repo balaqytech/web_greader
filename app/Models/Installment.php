@@ -15,6 +15,9 @@ class Installment extends Model
     ];
 
     protected $casts = [
+        'amount' => \App\Casts\AmountCast::class,
+        'due_date' => 'datetime',
+        'paid_date' => 'datetime',
         'status' => \App\Enums\InstallmentStatus::class,
     ];
 
