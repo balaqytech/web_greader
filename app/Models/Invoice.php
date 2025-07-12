@@ -27,4 +27,9 @@ class Invoice extends Model
     {
         return $this->belongsTo(Coupon::class);
     }
+
+    public function installments()
+    {
+        return $this->hasMany(Installment::class);
+    }
 }
