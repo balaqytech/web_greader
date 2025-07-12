@@ -2,9 +2,11 @@
 
 return [
     'navigation_groups' => [
+        'school' => 'المدرسة',
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
+        'parents' => 'الأهالي',
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
     ],
@@ -24,5 +26,17 @@ return [
         'start_date' => 'تاريخ البدء',
         'end_date' => 'تاريخ الانتهاء',
         'is_current' => 'عام دراسي حالي',
+    ],
+    'parent' => [
+        'label' => 'ولي الأمر',
+        'plural_label' => 'أولياء الأمور',
+        'name' => 'اسم ولي الأمر',
+        'email' => 'البريد الإلكتروني',
+        'phone' => 'رقم الهاتف',
+        'address' => 'العنوان',
+        'password' => 'كلمة المرور',
+        'is_active' => 'حساب نشط',
+        'branch_id' => 'الفرع',
+        'additional_info' => 'معلومات إضافية',
     ],
 ];
