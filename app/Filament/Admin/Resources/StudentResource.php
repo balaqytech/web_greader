@@ -77,23 +77,27 @@ class StudentResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->label(__('admin.student.name'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('parentAccount.name')
                     ->label(__('admin.student.parent_account_id'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('branch.name')
                     ->label(__('admin.student.branch_id'))
                     ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->label(__('admin.student.name'))
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('gender')
                     ->label(__('admin.student.gender'))
-                    ->searchable(),
+                    ->badge()
+                    ->color(fn($state) => $state->color()),
                 Tables\Columns\TextColumn::make('date_of_birth')
+                    ->label(__('admin.student.date_of_birth'))
                     ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
-                    ->searchable(),
+                    ->label(__('admin.student.status'))
+                    ->badge()
+                    ->color(fn($state) => $state->color()),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

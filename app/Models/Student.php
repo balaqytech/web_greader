@@ -19,6 +19,7 @@ class Student extends Model
     ];
 
     protected $casts = [
+        'gender' => \App\Enums\Gender::class,
         'is_active' => 'boolean',
         'status' => \App\Enums\StudentStatus::class,
         'date_of_birth' => 'date',

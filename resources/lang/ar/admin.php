@@ -51,5 +51,11 @@ return [
         'parent_account_id' => 'ولي الأمر',
         'branch_id' => 'الفرع',
         'additional_info' => 'معلومات إضافية',
+        'statuses' => [
+            'pending' => 'قيد الانتظار',
+            'active' => 'نشط',
+            'inactive' => 'غير نشط',
+            'suspended' => 'موقوف',
+        ],
     ],
 ];
