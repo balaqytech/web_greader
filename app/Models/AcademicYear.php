@@ -10,12 +10,10 @@ class AcademicYear extends Model
         'name',
         'start_date',
         'end_date',
-        'is_active',
-        'additional_info',
+        'is_current',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'additional_info' => 'array',
+        'is_current' => 'boolean',
     ];
 }

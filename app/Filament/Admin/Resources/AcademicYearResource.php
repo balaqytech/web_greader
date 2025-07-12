@@ -49,11 +49,6 @@ class AcademicYearResource extends Resource
                     ->label(__('admin.academic_year.start_date')),
                 Forms\Components\DatePicker::make('end_date')
                     ->label(__('admin.academic_year.end_date')),
-                Forms\Components\Toggle::make('is_active')
-                    ->label(__('admin.academic_year.is_active'))
-                    ->required()
-                    ->default(true)
-                    ->inline(false),
             ]);
     }
 
@@ -72,8 +67,8 @@ class AcademicYearResource extends Resource
                     ->label(__('admin.academic_year.end_date'))
                     ->date()
                     ->sortable(),
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label(__('admin.academic_year.is_active'))
+                Tables\Columns\IconColumn::make('is_current')
+                    ->label(__('admin.academic_year.is_current'))
                     ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
