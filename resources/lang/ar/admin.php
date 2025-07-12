@@ -6,6 +6,7 @@ return [
     ],
     'navigation' => [
         'branches' => 'الفروع',
+        'academic_years' => 'الأعوام الدراسية',
     ],
     'branch' => [
         'label' => 'فرع',
@@ -15,5 +16,13 @@ return [
         'phone' => 'رقم الهاتف',
         'is_active' => 'تفعيل',
         'additional_info' => 'معلومات إضافية',
+    ],
+    'academic_year' => [
+        'label' => 'عام دراسي',
+        'plural_label' => 'الأعوام الدراسية',
+        'name' => 'اسم العام الدراسي',
+        'start_date' => 'تاريخ البدء',
+        'end_date' => 'تاريخ الانتهاء',
+        'is_active' => 'تفعيل',
     ],
 ];
