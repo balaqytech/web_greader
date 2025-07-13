@@ -8,6 +8,7 @@ return [
     'navigation' => [
         'parents' => 'الأهالي',
         'students' => 'الطلاب',
+        'programs' => 'البرامج الدراسية والصيفية',
         'enrollments' => 'التسجيلات',
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
@@ -56,6 +57,25 @@ return [
             'active' => 'نشط',
             'inactive' => 'غير نشط',
             'suspended' => 'موقوف',
+        ],
+    ],
+    'program' => [
+        'label' => 'برنامج',
+        'plural_label' => 'البرامج',
+        'name' => 'اسم البرنامج',
+        'description' => 'وصف البرنامج',
+        'type' => 'نوع البرنامج',
+        'base_price' => 'السعر الأساسي',
+        'payment_type' => 'نوع الدفع',
+        'is_active' => 'نشط',
+        'additional_info' => 'معلومات إضافية',
+        'types' => [
+            'annual' => 'سنوي',
+            'summer' => 'صيفي',
+        ],
+        'payment_types' => [
+            'one_time' => 'دفعة واحدة',
+            'installments' => 'أقساط',
         ],
     ],
 ];
