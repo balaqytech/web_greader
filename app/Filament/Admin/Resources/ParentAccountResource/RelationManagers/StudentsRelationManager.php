@@ -43,9 +43,18 @@ class StudentsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns($columns)
+            ->headerActions([
+                // Tables\Actions\CreateAction::make()
+                // ->url(fn(): string => StudentResource::getUrl('create')),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->url(fn(Model $record): string => StudentResource::getUrl('edit', ['record' => $record])),
             ]);
+    }
+
+    public function isReadOnly(): bool
+    {
+        return false;
     }
 }

@@ -7,6 +7,8 @@ use App\Filament\Admin\Resources\ParentAccountResource\RelationManagers;
 use App\Models\ParentAccount;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -108,6 +110,34 @@ class ParentAccountResource extends Resource
             ]);
     }
 
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make(__('admin.parent.parent_info'))
+                    ->columns(3)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('name')
+                            ->label(__('admin.parent.name')),
+                        Infolists\Components\TextEntry::make('email')
+                            ->label(__('admin.parent.email')),
+                        Infolists\Components\TextEntry::make('phone')
+                            ->label(__('admin.parent.phone')),
+                        Infolists\Components\IconEntry::make('is_active')
+                            ->label(__('admin.parent.is_active')),
+                        Infolists\Components\TextEntry::make('branch.name')
+                            ->label(__('admin.parent.branch_id')),
+                    ]),
+                Infolists\Components\Section::make(__('admin.parent.additional_info'))
+                    ->schema(fn($record) => collect($record->additional_info ?? [])
+                        ->map(fn($value, $key) => Infolists\Components\TextEntry::make($key)
+                            ->label(ucfirst($key))
+                            ->state($value))
+                        ->toArray())
+                    ->columns(1),
+            ]);
+    }
+
     public static function getRelations(): array
     {
         return [
@@ -120,6 +150,7 @@ class ParentAccountResource extends Resource
         return [
             'index' => Pages\ListParentAccounts::route('/'),
             'create' => Pages\CreateParentAccount::route('/create'),
+            'view' => Pages\ViewParentAccount::route('/{record}'),
             'edit' => Pages\EditParentAccount::route('/{record}/edit'),
         ];
     }
