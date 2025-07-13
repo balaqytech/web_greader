@@ -9,6 +9,7 @@ return [
         'parents' => 'الأهالي',
         'students' => 'الطلاب',
         'programs' => 'البرامج الدراسية والصيفية',
+        'addons' => 'الإضافات والملحقات',
         'enrollments' => 'التسجيلات',
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
@@ -76,6 +77,20 @@ return [
         'payment_types' => [
             'one_time' => 'دفعة واحدة',
             'installments' => 'أقساط',
+        ],
+    ],
+    'addon' => [
+        'label' => 'إضافة',
+        'plural_label' => 'الإضافات',
+        'name' => 'اسم الإضافة',
+        'description' => 'وصف الإضافة',
+        'type' => 'نوع الإضافة',
+        'price' => 'السعر',
+        'is_active' => 'نشط',
+        'additional_info' => 'معلومات إضافية',
+        'types' => [
+            'one_time' => 'دفعة واحدة',
+            'monthly' => 'شهري',
         ],
     ],
 ];
