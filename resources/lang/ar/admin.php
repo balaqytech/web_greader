@@ -42,6 +42,7 @@ return [
         'is_active' => 'حساب نشط',
         'branch_id' => 'الفرع',
         'additional_info' => 'معلومات إضافية',
+        'students' => 'الأبناء',
     ],
     'student' => [
         'label' => 'طالب',
