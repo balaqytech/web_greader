@@ -77,12 +77,9 @@ class StudentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                Tables\Columns\TextColumn::make('full_name')
                     ->label(__('admin.student.name'))
                     ->searchable(),
-                Tables\Columns\TextColumn::make('parentAccount.name')
-                    ->label(__('admin.student.parent_account_id'))
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('branch.name')
                     ->label(__('admin.student.branch_id'))
                     ->searchable(),
