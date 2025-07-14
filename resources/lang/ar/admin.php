@@ -13,6 +13,7 @@ return [
         'addons' => 'الإضافات والملحقات',
         'enrollments' => 'العقود والتسجيلات',
         'coupons' => 'الكوبونات والخصومات',
+        'invoices' => 'الفواتير',
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
     ],
@@ -124,6 +125,21 @@ return [
         'types' => [
             'fixed' => 'ثابت',
             'percentage' => 'نسبة مئوية',
+        ],
+    ],
+    'invoice' => [
+        'label' => 'فاتورة',
+        'plural_label' => 'الفواتير',
+        'enrollment_id' => 'رقم التسجيل',
+        'coupon_id' => 'رقم الكوبون',
+        'total_amount' => 'المبلغ الإجمالي',
+        'due_date' => 'تاريخ الاستحقاق',
+        'status' => 'الحالة',
+        'statuses' => [
+            'pending' => 'قيد الانتظار',
+            'paid' => 'مدفوعة',
+            'overdue' => 'متأخرة',
+            'cancelled' => 'ملغاة',
         ],
     ],
 ];
