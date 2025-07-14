@@ -106,6 +106,7 @@ class ParentAccountResource extends Resource
                     ->relationship('branch', 'name'),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ]);
     }
