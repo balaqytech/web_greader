@@ -30,4 +30,9 @@ class ParentAccount extends Model
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function enrollments()
+    {
+        return $this->hasManyThrough(Enrollment::class, Student::class);
+    }
 }

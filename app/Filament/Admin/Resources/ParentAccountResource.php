@@ -142,6 +142,7 @@ class ParentAccountResource extends Resource
     {
         return [
             RelationManagers\StudentsRelationManager::class,
+            RelationManagers\EnrollmentsRelationManager::class,
         ];
     }
 

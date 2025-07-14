@@ -43,6 +43,7 @@ return [
         'branch_id' => 'الفرع',
         'additional_info' => 'معلومات إضافية',
         'students' => 'الأبناء',
+        'enrollments' => 'التسجيلات',
     ],
     'student' => [
         'label' => 'طالب',
