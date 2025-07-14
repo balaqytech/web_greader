@@ -45,6 +45,8 @@ class StudentResource extends Resource
             ->schema([
                 Forms\Components\Select::make('parent_account_id')
                     ->label(__('admin.student.parent_account_id'))
+                    ->searchable()
+                    ->preload()
                     ->required()
                     ->relationship('parentAccount', 'name'),
                 Forms\Components\Select::make('branch_id')
