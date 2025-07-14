@@ -17,13 +17,13 @@ enum EnrollmentStatus: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::DRAFT => __('admin.student.statuses.draft'),
-            self::PENDING => __('admin.student.statuses.pending'),
-            self::SIGNED => __('admin.student.statuses.signed'),
-            self::APPROVED => __('admin.student.statuses.approved'),
-            self::REJECTED => __('admin.student.statuses.rejected'),
-            self::CANCELED => __('admin.student.statuses.canceled'),
-            self::COMPLETED => __('admin.student.statuses.completed'),
+            self::DRAFT => __('admin.enrollment.statuses.draft'),
+            self::PENDING => __('admin.enrollment.statuses.pending'),
+            self::SIGNED => __('admin.enrollment.statuses.signed'),
+            self::APPROVED => __('admin.enrollment.statuses.approved'),
+            self::REJECTED => __('admin.enrollment.statuses.rejected'),
+            self::CANCELED => __('admin.enrollment.statuses.canceled'),
+            self::COMPLETED => __('admin.enrollment.statuses.completed'),
         };
     }
 

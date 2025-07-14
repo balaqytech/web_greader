@@ -62,13 +62,10 @@ return [
         'branch_id' => 'الفرع',
         'additional_info' => 'معلومات إضافية',
         'statuses' => [
-            'pending' => 'قيد انتظار التوقيع',
-            'signed' => 'تم التوقيع',
-            'approved' => 'تم الاعتماد',
-            'rejected' => 'تم الرفض',
-            'canceled' => 'تم الإلغاء',
-            'completed' => 'تم الاكتمال',
-            'draft' => 'مسودة',
+            'pending' => 'قيد المراجعة',
+            'active' => 'نشط',
+            'inactive' => 'غير نشط',
+            'suspended' => 'معلق',
         ],
     ],
     'program' => [
@@ -113,6 +110,15 @@ return [
         'status' => 'الحالة',
         'student_name' => 'اسم الطالب',
         'program_name' => 'اسم البرنامج',
+        'statuses' => [
+            'pending' => 'قيد انتظار التوقيع',
+            'signed' => 'تم التوقيع',
+            'approved' => 'تم الاعتماد',
+            'rejected' => 'تم الرفض',
+            'canceled' => 'تم الإلغاء',
+            'completed' => 'تم الاكتمال',
+            'draft' => 'مسودة',
+        ],
     ],
     'coupon' => [
         'label' => 'كوبون',
