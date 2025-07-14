@@ -2,15 +2,17 @@
 
 namespace App\Filament\Admin\Resources\ParentAccountResource\RelationManagers;
 
-use App\Filament\Admin\Resources\StudentResource;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
+use App\Enums\Gender;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
+use App\Enums\StudentStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Admin\Resources\StudentResource;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Resources\RelationManagers\RelationManager;
 
 class StudentsRelationManager extends RelationManager
 {
@@ -24,6 +26,37 @@ class StudentsRelationManager extends RelationManager
     public static function getModelLabel(): string
     {
         return __('admin.student.label');
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Select::make('branch_id')
+                    ->label(__('admin.student.branch_id'))
+                    ->required()
+                    ->relationship('branch', 'name')
+                    ->default(fn(RelationManager $livewire) => $livewire->getOwnerRecord()->branch_id),
+                Forms\Components\TextInput::make('name')
+                    ->label(__('admin.student.name'))
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\Select::make('gender')
+                    ->label(__('admin.student.gender'))
+                    ->required()
+                    ->options(Gender::class),
+                Forms\Components\DatePicker::make('date_of_birth')
+                    ->label(__('admin.student.date_of_birth'))
+                    ->required(),
+                Forms\Components\Select::make('status')
+                    ->label(__('admin.student.status'))
+                    ->required()
+                    ->options(StudentStatus::class)
+                    ->default(StudentStatus::PENDING),
+                Forms\Components\KeyValue::make('additional_info')
+                    ->label(__('admin.student.additional_info'))
+                    ->columnSpanFull(),
+            ]);
     }
 
     public function table(Table $table): Table
@@ -44,8 +77,7 @@ class StudentsRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns($columns)
             ->headerActions([
-                // Tables\Actions\CreateAction::make()
-                // ->url(fn(): string => StudentResource::getUrl('create')),
+                Tables\Actions\CreateAction::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
