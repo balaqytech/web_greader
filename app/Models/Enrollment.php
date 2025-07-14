@@ -15,6 +15,11 @@ class Enrollment extends Model
         'academic_year_id',
     ];
 
+    protected $casts = [
+        'contract_signed_at' => 'datetime',
+        'status' => \App\Enums\EnrollmentStatus::class,
+    ];
+
     public function addons()
     {
         return $this->belongsToMany(Addon::class, 'enrollment_addon');
