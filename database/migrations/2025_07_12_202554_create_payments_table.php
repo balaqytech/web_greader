@@ -20,6 +20,8 @@ return new class extends Migration
             $table->date('payment_date');
             $table->string('attachment')->nullable();
             $table->string('status')->default('pending');
+            $table->json('additional_info')->nullable(); // For storing additional payment information like bank transaction details
+            $table->json('metadata')->nullable(); // For additional payment details
             $table->timestamps();
         });
     }

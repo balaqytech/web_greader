@@ -96,6 +96,35 @@ class PaymentResource extends Resource
                         Infolists\Components\TextEntry::make('status')
                             ->label(__('admin.payment.status')),
                     ]),
+                Infolists\Components\Section::make(__('admin.payment.attachment'))
+                    ->columns(1)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('attachment')
+                            ->label(__('admin.payment.attachment'))
+                            ->url(fn(Payment $record) => $record->attachment ? asset('storage/' . $record->attachment) : null)
+                            ->icon('heroicon-o-paper-clip')
+                            ->openUrlInNewTab(),
+                    ]),
+                Infolists\Components\Section::make(__('admin.payment.additional_info'))
+                    ->schema(
+                        fn(Payment $record) => collect($record->additional_info ?? [])
+                            ->map(fn($value, $key) => Infolists\Components\TextEntry::make($key)
+                                ->label(ucfirst($key))
+                                ->state($value))
+                            ->toArray()
+                    )
+                    ->visible(fn(Payment $record) => !empty($record->additional_info))
+                    ->columns(2),
+                Infolists\Components\Section::make(__('admin.payment.metadata'))
+                    ->schema(
+                        fn(Payment $record) => collect($record->metadata ?? [])
+                            ->map(fn($value, $key) => Infolists\Components\TextEntry::make($key)
+                                ->label(ucfirst($key))
+                                ->state($value))
+                            ->toArray()
+                    )
+                    ->visible(fn(Payment $record) => !empty($record->metadata))
+                    ->columns(2),
             ]);
     }
 

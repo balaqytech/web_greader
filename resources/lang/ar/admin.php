@@ -172,6 +172,8 @@ return [
         'payment_date' => 'تاريخ الدفع',
         'attachment' => 'المرفق',
         'status' => 'الحالة',
+        'additional_info' => 'معلومات إضافية',
+        'metadata' => 'البيانات الوصفية',
         'statuses' => [
             'pending' => 'قيد الانتظار',
             'completed' => 'مكتملة',

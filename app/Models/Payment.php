@@ -14,6 +14,8 @@ class Payment extends Model
         'payment_date',
         'attachment',
         'status',
+        'additional_info',
+        'metadata',
     ];
 
     protected $casts = [
@@ -21,6 +23,8 @@ class Payment extends Model
         'payment_date' => 'datetime',
         'method' => \App\Enums\PaymentMethod::class,
         'status' => \App\Enums\PaymentStatus::class,
+        'additional_info' => 'json',
+        'metadata' => 'json',
     ];
 
     public function invoice()
