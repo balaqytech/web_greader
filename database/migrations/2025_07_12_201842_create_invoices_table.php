@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
+            $table->string('number')->unique();
             $table->foreignId('enrollment_id')->constrained('enrollments')->onDelete('cascade');
             $table->foreignId('coupon_id')->nullable()->constrained('coupons')->onDelete('set null');
             $table->decimal('total_amount', 10, 2);

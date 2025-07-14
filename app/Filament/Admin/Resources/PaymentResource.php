@@ -82,8 +82,8 @@ class PaymentResource extends Resource
                 Infolists\Components\Section::make(__('admin.payment.payment_info'))
                     ->columns(3)
                     ->schema([
-                        Infolists\Components\TextEntry::make('invoice_id')
-                            ->label(__('admin.payment.invoice_id')),
+                        Infolists\Components\TextEntry::make('invoice.number')
+                            ->label(__('admin.payment.invoice_number')),
                         Infolists\Components\TextEntry::make('transaction_id')
                             ->label(__('admin.payment.transaction_id')),
                         Infolists\Components\TextEntry::make('method')

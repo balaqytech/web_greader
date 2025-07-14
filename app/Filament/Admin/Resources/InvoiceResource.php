@@ -42,6 +42,9 @@ class InvoiceResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('number')
+                    ->label(__('admin.invoice.number'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('student.full_name')
                     ->label(__('admin.student.name'))
                     ->searchable(),

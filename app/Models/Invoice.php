@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     protected $fillable = [
+        'number',
         'enrollment_id',
         'coupon_id',
         'total_amount',
@@ -48,5 +49,21 @@ class Invoice extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * The "booting" method of the model.
+     *
+     * @return void
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($invoice) {
+            if (!$invoice->number) {
+                $invoice->number = 'INV-' . now()->format('ymd') . '-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT);
+            }
+        });
     }
 }

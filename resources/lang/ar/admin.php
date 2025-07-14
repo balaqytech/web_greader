@@ -132,6 +132,7 @@ return [
     'invoice' => [
         'label' => 'فاتورة',
         'plural_label' => 'الفواتير',
+        'number' => 'رقم الفاتورة',
         'enrollment_id' => 'رقم التسجيل',
         'coupon_id' => 'رقم الكوبون',
         'total_amount' => 'المبلغ الإجمالي',
@@ -164,7 +165,7 @@ return [
         'label' => 'مدفوعات',
         'plural_label' => 'المدفوعات',
         'payment_info' => 'معلومات الدفع',
-        'invoice_id' => 'رقم الفاتورة',
+        'invoice_number' => 'رقم الفاتورة',
         'transaction_id' => 'رقم المعاملة',
         'method' => 'طريقة الدفع',
         'amount' => 'المبلغ',
