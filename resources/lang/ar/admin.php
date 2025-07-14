@@ -3,6 +3,7 @@
 return [
     'navigation_groups' => [
         'school' => 'المدرسة',
+        'finance' => 'المالية',
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
@@ -11,6 +12,7 @@ return [
         'programs' => 'البرامج الدراسية والصيفية',
         'addons' => 'الإضافات والملحقات',
         'enrollments' => 'العقود والتسجيلات',
+        'coupons' => 'الكوبونات والخصومات',
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
     ],
@@ -107,5 +109,21 @@ return [
         'status' => 'الحالة',
         'student_name' => 'اسم الطالب',
         'program_name' => 'اسم البرنامج',
+    ],
+    'coupon' => [
+        'label' => 'كوبون',
+        'plural_label' => 'الكوبونات',
+        'code' => 'رمز الكوبون',
+        'type' => 'نوع الكوبون',
+        'value' => 'قيمة الكوبون',
+        'valid_from' => 'صالح من',
+        'valid_to' => 'صالح حتى',
+        'usage_limit' => 'حد الاستخدام',
+        'usage_count' => 'عدد الاستخدامات',
+        'applicable_program_id' => 'البرنامج القابل للتطبيق',
+        'types' => [
+            'fixed' => 'ثابت',
+            'percentage' => 'نسبة مئوية',
+        ],
     ],
 ];
