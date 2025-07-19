@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('enrollment_addon', function (Blueprint $table) {
+        Schema::create('discount_program_enrollment', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('enrollment_id')->constrained('enrollments')->onDelete('cascade');
-            $table->foreignId('addon_id')->constrained('addons')->onDelete('cascade');
+            $table->foreignId('program_enrollment_id')->constrained('program_enrollments')->onDelete('cascade');
+            $table->foreignId('discount_id')->constrained('discounts')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('enrollment_addon');
+        Schema::dropIfExists('discount_program_enrollment');
     }
 };

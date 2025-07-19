@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('enrollments', function (Blueprint $table) {
+        Schema::create('program_enrollments', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('student_id')->constrained()->onDelete('cascade');
+            $table->foreignId('program_id')->constrained()->onDelete('cascade');
+            $table->decimal('final_price', 10, 2);
             $table->string('contract_pdf')->nullable();
             $table->timestamp('contract_signed_at')->nullable();
             $table->string('status')->default('pending');
-            $table->foreignId('student_id')->constrained()->onDelete('cascade');
-            $table->foreignId('program_id')->constrained()->onDelete('cascade');
             $table->foreignId('academic_year_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });

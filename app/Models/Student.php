@@ -31,6 +31,11 @@ class Student extends Model
         return $this->belongsTo(ParentAccount::class);
     }
 
+    public function programEnrollments()
+    {
+        return $this->hasMany(ProgramEnrollment::class);
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);

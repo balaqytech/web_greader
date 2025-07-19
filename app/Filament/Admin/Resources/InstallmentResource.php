@@ -42,8 +42,8 @@ class InstallmentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('invoice_id')
-                    ->label(__('admin.installment.invoice_id'))
+                Tables\Columns\TextColumn::make('program_enrollment.student.full_name')
+                    ->label(__('admin.student.student_name'))
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('student.name')
@@ -87,8 +87,8 @@ class InstallmentResource extends Resource
                 Infolists\Components\Section::make(__('admin.installment.installment_info'))
                     ->columns(3)
                     ->schema([
-                        Infolists\Components\TextEntry::make('invoice_id')
-                            ->label(__('admin.installment.invoice_id')),
+                        Infolists\Components\TextEntry::make('program_enrollment.student.full_name')
+                            ->label(__('admin.student.name')),
                         Infolists\Components\TextEntry::make('amount')
                             ->label(__('admin.installment.amount')),
                         Infolists\Components\TextEntry::make('due_date')

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('installments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');
+            $table->foreignId('program_enrollment_id')->constrained('program_enrollments')->onDelete('cascade');
             $table->decimal('amount', 10, 2);
             $table->date('due_date')->nullable();
             $table->date('paid_date')->nullable();

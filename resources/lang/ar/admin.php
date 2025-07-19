@@ -113,6 +113,10 @@ return [
         'status' => 'الحالة',
         'student_name' => 'اسم الطالب',
         'program_name' => 'اسم البرنامج',
+        'addons' => 'الإضافات',
+        'student_info' => 'معلومات الطالب',
+        'coupon_info' => 'معلومات الكوبونات والخصومات',
+        'installment_info' => 'معلومات الأقساط',
         'statuses' => [
             'pending' => 'قيد انتظار التوقيع',
             'signed' => 'تم التوقيع',

@@ -4,31 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Enrollment extends Model
+class ProgramEnrollment extends Model
 {
     protected $fillable = [
+        'student_id',
+        'program_id',
+        'final_price',
         'contract_pdf',
         'contract_signed_at',
         'status',
-        'student_id',
-        'program_id',
         'academic_year_id',
     ];
-
-    protected $casts = [
-        'contract_signed_at' => 'datetime',
-        'status' => \App\Enums\EnrollmentStatus::class,
-    ];
-
-    public function invoice()
-    {
-        return $this->hasOne(Invoice::class);
-    }
-
-    public function addons()
-    {
-        return $this->belongsToMany(Addon::class, 'enrollment_addon');
-    }
 
     public function student()
     {
@@ -43,5 +29,10 @@ class Enrollment extends Model
     public function academicYear()
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function discounts()
+    {
+        return $this->belongsToMany(Discount::class, 'discount_program_enrollment');
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Installment extends Model
 {
     protected $fillable = [
-        'invoice_id',
+        'program_enrollment_id',
         'amount',
         'due_date',
         'paid_date',
@@ -21,8 +21,8 @@ class Installment extends Model
         'status' => \App\Enums\InstallmentStatus::class,
     ];
 
-    public function invoice()
+    public function programEnrollment()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(ProgramEnrollment::class);
     }
 }
