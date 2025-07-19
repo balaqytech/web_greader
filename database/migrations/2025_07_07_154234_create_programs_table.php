@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('type');
             $table->decimal('base_price', 10, 2)->default(0.00);
             $table->string('payment_type');
+            $table->longText('contract')->nullable();
             $table->boolean('is_active')->default(true);
             $table->json('additional_info')->nullable(); // For any extra information
             $table->timestamps();

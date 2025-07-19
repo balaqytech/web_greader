@@ -12,6 +12,7 @@ class Program extends Model
         'type',
         'base_price',
         'payment_type',
+        'contract',
         'is_active',
         'additional_info',
     ];

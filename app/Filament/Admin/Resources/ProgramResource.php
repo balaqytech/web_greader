@@ -63,6 +63,12 @@ class ProgramResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->label(__('admin.program.description'))
                     ->maxLength(255),
+                Forms\Components\RichEditor::make('contract')
+                    ->label(__('admin.program.contract'))
+                    ->columnSpanFull()
+                    ->required()
+                    ->maxLength(65535)
+                    ->helperText(__('admin.program.contract_helper')),
                 Forms\Components\Toggle::make('is_active')
                     ->label(__('admin.program.is_active'))
                     ->required()

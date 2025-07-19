@@ -78,6 +78,8 @@ return [
         'base_price' => 'السعر الأساسي',
         'payment_type' => 'نوع الدفع',
         'is_active' => 'نشط',
+        'contract' => 'العقد',
+        'contract_helper' => 'يمكنك استخدام محرر النصوص الغني لإضافة تفاصيل العقد',
         'additional_info' => 'معلومات إضافية',
         'types' => [
             'annual' => 'سنوي',
