@@ -4,7 +4,7 @@ namespace App\Enums;
 
 use Filament\Support\Contracts\HasLabel;
 
-enum CouponType: string implements HasLabel
+enum DiscountType: string implements HasLabel
 {
     case FIXED = 'fixed';
     case PERCENTAGE = 'percentage';
@@ -12,8 +12,8 @@ enum CouponType: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::FIXED => __('admin.coupon.types.fixed'),
-            self::PERCENTAGE => __('admin.coupon.types.percentage'),
+            self::FIXED => __('admin.discount.types.fixed'),
+            self::PERCENTAGE => __('admin.discount.types.percentage'),
         };
     }
 }
