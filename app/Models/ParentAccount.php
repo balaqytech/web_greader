@@ -35,4 +35,9 @@ class ParentAccount extends Model
     {
         return $this->hasManyThrough(Enrollment::class, Student::class);
     }
+
+    public function getChildrenCountAttribute()
+    {
+        return $this->students()->count();
+    }
 }

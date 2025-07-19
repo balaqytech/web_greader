@@ -44,6 +44,7 @@ return [
         'email' => 'البريد الإلكتروني',
         'phone' => 'رقم الهاتف',
         'address' => 'العنوان',
+        'children_count' => 'عدد الأبناء',
         'password' => 'كلمة المرور',
         'is_active' => 'حساب نشط',
         'branch_id' => 'الفرع',

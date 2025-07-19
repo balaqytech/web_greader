@@ -90,6 +90,8 @@ class ParentAccountResource extends Resource
                 Tables\Columns\TextColumn::make('phone')
                     ->label(__('admin.parent.phone'))
                     ->searchable(),
+                Tables\Columns\TextColumn::make('childrenCount')
+                    ->label(__('admin.parent.children_count')),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label(__('admin.parent.is_active'))
                     ->boolean(),
