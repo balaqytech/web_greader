@@ -80,8 +80,7 @@ class CouponResource extends Resource
                 Tables\Columns\TextColumn::make('type')
                     ->label(__('admin.coupon.type')),
                 Tables\Columns\TextColumn::make('value')
-                    ->label(__('admin.coupon.value'))
-                    ->money('OMR'),
+                    ->label(__('admin.coupon.value')),
                 Tables\Columns\TextColumn::make('valid_from')
                     ->label(__('admin.coupon.valid_from'))
                     ->dateTime()

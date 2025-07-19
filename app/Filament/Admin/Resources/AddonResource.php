@@ -75,9 +75,7 @@ class AddonResource extends Resource
                     ->label(__('admin.addon.name'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('price')
-                    ->label(__('admin.addon.price'))
-                    ->money('OMR', true)
-                    ->sortable(),
+                    ->label(__('admin.addon.price')),
                 Tables\Columns\TextColumn::make('type')
                     ->label(__('admin.addon.type'))
                     ->searchable(),

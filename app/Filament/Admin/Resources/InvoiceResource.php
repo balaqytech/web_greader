@@ -49,8 +49,7 @@ class InvoiceResource extends Resource
                     ->label(__('admin.student.name'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('total_amount')
-                    ->label(__('admin.invoice.total_amount'))
-                    ->money('OMR'),
+                    ->label(__('admin.invoice.total_amount')),
                 Tables\Columns\TextColumn::make('due_date')
                     ->label(__('admin.invoice.due_date'))
                     ->date()

@@ -16,6 +16,7 @@ class Addon extends Model
 
     protected $casts = [
         'type' => \App\Enums\AddonType::class,
+        'price' => \App\Casts\AmountCast::class,
         'is_active' => 'boolean',
     ];
 

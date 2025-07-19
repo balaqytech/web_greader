@@ -17,6 +17,7 @@ class Program extends Model
     ];
 
     protected $casts = [
+        'base_price' => \App\Casts\AmountCast::class,
         'type' => \App\Enums\ProgramType::class,
         'payment_type' => \App\Enums\ProgramPaymentType::class,
         'additional_info' => 'json',

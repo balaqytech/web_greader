@@ -123,4 +123,14 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*|--------------------------------------------------------------------------
+    | Application Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Here you may specify the configuration for your application. This is
+    | where you can define various settings that your application will use.
+    | You can add any custom configuration options you need for your app.
+    |*/
+    'currency' => 'OMR',
+
 ];

@@ -8,16 +8,17 @@ class Money
 {
     public function __construct(
         public readonly float|int $amount,
-        public readonly string $currency = 'OMR'
+        public readonly string $currency,
     ) {
         if ($amount < 0) {
             throw new \InvalidArgumentException(__('app.negative_amount_error'));
         }
     }
 
-    public static function from(float|int $amount): self
+    public static function from(float|int $amount, ?string $currency = null): self
     {
-        return new self($amount);
+        $currency = $currency ?? config('app.currency');
+        return new self($amount, $currency);
     }
 
     public function value(): float
@@ -27,6 +28,6 @@ class Money
 
     public function __toString(): string
     {
-        return Number::currency($this->amount, $this->currency);
+        return Number::currency($this->amount, $this->currency, app()->getLocale());
     }
 }

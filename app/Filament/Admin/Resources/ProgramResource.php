@@ -85,8 +85,7 @@ class ProgramResource extends Resource
                     ->label(__('admin.program.type'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('base_price')
-                    ->label(__('admin.program.base_price'))
-                    ->formatStateUsing(fn($state) => \Illuminate\Support\Number::currency($state, 'OMR', app()->getLocale())),
+                    ->label(__('admin.program.base_price')),
                 Tables\Columns\TextColumn::make('payment_type')
                     ->label(__('admin.program.payment_type'))
                     ->searchable(),
