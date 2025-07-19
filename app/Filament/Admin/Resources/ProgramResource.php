@@ -55,7 +55,9 @@ class ProgramResource extends Resource
                     ->label(__('admin.program.base_price'))
                     ->required()
                     ->numeric()
-                    ->default(0.00),
+                    ->minValue(1)
+                    ->dehydrateStateUsing(fn($state) => $state instanceof \App\ValueObjects\Money ? $state->value() : $state)
+                    ->formatStateUsing(fn($state) => $state instanceof \App\ValueObjects\Money ? $state->value() : $state),
                 Forms\Components\Select::make('payment_type')
                     ->label(__('admin.program.payment_type'))
                     ->options(ProgramPaymentType::class)
