@@ -20,6 +20,11 @@ class Enrollment extends Model
         'status' => \App\Enums\EnrollmentStatus::class,
     ];
 
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class);
+    }
+
     public function addons()
     {
         return $this->belongsToMany(Addon::class, 'enrollment_addon');

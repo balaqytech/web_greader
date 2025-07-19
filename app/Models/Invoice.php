@@ -17,6 +17,8 @@ class Invoice extends Model
 
     protected $casts = [
         'status' => \App\Enums\InvoiceStatus::class,
+        'total_amount' => \App\ValueObjects\Money::class,
+        'due_date' => 'datetime',
     ];
 
     public function enrollment()
@@ -51,11 +53,6 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
-    /**
-     * The "booting" method of the model.
-     *
-     * @return void
-     */
     protected static function boot()
     {
         parent::boot();
