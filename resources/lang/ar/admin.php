@@ -126,6 +126,7 @@ return [
     'discount' => [
         'label' => 'خصم',
         'plural_label' => 'الخصومات',
+        'name' => 'اسم الخصم',
         'type' => 'نوع الخصم',
         'amount' => 'القيمة',
         'types' => [
