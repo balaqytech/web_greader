@@ -55,6 +55,7 @@ return [
     'student' => [
         'label' => 'طالب',
         'plural_label' => 'طلاب',
+        'student_info' => 'معلومات الطالب',
         'name' => 'اسم الطالب',
         'gender' => 'الجنس',
         'date_of_birth' => 'تاريخ الميلاد',

@@ -5,11 +5,14 @@ namespace App\Filament\Admin\Resources;
 use Filament\Forms;
 use Filament\Tables;
 use App\Enums\Gender;
-use App\Enums\StudentStatus;
 use App\Models\Student;
+use Filament\Infolists;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
+use App\Enums\StudentStatus;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\StudentResource\Pages;
@@ -113,7 +116,45 @@ class StudentResource extends Resource
                     ->label(__('admin.student.gender'))
                     ->options(Gender::class),
             ])->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make(__('admin.student.student_info'))
+                    ->schema([
+                        Infolists\Components\TextEntry::make('full_name')
+                            ->label(__('admin.student.name')),
+                        Infolists\Components\TextEntry::make('branch.name')
+                            ->label(__('admin.student.branch_id')),
+                        Infolists\Components\TextEntry::make('gender')
+                            ->label(__('admin.student.gender'))
+                            ->badge()
+                            ->color(fn($state) => $state->color()),
+                        Infolists\Components\TextEntry::make('date_of_birth')
+                            ->label(__('admin.student.date_of_birth'))
+                            ->date(),
+                        Infolists\Components\TextEntry::make('status')
+                            ->label(__('admin.student.status'))
+                            ->badge()
+                            ->color(fn($state) => $state->color()),
+                    ])
+                    ->columns(3),
+                Infolists\Components\Section::make(__('admin.student.additional_info'))
+                    ->schema(
+                        fn(Model $record) => collect($record->additional_info)
+                            ->map(function ($value, $key) {
+                                return Infolists\Components\TextEntry::make($key)
+                                    ->label(ucfirst(str_replace('_', ' ', $key)))
+                                    ->value($value);
+                            })
+                            ->toArray()
+                    )
+                    ->columns(2),
             ]);
     }
 
@@ -129,6 +170,7 @@ class StudentResource extends Resource
         return [
             'index' => Pages\ListStudents::route('/'),
             'create' => Pages\CreateStudent::route('/create'),
+            'view' => Pages\ViewStudent::route('/{record}'),
             'edit' => Pages\EditStudent::route('/{record}/edit'),
         ];
     }
