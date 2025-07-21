@@ -15,6 +15,12 @@ export default {
             fontFamily: {
                 'sans': ['"expo"', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'gr-green': '#bcd04a',
+                'gr-blue': '#47abda',
+                'gr-orange': '#f16543',
+                'gr-rose': '#df3889',
+            },
         },
     },
 }
