@@ -23,7 +23,7 @@
 
 <body class="flex min-h-screen flex-col text-slate-600">
 
-    {{ $slot }}
+    <main class="my-8">{{ $slot }}</main>
 
     @filamentScripts
     @vite('resources/js/app.js')
