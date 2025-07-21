@@ -35,4 +35,9 @@ class ProgramEnrollment extends Model
     {
         return $this->belongsToMany(Discount::class, 'discount_program_enrollment');
     }
+
+    public function isSigned(): bool
+    {
+        return $this->status === EnrollmentStatus::SIGNED;
+    }
 }
