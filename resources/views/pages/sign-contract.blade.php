@@ -6,7 +6,10 @@ use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
 use App\Models\ProgramEnrollment;
 use Filament\Forms\Contracts\HasForms;
+use Illuminate\Support\Facades\Storage;
+use App\Actions\Support\CreatePdfAction;
 use Filament\Forms\Concerns\InteractsWithForms;
+use App\Actions\ProgramEnrollment\SignContractAction;
 use Saade\FilamentAutograph\Forms\Components\SignaturePad;
 
 new #[Layout('layouts.app')] class extends Component implements HasForms {
@@ -28,7 +31,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
             'program_name' => $this->programEnrollment->program->name,
             'parent_name' => $this->programEnrollment->student->parentAccount->name,
             'student_name' => $this->programEnrollment->student->name,
-            'enrollment_date' => $this->programEnrollment->created_at->format('Y-m-d'),
+            'enrollment_date' => $this->programEnrollment->created_at->format('d/m/Y'),
             // Add more variables as needed
         ];
 
@@ -47,15 +50,32 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
 
     public function create(): void
     {
-        dd($this->form->getState());
+        $signature = $this->storeSignature($this->data['signature'] ?? null);
+        dd($signature);
     }
 
-    function parseContract($template, $variables)
+    private function parseContract($template, $variables)
     {
         foreach ($variables as $key => $value) {
             $template = str_replace('$' . $key . '$', $value, $template);
         }
         return $template;
+    }
+
+    private function storeSignature($signature)
+    {
+        // Decode the base64 string
+        $image = str_replace('data:image/png;base64,', '', $signature);
+        $image = str_replace(' ', '+', $image);
+        $image = base64_decode($image);
+
+        // Generate a unique filename
+        $filename = 'signatures/' . $this->programEnrollment->id . '/signature_' . time() . '.png';
+
+        // Store the image in the public disk
+        Storage::disk('public')->put($filename, $image);
+
+        return $filename;
     }
 }; ?>
 
@@ -64,7 +84,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
         <div class="wrapper prose prose-slate">
             <h1 class="text-3xl text-center font-bold text-slate-700">{{ __('frontend.contract') }}
                 {{ $this->programEnrollment->program->name }}</h1>
-            {!! eval('?>' . Blade::compileString(html_entity_decode($this->contract))) !!}
+            {!! $this->contract !!}
         </div>
     </section>
 
