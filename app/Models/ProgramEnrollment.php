@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class ProgramEnrollment extends Model
@@ -14,6 +15,12 @@ class ProgramEnrollment extends Model
         'contract_signed_at',
         'status',
         'academic_year_id',
+    ];
+
+    protected $casts = [
+        'final_price' => 'decimal:2',
+        'contract_signed_at' => 'datetime',
+        'status' => EnrollmentStatus::class,
     ];
 
     public function student()
