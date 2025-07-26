@@ -8,6 +8,7 @@ use App\Models\ProgramEnrollment;
 use Filament\Forms\Contracts\HasForms;
 use Illuminate\Support\Facades\Storage;
 use App\Actions\Support\CreatePdfAction;
+use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
 use App\Actions\ProgramEnrollment\SignContractAction;
 use Saade\FilamentAutograph\Forms\Components\SignaturePad;
@@ -50,8 +51,32 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
 
     public function create(): void
     {
-        $signature = $this->storeSignature($this->data['signature'] ?? null);
-        dd($signature);
+        if ($this->programEnrollment->isSigned()) {
+            Notification::make()->title(__('alerts.program_enrollment_already_signed'))->danger()->icon('heroicon-o-x-circle')->duration(5000)->send();
+            return;
+        }
+
+        $this->form->validate();
+
+        $signature = $this->storeSignature($this->data['signature']);
+        $contract_path = app(CreatePdfAction::class)->execute('pdf.contract', 'pdfs/program-contracts/' . time() . '.pdf', [
+            'title' => __('frontend.contract', ['contract_name' => $this->programEnrollment->program->name]),
+            'contract' => $this->contract,
+            'signature' => $signature,
+        ]);
+
+        app(SignContractAction::class)->execute($this->programEnrollment, $contract_path);
+
+        Notification::make()
+            ->title('' . __('alerts.contract_signed_successfully') . '!')
+            ->success()
+            ->icon('heroicon-o-check-circle')
+            ->duration(5000)
+            ->send();
+
+        // disable the form to prevent multiple submissions
+        $this->form->fill();
+        $this->dispatch('contractSigned', ['contractPath' => $contract_path]);
     }
 
     private function parseContract($template, $variables)
@@ -75,15 +100,16 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
         // Store the image in the public disk
         Storage::disk('public')->put($filename, $image);
 
-        return $filename;
+        return Storage::url($filename);
     }
 }; ?>
 
 <div>
     <section class="mt-4">
         <div class="wrapper prose prose-slate">
-            <h1 class="text-3xl text-center font-bold text-slate-700">{{ __('frontend.contract') }}
-                {{ $this->programEnrollment->program->name }}</h1>
+            <h1 class="text-3xl text-center font-bold text-slate-700">
+                {{ __('frontend.contract', ['contract_name' => $this->programEnrollment->program->name]) }}
+            </h1>
             {!! $this->contract !!}
         </div>
     </section>
@@ -92,7 +118,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
         <div class="wrapper max-w-xl">
             <form wire:submit="create">
                 {{ $this->form }}
-                <x-primary-button type="submit">
+                <x-primary-button type="submit" class="mt-4" wire:loading.attr="disabled" wire:target="create">
                     {{ __('frontend.send') }}
                 </x-primary-button>
             </form>

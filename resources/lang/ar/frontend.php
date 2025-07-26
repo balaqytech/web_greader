@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'contract' => 'عقد',
+    'contract' => 'عقد :contract_name',
     'signature' => 'التوقيع',
     'sign_contract' => 'توقيع العقد',
     'send' => 'إرسال',
