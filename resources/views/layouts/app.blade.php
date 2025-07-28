@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{{ env('APP_NAME') }}</title>
+    <title>{{ $title ?? env('APP_NAME') }}</title>
     <link rel="shortcut icon" href="{{ asset('logo.png') }}" type="image/x-icon">
 
     <!-- Fonts -->
@@ -23,7 +23,7 @@
 
 <body class="flex min-h-screen flex-col text-slate-600">
 
-    <main class="my-8">{{ $slot }}</main>
+    {{ $slot }}
 
     @livewire('notifications')
     @filamentScripts

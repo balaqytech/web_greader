@@ -25,7 +25,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
         $this->programEnrollment = ProgramEnrollment::findOrFail($programEnrollment);
 
         if ($this->programEnrollment->isSigned()) {
-            abort(401, __('alerts.program_enrollment_already_signed'));
+            abort(403, __('alerts.program_enrollment_already_signed'));
         }
 
         $variables = [
