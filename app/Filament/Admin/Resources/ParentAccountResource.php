@@ -2,18 +2,21 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Filament\Admin\Resources\ParentAccountResource\Pages;
-use App\Filament\Admin\Resources\ParentAccountResource\RelationManagers;
-use App\Models\ParentAccount;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Tables;
+use App\Enums\Gender;
+use Filament\Forms\Get;
 use Filament\Infolists;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use App\Enums\StudentStatus;
+use App\Models\ParentAccount;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Admin\Resources\ParentAccountResource\Pages;
+use App\Filament\Admin\Resources\ParentAccountResource\RelationManagers;
 
 class ParentAccountResource extends Resource
 {
@@ -43,36 +46,77 @@ class ParentAccountResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->label(__('admin.parent.name'))
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->label(__('admin.parent.email'))
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
-                    ->label(__('admin.parent.phone'))
-                    ->tel()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->label(__('admin.parent.password'))
-                    ->password()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('is_active')
-                    ->label(__('admin.parent.is_active'))
-                    ->required()
-                    ->default(true)
-                    ->inline(false),
-                Forms\Components\Select::make('branch_id')
-                    ->label(__('admin.parent.branch_id'))
-                    ->relationship('branch', 'name')
-                    ->required(),
-                Forms\Components\KeyValue::make('additional_info')
-                    ->label(__('admin.parent.additional_info'))
+                Forms\Components\Wizard::make([
+                    Forms\Components\Wizard\Step::make(__('admin.parent.personal_info'))
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->label(__('admin.parent.name'))
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('email')
+                                ->label(__('admin.parent.email'))
+                                ->email()
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('phone')
+                                ->label(__('admin.parent.phone'))
+                                ->tel()
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('password')
+                                ->label(__('admin.parent.password'))
+                                ->password()
+                                ->revealable()
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\Toggle::make('is_active')
+                                ->label(__('admin.parent.is_active'))
+                                ->required()
+                                ->default(true)
+                                ->inline(false),
+                            Forms\Components\Select::make('branch_id')
+                                ->label(__('admin.parent.branch_id'))
+                                ->relationship('branch', 'name')
+                                ->required()
+                                ->live(),
+                            Forms\Components\KeyValue::make('additional_info')
+                                ->label(__('admin.parent.additional_info'))
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2),
+                    Forms\Components\Wizard\Step::make(__('admin.parent.students'))
+                        ->schema([
+                            Forms\Components\Repeater::make('students')
+                                ->label(__('admin.parent.students'))
+                                ->relationship('students')
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->label(__('admin.student.name'))
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\Select::make('gender')
+                                        ->label(__('admin.student.gender'))
+                                        ->required()
+                                        ->options(Gender::class),
+                                    Forms\Components\DatePicker::make('date_of_birth')
+                                        ->label(__('admin.student.date_of_birth'))
+                                        ->required(),
+                                    Forms\Components\Select::make('status')
+                                        ->label(__('admin.student.status'))
+                                        ->required()
+                                        ->options(StudentStatus::class)
+                                        ->default(StudentStatus::PENDING),
+                                    Forms\Components\Select::make('branch_id')
+                                        ->label(__('admin.student.branch_id'))
+                                        ->required()
+                                        ->relationship('branch', 'name'),
+                                    Forms\Components\KeyValue::make('additional_info')
+                                        ->label(__('admin.student.additional_info'))
+                                        ->columnSpanFull(),
+                                ])
+                                ->columns(2),
+                        ]),
+                ])
                     ->columnSpanFull(),
             ]);
     }

@@ -51,6 +51,7 @@ return [
         'additional_info' => 'معلومات إضافية',
         'students' => 'الأبناء',
         'enrollments' => 'التسجيلات',
+        'personal_info' => 'المعلومات الشخصية لولي الأمر',
     ],
     'student' => [
         'label' => 'طالب',
