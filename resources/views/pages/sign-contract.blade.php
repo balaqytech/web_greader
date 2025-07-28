@@ -118,9 +118,9 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
         <div class="wrapper max-w-xl">
             <form wire:submit="create">
                 {{ $this->form }}
-                <x-primary-button type="submit" class="mt-4" wire:loading.attr="disabled" wire:target="create">
+                <x-submit-button type="submit" class="mt-4" wire:loading.attr="disabled" wire:target="create">
                     {{ __('frontend.send') }}
-                </x-primary-button>
+                </x-submit-button>
             </form>
 
             <x-filament-actions::modals />
