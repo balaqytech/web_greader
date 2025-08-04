@@ -8,6 +8,7 @@ use App\Enums\Gender;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Enums\StudentStatus;
+use App\Enums\RelationshipWithParent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Admin\Resources\StudentResource;
@@ -48,6 +49,10 @@ class StudentsRelationManager extends RelationManager
                 Forms\Components\DatePicker::make('date_of_birth')
                     ->label(__('admin.student.date_of_birth'))
                     ->required(),
+                Forms\Components\Select::make('relationship_with_parent')
+                    ->label(__('admin.student.relationship_with_parent'))
+                    ->required()
+                    ->options(RelationshipWithParent::class),
                 Forms\Components\Select::make('status')
                     ->label(__('admin.student.status'))
                     ->required()

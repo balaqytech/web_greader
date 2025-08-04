@@ -71,6 +71,18 @@ return [
             'inactive' => 'غير نشط',
             'suspended' => 'معلق',
         ],
+        'relationships' => [
+            'father' => 'أب',
+            'mother' => 'أم',
+            'brother' => 'أخ',
+            'sister' => 'أخت',
+            'grandfather' => 'جد',
+            'grandmother' => 'جدة',
+            'uncle' => 'عم/خال',
+            'aunt' => 'عمة/خالة',
+            'cousin' => 'ابن عم/خال',
+            'other' => 'غير ذلك',
+        ],
     ],
     'program' => [
         'label' => 'برنامج',

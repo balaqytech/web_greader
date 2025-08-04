@@ -12,6 +12,7 @@ use Filament\Tables\Table;
 use App\Enums\StudentStatus;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
+use App\Enums\RelationshipWithParent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -67,6 +68,10 @@ class StudentResource extends Resource
                 Forms\Components\DatePicker::make('date_of_birth')
                     ->label(__('admin.student.date_of_birth'))
                     ->required(),
+                Forms\Components\Select::make('relationship_with_parent')
+                    ->label(__('admin.student.relationship_with_parent'))
+                    ->required()
+                    ->options(RelationshipWithParent::class),
                 Forms\Components\Select::make('status')
                     ->label(__('admin.student.status'))
                     ->required()
@@ -96,6 +101,10 @@ class StudentResource extends Resource
                     ->label(__('admin.student.date_of_birth'))
                     ->date()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('relationship_with_parent')
+                    ->label(__('admin.student.relationship_with_parent'))
+                    ->badge()
+                    ->color(fn($state) => $state->color()),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('admin.student.status'))
                     ->badge()
@@ -138,6 +147,10 @@ class StudentResource extends Resource
                         Infolists\Components\TextEntry::make('date_of_birth')
                             ->label(__('admin.student.date_of_birth'))
                             ->date(),
+                        Infolists\Components\TextEntry::make('relationship_with_parent')
+                            ->label(__('admin.student.relationship_with_parent'))
+                            ->badge()
+                            ->color(fn($state) => $state->color()),
                         Infolists\Components\TextEntry::make('status')
                             ->label(__('admin.student.status'))
                             ->badge()

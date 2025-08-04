@@ -13,6 +13,7 @@ use App\Enums\StudentStatus;
 use App\Models\ParentAccount;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
+use App\Enums\RelationshipWithParent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\ParentAccountResource\Pages;
@@ -109,6 +110,10 @@ class ParentAccountResource extends Resource
                                     Forms\Components\DatePicker::make('date_of_birth')
                                         ->label(__('admin.student.date_of_birth'))
                                         ->required(),
+                                    Forms\Components\Select::make('relationship_with_parent')
+                                        ->label(__('admin.student.relationship_with_parent'))
+                                        ->required()
+                                        ->options(RelationshipWithParent::class),
                                     Forms\Components\Select::make('status')
                                         ->label(__('admin.student.status'))
                                         ->required()

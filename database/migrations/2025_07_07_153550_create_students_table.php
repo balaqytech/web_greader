@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('gender');
             $table->date('date_of_birth');
+            $table->string('relationship_with_parent')->nullable();
             $table->string('status')->default('active');
             $table->boolean('is_active')->default(true);
             $table->json('additional_info')->nullable(); // For any extra information

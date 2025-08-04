@@ -13,6 +13,7 @@ class Student extends Model
         'name',
         'gender',
         'date_of_birth',
+        'relationship_with_parent',
         'status',
         'is_active',
         'additional_info',
@@ -20,6 +21,7 @@ class Student extends Model
 
     protected $casts = [
         'gender' => \App\Enums\Gender::class,
+        'relationship_with_parent' => \App\Enums\RelationshipWithParent::class,
         'is_active' => 'boolean',
         'status' => \App\Enums\StudentStatus::class,
         'date_of_birth' => 'date',
@@ -44,10 +46,5 @@ class Student extends Model
     public function getAgeAttribute()
     {
         return now()->diffInYears($this->date_of_birth);
-    }
-
-    public function getFullNameAttribute()
-    {
-        return $this->name . ' ' . $this->parentAccount->name;
     }
 }
