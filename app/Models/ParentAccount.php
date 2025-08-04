@@ -10,6 +10,8 @@ class ParentAccount extends Model
         'name',
         'email',
         'phone',
+        'address',
+        'city',
         'password',
         'is_active',
         'additional_info',

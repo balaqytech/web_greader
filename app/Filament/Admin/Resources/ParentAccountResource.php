@@ -63,6 +63,14 @@ class ParentAccountResource extends Resource
                                 ->tel()
                                 ->required()
                                 ->maxLength(255),
+                            Forms\Components\TextInput::make('address')
+                                ->label(__('admin.parent.address'))
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('city')
+                                ->label(__('admin.parent.city'))
+                                ->required()
+                                ->maxLength(255),
                             Forms\Components\TextInput::make('password')
                                 ->label(__('admin.parent.password'))
                                 ->password()
@@ -170,6 +178,10 @@ class ParentAccountResource extends Resource
                             ->label(__('admin.parent.email')),
                         Infolists\Components\TextEntry::make('phone')
                             ->label(__('admin.parent.phone')),
+                        Infolists\Components\TextEntry::make('address')
+                            ->label(__('admin.parent.address')),
+                        Infolists\Components\TextEntry::make('city')
+                            ->label(__('admin.parent.city')),
                         Infolists\Components\IconEntry::make('is_active')
                             ->label(__('admin.parent.is_active')),
                         Infolists\Components\TextEntry::make('branch.name')
