@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\HasInvoice;
+use App\Contracts\Invoiceable;
 use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Model;
 
-class ProgramEnrollment extends Model
+class ProgramEnrollment extends Model implements Invoiceable
 {
+    use HasInvoice;
+
     protected $fillable = [
         'student_id',
         'program_id',
