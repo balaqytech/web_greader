@@ -206,4 +206,9 @@ return [
             'refunded' => 'مستردة',
         ],
     ],
+    'contact_method' => [
+        'email' => 'البريد الإلكتروني',
+        'phone' => 'الهاتف',
+        'whatsapp' => 'واتساب',
+    ],
 ];
