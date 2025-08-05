@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Traits\HasInvoice;
 use App\Contracts\Invoiceable;
 use App\Enums\EnrollmentStatus;
+use App\States\Enrollment\EnrollmentState;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\ModelStates\HasStates;
 
 class ProgramEnrollment extends Model implements Invoiceable
 {
-    use HasInvoice;
+    use HasInvoice, HasStates;
 
     protected $fillable = [
         'student_id',
@@ -24,7 +26,7 @@ class ProgramEnrollment extends Model implements Invoiceable
     protected $casts = [
         'final_price' => 'decimal:2',
         'contract_signed_at' => 'datetime',
-        'status' => EnrollmentStatus::class,
+        'status' => EnrollmentState::class,
     ];
 
     public function student()
