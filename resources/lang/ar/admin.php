@@ -3,6 +3,7 @@
 return [
     'navigation_groups' => [
         'school' => 'المدرسة',
+        'applications' => 'التقديمات',
         'finance' => 'المالية',
         'settings' => 'الإعدادات',
     ],
@@ -18,6 +19,7 @@ return [
         'payments' => 'المدفوعات',
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
+        'program_enrollments' => 'التقديمات على البرامج',
     ],
     'branch' => [
         'label' => 'فرع',
@@ -138,8 +140,8 @@ return [
             'signed' => 'تم التوقيع',
             'approved' => 'تم الاعتماد',
             'rejected' => 'تم الرفض',
-            'canceled' => 'تم الإلغاء',
-            'completed' => 'تم الاكتمال',
+            'canceled' => 'ملغي',
+            'completed' => 'مكتمل',
             'draft' => 'مسودة',
         ],
     ],
@@ -210,5 +212,19 @@ return [
         'email' => 'البريد الإلكتروني',
         'phone' => 'الهاتف',
         'whatsapp' => 'واتساب',
+    ],
+    'program_enrollment' => [
+        'label' => 'تسجيل',
+        'plural_label' => 'التسجيلات',
+        'enrollment_info' => 'معلومات التسجيل',
+        'discounts' => 'الخصومات',
+        'installments' => 'الأقساط',
+        'student_name' => 'اسم الطالب',
+        'program_name' => 'اسم البرنامج',
+        'final_price' => 'السعر النهائي',
+        'contract_pdf' => 'عقد PDF',
+        'contract_signed_at' => 'تاريخ توقيع العقد',
+        'status' => 'الحالة',
+        'academic_year_id' => 'العام الدراسي',
     ],
 ];
