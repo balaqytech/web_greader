@@ -66,21 +66,9 @@ class StudentsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $columns = collect(StudentResource::table($table)->getColumns())
-            ->reject(function ($column) {
-                return $column->getName() === 'full_name';
-            })
-            ->prepend(
-                Tables\Columns\TextColumn::make('name')
-                    ->label(__('admin.student.name'))
-                    ->searchable(),
-                'name'
-            )
-            ->toArray();
-
         return $table
             ->recordTitleAttribute('name')
-            ->columns($columns)
+            ->columns(StudentResource::table($table)->getColumns())
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
             ])

@@ -87,7 +87,7 @@ class StudentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('full_name')
+                Tables\Columns\TextColumn::make('name')
                     ->label(__('admin.student.name'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('branch.name')
@@ -102,9 +102,7 @@ class StudentResource extends Resource
                     ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('relationship_with_parent')
-                    ->label(__('admin.student.relationship_with_parent'))
-                    ->badge()
-                    ->color(fn($state) => $state->color()),
+                    ->label(__('admin.student.relationship_with_parent')),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('admin.student.status'))
                     ->badge()
@@ -136,7 +134,7 @@ class StudentResource extends Resource
             ->schema([
                 Infolists\Components\Section::make(__('admin.student.student_info'))
                     ->schema([
-                        Infolists\Components\TextEntry::make('full_name')
+                        Infolists\Components\TextEntry::make('name')
                             ->label(__('admin.student.name')),
                         Infolists\Components\TextEntry::make('branch.name')
                             ->label(__('admin.student.branch_id')),

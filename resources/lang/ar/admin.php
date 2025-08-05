@@ -61,6 +61,7 @@ return [
         'name' => 'اسم الطالب',
         'gender' => 'الجنس',
         'date_of_birth' => 'تاريخ الميلاد',
+        'relationship_with_parent' => 'علاقة ولي الأمر بالطالب',
         'status' => 'الحالة',
         'parent_account_id' => 'ولي الأمر',
         'branch_id' => 'الفرع',
