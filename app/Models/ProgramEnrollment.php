@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Traits\HasInvoice;
+use App\Enums\DiscountType;
+use App\ValueObjects\Money;
 use App\Contracts\Invoiceable;
 use App\Enums\EnrollmentStatus;
-use App\States\Enrollment\EnrollmentState;
-use Illuminate\Database\Eloquent\Model;
 use Spatie\ModelStates\HasStates;
+use Illuminate\Database\Eloquent\Model;
+use App\States\Enrollment\EnrollmentState;
 
 class ProgramEnrollment extends Model implements Invoiceable
 {
@@ -60,6 +62,18 @@ class ProgramEnrollment extends Model implements Invoiceable
 
     public function getFinalPriceAttribute()
     {
-        return $this->invoice->amount ?? 0;
+        $finalPrice = $this->program->base_price->value;
+
+        if ($this->discounts->isNotEmpty()) {
+            $this->discounts->each(function ($discount) use (&$finalPrice) {
+                if ($discount->type === DiscountType::PERCENTAGE) {
+                    $finalPrice -= $finalPrice * $discount->amount / 100;
+                } elseif ($discount->type === DiscountType::FIXED) {
+                    $finalPrice -= $discount->amount;
+                }
+            });
+        }
+
+        return Money::from($finalPrice);
     }
 }
