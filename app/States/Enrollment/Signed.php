@@ -8,7 +8,7 @@ class Signed extends EnrollmentState
 {
     public static $name = EnrollmentStatus::SIGNED->value;
 
-    public function label(): string
+    public function getLabel(): string
     {
         return __('admin.enrollment.statuses.signed');
     }

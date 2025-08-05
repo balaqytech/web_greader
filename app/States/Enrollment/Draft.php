@@ -8,7 +8,7 @@ class Draft extends EnrollmentState
 {
     public static $name = EnrollmentStatus::DRAFT->value;
 
-    public function label(): string
+    public function getLabel(): string
     {
         return __('admin.enrollment.statuses.draft');
     }

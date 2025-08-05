@@ -16,7 +16,6 @@ class ProgramEnrollment extends Model implements Invoiceable
     protected $fillable = [
         'student_id',
         'program_id',
-        'final_price',
         'contract_pdf',
         'contract_signed_at',
         'status',
@@ -49,8 +48,18 @@ class ProgramEnrollment extends Model implements Invoiceable
         return $this->belongsToMany(Discount::class, 'discount_program_enrollment');
     }
 
+    public function installments()
+    {
+        return $this->hasMany(Installment::class);
+    }
+
     public function isSigned(): bool
     {
         return $this->status === EnrollmentStatus::SIGNED;
+    }
+
+    public function getFinalPriceAttribute()
+    {
+        return $this->invoice->amount ?? 0;
     }
 }

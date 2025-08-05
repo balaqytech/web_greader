@@ -5,10 +5,11 @@ namespace App\States\Enrollment;
 use App\Models\ProgramEnrollment;
 use Spatie\ModelStates\State;
 use Spatie\ModelStates\StateConfig;
+use Filament\Support\Contracts\HasLabel;
 
-abstract class EnrollmentState extends State
+abstract class EnrollmentState extends State implements HasLabel
 {
-    abstract public function label(): string;
+    abstract public function getLabel(): string;
 
     abstract public function color(): string;
 

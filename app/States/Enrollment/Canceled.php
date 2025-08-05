@@ -8,7 +8,7 @@ class Canceled extends EnrollmentState
 {
     public static $name = EnrollmentStatus::CANCELED->value;
 
-    public function label(): string
+    public function getLabel(): string
     {
         return __('admin.enrollment.statuses.canceled');
     }

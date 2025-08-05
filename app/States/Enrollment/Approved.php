@@ -8,7 +8,7 @@ class Approved extends EnrollmentState
 {
     public static $name = EnrollmentStatus::APPROVED->value;
 
-    public function label(): string
+    public function getLabel(): string
     {
         return __('admin.enrollment.statuses.approved');
     }

@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('program_id')->constrained()->onDelete('cascade');
-            $table->decimal('final_price', 10, 2);
             $table->string('contract_pdf')->nullable();
             $table->timestamp('contract_signed_at')->nullable();
             $table->string('status')->default('pending');

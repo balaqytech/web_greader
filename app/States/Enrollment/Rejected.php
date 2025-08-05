@@ -8,7 +8,7 @@ class Rejected extends EnrollmentState
 {
     public static $name = EnrollmentStatus::REJECTED->value;
 
-    public function label(): string
+    public function getLabel(): string
     {
         return __('admin.enrollment.statuses.rejected');
     }

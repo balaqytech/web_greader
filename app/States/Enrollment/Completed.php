@@ -8,7 +8,7 @@ class Completed extends EnrollmentState
 {
     public static $name = EnrollmentStatus::COMPLETED->value;
 
-    public function label(): string
+    public function getLabel(): string
     {
         return __('admin.enrollment.statuses.completed');
     }
