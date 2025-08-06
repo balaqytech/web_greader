@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('contract_signed_at')->nullable();
             $table->string('status')->default('pending');
             $table->foreignId('academic_year_id')->constrained()->onDelete('cascade');
+            $table->json('additional_info')->nullable();
             $table->timestamps();
         });
     }

@@ -6,11 +6,14 @@ use App\Traits\HasInvoice;
 use App\Enums\DiscountType;
 use App\ValueObjects\Money;
 use App\Contracts\Invoiceable;
-use App\Enums\EnrollmentStatus;
+use App\States\Enrollment\Signed;
 use Spatie\ModelStates\HasStates;
 use Illuminate\Database\Eloquent\Model;
 use App\States\Enrollment\EnrollmentState;
 
+/**
+ * @property EnrollmentState $status
+ */
 class ProgramEnrollment extends Model implements Invoiceable
 {
     use HasInvoice, HasStates;
@@ -22,12 +25,14 @@ class ProgramEnrollment extends Model implements Invoiceable
         'contract_signed_at',
         'status',
         'academic_year_id',
+        'additional_info',
     ];
 
     protected $casts = [
         'final_price' => 'decimal:2',
         'contract_signed_at' => 'datetime',
         'status' => EnrollmentState::class,
+        'additional_info' => 'array',
     ];
 
     public function student()
@@ -55,9 +60,14 @@ class ProgramEnrollment extends Model implements Invoiceable
         return $this->hasMany(Installment::class);
     }
 
-    public function isSigned(): bool
+    protected static function boot()
     {
-        return $this->status === EnrollmentStatus::SIGNED;
+        parent::boot();
+        
+        static::creating(function ($model) {
+            $model->status = \App\States\Enrollment\Draft::class;
+            $model->academic_year_id = AcademicYear::where('is_current', true)->first()->id;
+        });
     }
 
     public function getFinalPriceAttribute()
