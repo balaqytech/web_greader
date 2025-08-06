@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('program_id')->constrained()->onDelete('cascade');
             $table->string('contract_pdf')->nullable();
             $table->timestamp('contract_signed_at')->nullable();
-            $table->string('status')->default('pending');
+            $table->string('status')->default('draft');
             $table->foreignId('academic_year_id')->constrained()->onDelete('cascade');
             $table->json('additional_info')->nullable();
             $table->timestamps();

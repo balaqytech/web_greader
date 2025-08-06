@@ -10,5 +10,4 @@ Route::get('/', function () {
 
 Volt::route('/sign-contract/{programEnrollment}', 'sign-contract');
 
-
 Route::get('/register', ProgramRegister::class);
