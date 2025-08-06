@@ -237,5 +237,7 @@ return [
         'additional_info' => 'معلومات إضافية',
         'cancel_enrollment' => 'إلغاء الطلب',
         'cancel_enrollment_description' => 'هل أنت متأكد من إلغاء الطلب؟',
+        'upload_contract' => 'رفع العقد',
+        'sign_contract' => 'توقيع العقد الكترونياً',
     ],
 ];

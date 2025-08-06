@@ -8,6 +8,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Volt::route('/sign-contract/{programEnrollment}', 'sign-contract');
+Volt::route('/sign-contract/{programEnrollment}', 'sign-contract')->name('sign-contract');
 
 Route::get('/register', ProgramRegister::class);

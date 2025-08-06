@@ -19,7 +19,7 @@ abstract class EnrollmentState extends State implements HasLabel
             ->default(Draft::class)
             ->allowTransition(Draft::class, Pending::class, Transitions\DraftToPending::class)
             ->allowTransition(Draft::class, Canceled::class)
-            ->allowTransition(Pending::class, Signed::class)
+            ->allowTransition(Pending::class, Signed::class, Transitions\PendingToSigned::class)
             ->allowTransition(Pending::class, Rejected::class)
             ->allowTransition(Signed::class, Approved::class)
             ->allowTransition(Signed::class, Rejected::class)
