@@ -72,18 +72,6 @@ class ProgramEnrollment extends Model implements Invoiceable
 
     public function getFinalPriceAttribute()
     {
-        $finalPrice = $this->program->base_price->value;
-
-        if ($this->discounts->isNotEmpty()) {
-            $this->discounts->each(function ($discount) use (&$finalPrice) {
-                if ($discount->type === DiscountType::PERCENTAGE) {
-                    $finalPrice -= $finalPrice * $discount->amount / 100;
-                } elseif ($discount->type === DiscountType::FIXED) {
-                    $finalPrice -= $discount->amount;
-                }
-            });
-        }
-
-        return Money::from($finalPrice);
+        return calculate_enrollment_price($this, $this->discounts);
     }
 }
