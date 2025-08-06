@@ -33,6 +33,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
             'parent_name' => $this->programEnrollment->student->parentAccount->name,
             'student_name' => $this->programEnrollment->student->name,
             'enrollment_date' => $this->programEnrollment->created_at->format('d/m/Y'),
+            'final_price' => $this->programEnrollment->final_price->value(),
             // Add more variables as needed
         ];
 
