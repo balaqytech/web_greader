@@ -84,7 +84,7 @@ class ProgramEnrollmentResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('contract_pdf')
                     ->label(__('admin.program_enrollment.contract_pdf'))
-                    ->url(fn($record) => $record->contract_pdf ? Storage::url($record->contract_pdf) : null, true),
+                    ->url(fn($record) => $record->contract_pdf ? asset($record->contract_pdf) : null, true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('program_id')
@@ -126,7 +126,7 @@ class ProgramEnrollmentResource extends Resource
                             ->visible(fn($record) => $record->status instanceof Signed),
                         Infolists\Components\TextEntry::make('contract_pdf')
                             ->label(__('admin.program_enrollment.contract_pdf'))
-                            ->url(fn($record) => $record->contract_pdf ? Storage::url($record->contract_pdf) : null, true)
+                            ->url(fn($record) => $record->contract_pdf ? asset($record->contract_pdf) : null, true)
                             ->visible(fn($record) => $record->status instanceof Signed),
                         Infolists\Components\TextEntry::make('discounts')
                             ->label(__('admin.program_enrollment.discounts'))
