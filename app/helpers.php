@@ -11,7 +11,7 @@ if (!function_exists('calculate_enrollment_price')) {
 
         foreach ($discounts as $discount) {
             if ($discount->type === DiscountType::PERCENTAGE) {
-                $price -= $price * $discount->amount / 100;
+                $price -= $enrollment->program->base_price->value() * $discount->amount / 100;
             } elseif ($discount->type === DiscountType::FIXED) {
                 $price -= $discount->amount;
             }

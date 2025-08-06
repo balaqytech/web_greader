@@ -7,6 +7,7 @@ use App\Enums\DiscountType;
 use App\ValueObjects\Money;
 use App\Contracts\Invoiceable;
 use App\States\Enrollment\Signed;
+use App\States\Enrollment\Draft;
 use Spatie\ModelStates\HasStates;
 use Illuminate\Database\Eloquent\Model;
 use App\States\Enrollment\EnrollmentState;
@@ -31,8 +32,8 @@ class ProgramEnrollment extends Model implements Invoiceable
     protected $casts = [
         'final_price' => 'decimal:2',
         'contract_signed_at' => 'datetime',
-        'status' => EnrollmentState::class,
         'additional_info' => 'array',
+        'status' => EnrollmentState::class,
     ];
 
     public function student()
@@ -52,7 +53,8 @@ class ProgramEnrollment extends Model implements Invoiceable
 
     public function discounts()
     {
-        return $this->belongsToMany(Discount::class, 'discount_program_enrollment');
+        return $this->belongsToMany(Discount::class, 'discount_program_enrollment')
+            ->withTimestamps();
     }
 
     public function installments()
@@ -63,9 +65,9 @@ class ProgramEnrollment extends Model implements Invoiceable
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
-            $model->status = \App\States\Enrollment\Draft::class;
+            $model->status = new Draft($model);
             $model->academic_year_id = AcademicYear::where('is_current', true)->first()->id;
         });
     }
