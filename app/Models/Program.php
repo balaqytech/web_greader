@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class Program extends Model
 {
@@ -13,6 +14,7 @@ class Program extends Model
         'base_price',
         'payment_type',
         'contract',
+        'is_open',
         'is_active',
         'additional_info',
     ];
@@ -23,5 +25,16 @@ class Program extends Model
         'payment_type' => \App\Enums\ProgramPaymentType::class,
         'additional_info' => 'json',
         'is_active' => 'boolean',
+        'is_open' => 'boolean',
     ];
+
+    public function enrollments()
+    {
+        return $this->hasMany(ProgramEnrollment::class);
+    }
+
+    public function scopeOpen(Builder $query)
+    {
+        return $query->where('is_open', true);
+    }
 }

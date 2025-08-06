@@ -97,7 +97,7 @@ class ProgramRegister extends Component implements HasForms
                                         ->required(),
                                     Forms\Components\Select::make('program_id')
                                         ->label(__('frontend.program_register.student_program'))
-                                        ->options(Program::all()->pluck('name', 'id'))
+                                        ->options(Program::open()->pluck('name', 'id'))
                                         ->required(),
                                     Forms\Components\Select::make('branch_id')
                                         ->label(__('frontend.program_register.student_branch'))

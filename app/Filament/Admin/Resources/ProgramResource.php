@@ -71,6 +71,11 @@ class ProgramResource extends Resource
                     ->required()
                     ->maxLength(65535)
                     ->helperText(__('admin.program.contract_helper')),
+                Forms\Components\Toggle::make('is_open')
+                    ->label(__('admin.program.is_open'))
+                    ->required()
+                    ->default(true)
+                    ->inline(false),
                 Forms\Components\Toggle::make('is_active')
                     ->label(__('admin.program.is_active'))
                     ->required()
@@ -97,6 +102,9 @@ class ProgramResource extends Resource
                 Tables\Columns\TextColumn::make('payment_type')
                     ->label(__('admin.program.payment_type'))
                     ->searchable(),
+                Tables\Columns\IconColumn::make('is_open')
+                    ->label(__('admin.program.is_open'))
+                    ->boolean(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label(__('admin.program.is_active'))
                     ->boolean(),
