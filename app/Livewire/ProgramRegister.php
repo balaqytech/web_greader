@@ -6,13 +6,19 @@ use Filament\Forms;
 use App\Enums\Gender;
 use App\Models\Branch;
 use App\Models\Program;
+use App\Models\Student;
 use Livewire\Component;
 use Filament\Forms\Form;
+use App\Models\AcademicYear;
+use App\Models\ParentAccount;
 use Livewire\Attributes\Layout;
+use App\Models\ProgramEnrollment;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use App\Enums\RelationshipWithParent;
 use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
 
 #[Layout('layouts.app')]
@@ -39,9 +45,11 @@ class ProgramRegister extends Component implements HasForms
                                 ->required(),
                             Forms\Components\TextInput::make('parent.email')
                                 ->label(__('frontend.program_register.parent_email'))
+                                ->email()
                                 ->required(),
                             Forms\Components\TextInput::make('parent.phone')
                                 ->label(__('frontend.program_register.parent_phone'))
+                                ->tel()
                                 ->required(),
                             Forms\Components\TextInput::make('parent.address')
                                 ->label(__('frontend.program_register.parent_address'))
@@ -53,12 +61,16 @@ class ProgramRegister extends Component implements HasForms
                                 ->label(__('frontend.program_register.parent_branch'))
                                 ->options(Branch::all()->pluck('name', 'id'))
                                 ->required(),
-                            Forms\Components\CheckboxList::make('parent.additional_info.contact_method')
+                            Forms\Components\CheckboxList::make('parent.additional_info.' . __('frontend.program_register.parent_contact_method'))
                                 ->label(__('frontend.program_register.parent_contact_method'))
-                                ->options(\App\Enums\ContactMethod::class)
+                                ->options([
+                                    __('frontend.program_register.parent_contact_method_email') => __('frontend.program_register.parent_contact_method_email'),
+                                    __('frontend.program_register.parent_contact_method_phone') => __('frontend.program_register.parent_contact_method_phone'),
+                                    __('frontend.program_register.parent_contact_method_whatsapp') => __('frontend.program_register.parent_contact_method_whatsapp'),
+                                ])
                                 ->columns(3)
                                 ->required(),
-                            Forms\Components\TextInput::make('parent.additional_info.contact_time')
+                            Forms\Components\TextInput::make('parent.additional_info.' . __('frontend.program_register.parent_contact_time'))
                                 ->label(__('frontend.program_register.parent_contact_time'))
                                 ->required(),
                         ])
@@ -76,7 +88,7 @@ class ProgramRegister extends Component implements HasForms
                                         ->label(__('frontend.program_register.student_gender'))
                                         ->options(Gender::class)
                                         ->required(),
-                                    Forms\Components\DatePicker::make('birth_date')
+                                    Forms\Components\DatePicker::make('date_of_birth')
                                         ->label(__('frontend.program_register.student_birth_date'))
                                         ->required(),
                                     Forms\Components\Select::make('relationship_with_parent')
@@ -96,24 +108,24 @@ class ProgramRegister extends Component implements HasForms
                         ]),
                     Forms\Components\Wizard\Step::make(__('frontend.program_register.additional_info'))
                         ->schema([
-                            Forms\Components\CheckboxList::make('additional_info.how_did_you_hear_about_us')
+                            Forms\Components\CheckboxList::make('additional_info.' . __('frontend.program_register.how_did_you_hear_about_us'))
                                 ->label(__('frontend.program_register.how_did_you_hear_about_us'))
                                 ->options([
-                                    'instagram' => __('frontend.program_register.how_did_you_hear_about_us_instagram'),
-                                    'visit' => __('frontend.program_register.how_did_you_hear_about_us_visit'),
-                                    'friends' => __('frontend.program_register.how_did_you_hear_about_us_friends'),
-                                    'other' => __('frontend.program_register.how_did_you_hear_about_us_other'),
+                                    __('frontend.program_register.how_did_you_hear_about_us_instagram') => __('frontend.program_register.how_did_you_hear_about_us_instagram'),
+                                    __('frontend.program_register.how_did_you_hear_about_us_visit') => __('frontend.program_register.how_did_you_hear_about_us_visit'),
+                                    __('frontend.program_register.how_did_you_hear_about_us_friends') => __('frontend.program_register.how_did_you_hear_about_us_friends'),
+                                    __('frontend.program_register.how_did_you_hear_about_us_other') => __('frontend.program_register.how_did_you_hear_about_us_other'),
                                 ])
                                 ->columns(2)
                                 ->required(),
-                            Forms\Components\Radio::make('additional_info.planning_to_visit')
+                            Forms\Components\Radio::make('additional_info.' . __('frontend.program_register.planning_to_visit'))
                                 ->label(__('frontend.program_register.planning_to_visit'))
                                 ->options([
-                                    'yes' => __('frontend.program_register.planning_to_visit_yes'),
-                                    'no' => __('frontend.program_register.planning_to_visit_no'),
+                                    __('frontend.program_register.planning_to_visit_yes') => __('frontend.program_register.planning_to_visit_yes'),
+                                    __('frontend.program_register.planning_to_visit_no') => __('frontend.program_register.planning_to_visit_no'),
                                 ])
                                 ->required(),
-                            Forms\Components\Textarea::make('additional_info.notes')
+                            Forms\Components\Textarea::make('additional_info.' . __('frontend.program_register.notes'))
                                 ->label(__('frontend.program_register.notes')),
                         ])
                         ->columns(2),
@@ -130,7 +142,46 @@ class ProgramRegister extends Component implements HasForms
 
     public function create()
     {
-        dd($this->data);
+        $this->validate();
+
+        DB::transaction(function () {
+            $parent = ParentAccount::where('email', $this->data['parent']['email'])
+                ->orWhere('phone', $this->data['parent']['phone'])
+                ->first();
+
+            if (!$parent) {
+                $this->data['parent']['password'] = bcrypt('123456');
+                $parent = ParentAccount::create($this->data['parent']);
+            }
+
+            foreach ($this->data['students'] as $studentData) {
+                // Create or update student
+                $student = $parent->students()->updateOrCreate(
+                    ['name' => $studentData['name']],
+                    $studentData
+                );
+
+                // Create program enrollment for the student
+                ProgramEnrollment::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'program_id' => $studentData['program_id'],
+                    ],
+                    [
+                        'additional_info' => $this->data['additional_info'],
+                    ]
+                );
+            }
+        });
+
+        Notification::make()
+            ->title(__('frontend.program_register.success_title'))
+            ->body(__('frontend.program_register.success_message'))
+            ->success()
+            ->send();
+
+        $this->data = [];
+        $this->form->fill();
     }
 
     public function render()

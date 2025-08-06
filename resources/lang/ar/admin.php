@@ -226,5 +226,6 @@ return [
         'contract_signed_at' => 'تاريخ توقيع العقد',
         'status' => 'الحالة',
         'academic_year_id' => 'العام الدراسي',
+        'additional_info' => 'معلومات إضافية',
     ],
 ];

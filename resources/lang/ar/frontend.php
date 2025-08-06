@@ -43,5 +43,8 @@ return [
         'planning_to_visit_yes' => 'نعم',
         'planning_to_visit_no' => 'لا',
         'notes' => 'هل لديك أي ملاحظات أو أسئلة؟',
+        'enrollment_created_successfully' => 'تم إنشاء تسجيل البرنامج بنجاح.',
+        'success_title' => 'تم التسجيل بنجاح!',
+        'success_message' => 'شكراً لك على تسجيل أطفالك العباقرة في برامجنا. سنتواصل معك قريباً.',
     ],
 ];
