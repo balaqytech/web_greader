@@ -6,12 +6,15 @@ use Filament\Forms;
 use Filament\Tables;
 use App\Models\Program;
 use App\Models\Student;
+use Filament\Infolists;
 use App\Models\Discount;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Enums\EnrollmentStatus;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use App\Models\ProgramEnrollment;
+use App\States\Enrollment\Signed;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -87,9 +90,49 @@ class ProgramEnrollmentResource extends Resource
                     ->options(Program::all()->pluck('name', 'id')),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\EditAction::make(),
                 ]),
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make(__('admin.program_enrollment.enrollment_info'))
+                    ->schema([
+                        Infolists\Components\TextEntry::make('student.name')
+                            ->label(__('admin.program_enrollment.student_name')),
+                        Infolists\Components\TextEntry::make('program.name')
+                            ->label(__('admin.program_enrollment.program_name')),
+                        Infolists\Components\TextEntry::make('status')
+                            ->label(__('admin.program_enrollment.status'))
+                            ->badge()
+                            ->color(fn($state) => $state->color()),
+                        Infolists\Components\TextEntry::make('contract_signed_at')
+                            ->label(__('admin.program_enrollment.contract_signed_at'))
+                            ->date('d/m/Y')
+                            ->visible(fn($record) => $record->status instanceof Signed),
+                        Infolists\Components\TextEntry::make('contract_pdf')
+                            ->label(__('admin.program_enrollment.contract_pdf'))
+                            ->url(fn($record) => $record->contract_pdf ? Storage::url($record->contract_pdf) : null)
+                            ->visible(fn($record) => $record->status instanceof Signed),
+                    ])
+                    ->columns(2),
+                Infolists\Components\Section::make(__('admin.program_enrollment.additional_info'))
+                    ->schema(
+                        fn(ProgramEnrollment $record) =>
+                        collect($record->additional_info ?? [])
+                            ->map(
+                                fn($value, $key) => Infolists\Components\TextEntry::make($key)
+                                    ->label($key)
+                                    ->state($value)
+                            )
+                            ->toArray()
+                    )
+                    ->columns(2),
             ]);
     }
 
@@ -104,6 +147,7 @@ class ProgramEnrollmentResource extends Resource
     {
         return [
             'index' => Pages\ListProgramEnrollments::route('/'),
+            'view' => Pages\ViewProgramEnrollment::route('/{record}'),
         ];
     }
 }
