@@ -18,7 +18,6 @@ use App\States\Enrollment\Signed;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use App\Filament\Admin\Actions\ProgramEnrollment\AddDiscounts;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\Pages;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\RelationManagers;
 use App\Filament\Admin\Actions\ProgramEnrollment as ProgramEnrollmentActions;
@@ -94,8 +93,12 @@ class ProgramEnrollmentResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\ActionGroup::make([
-                    AddDiscounts::make(),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ActionGroup::make([
+                        ProgramEnrollmentActions\AddDiscounts::make(),
+                        Tables\Actions\EditAction::make(),
+                    ])
+                        ->dropdown(false),
+                    ProgramEnrollmentActions\CancelEnrollment::make(),
                 ]),
             ]);
     }

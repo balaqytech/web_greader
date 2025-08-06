@@ -235,5 +235,7 @@ return [
         'status' => 'الحالة',
         'academic_year_id' => 'العام الدراسي',
         'additional_info' => 'معلومات إضافية',
+        'cancel_enrollment' => 'إلغاء الطلب',
+        'cancel_enrollment_description' => 'هل أنت متأكد من إلغاء الطلب؟',
     ],
 ];
