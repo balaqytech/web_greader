@@ -5,6 +5,7 @@ use Filament\Forms\Form;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
 use App\Models\ProgramEnrollment;
+use App\States\Enrollment\Signed;
 use Filament\Forms\Contracts\HasForms;
 use Illuminate\Support\Facades\Storage;
 use App\Actions\Support\CreatePdfAction;
@@ -24,7 +25,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
     {
         $this->programEnrollment = ProgramEnrollment::findOrFail($programEnrollment);
 
-        if ($this->programEnrollment->isSigned()) {
+        if ($this->programEnrollment->status->equals(Signed::class)) {
             abort(403, __('alerts.program_enrollment_already_signed'));
         }
 
@@ -52,7 +53,7 @@ new #[Layout('layouts.app')] class extends Component implements HasForms {
 
     public function create(): void
     {
-        if ($this->programEnrollment->isSigned()) {
+        if ($this->programEnrollment->status->equals(Signed::class)) {
             Notification::make()->title(__('alerts.program_enrollment_already_signed'))->danger()->icon('heroicon-o-x-circle')->duration(5000)->send();
             return;
         }
