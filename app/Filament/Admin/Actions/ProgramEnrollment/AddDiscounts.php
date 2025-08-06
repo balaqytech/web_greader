@@ -37,14 +37,14 @@ class AddDiscounts
                     }),
                 Forms\Components\Select::make('discount_id')
                     ->label(__('admin.program_enrollment.discount'))
-                    ->relationship('discounts', 'name')
+                    ->options(Discount::all()->pluck('name', 'id'))
                     ->live()
                     ->preload()
                     ->multiple()
                     ->required(),
             ])
             ->action(function (ProgramEnrollment $record, array $data) {
-                $record->status->transitionTo(Pending::class, Discount::whereId($data['discount_id'])->get());
+                $record->status->transitionTo(Pending::class, Discount::whereIn('id', $data['discount_id'])->get());
             });
     }
 }
