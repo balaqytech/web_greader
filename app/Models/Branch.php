@@ -18,4 +18,9 @@ class Branch extends Model
         'is_active' => 'boolean',
         'additional_info' => 'array',
     ];
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
 }
