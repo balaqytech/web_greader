@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Addon extends Model
+class Addon extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
+
     protected $fillable = [
         'name',
         'description',
@@ -19,9 +22,4 @@ class Addon extends Model
         'price' => \App\Casts\AmountCast::class,
         'is_active' => 'boolean',
     ];
-
-    public function enrollments()
-    {
-        return $this->belongsToMany(Enrollment::class, 'enrollment_addon');
-    }
 }

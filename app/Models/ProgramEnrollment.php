@@ -11,13 +11,14 @@ use App\States\Enrollment\Draft;
 use Spatie\ModelStates\HasStates;
 use Illuminate\Database\Eloquent\Model;
 use App\States\Enrollment\EnrollmentState;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * @property EnrollmentState $status
  */
-class ProgramEnrollment extends Model implements Invoiceable
+class ProgramEnrollment extends Model implements Invoiceable, Auditable
 {
-    use HasInvoice, HasStates;
+    use HasInvoice, HasStates, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
         'student_id',

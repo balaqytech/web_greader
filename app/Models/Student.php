@@ -4,9 +4,12 @@ namespace App\Models;
 
 use App\Enums\StudentStatus;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Student extends Model
+class Student extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
+
     protected $fillable = [
         'parent_account_id',
         'branch_id',
