@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
+use App\Actions\ProgramEnrollment\Register as RegisterAction;
+use Illuminate\Validation\ValidationException;
 
 #[Layout('layouts.app')]
 class ProgramRegister extends Component implements HasForms
@@ -144,44 +146,32 @@ class ProgramRegister extends Component implements HasForms
     {
         $this->validate();
 
-        DB::transaction(function () {
-            $parent = ParentAccount::where('email', $this->data['parent']['email'])
-                ->orWhere('phone', $this->data['parent']['phone'])
-                ->first();
+        try {
+            $registerAction = new RegisterAction();
+            $result = $registerAction->execute($this->data);
 
-            if (!$parent) {
-                $this->data['parent']['password'] = bcrypt('123456');
-                $parent = ParentAccount::create($this->data['parent']);
-            }
+            Notification::make()
+                ->title(__('frontend.program_register.success_title'))
+                ->body($result['message'])
+                ->success()
+                ->send();
 
-            foreach ($this->data['students'] as $studentData) {
-                // Create or update student
-                $student = $parent->students()->updateOrCreate(
-                    ['name' => $studentData['name']],
-                    $studentData
-                );
+            $this->data = [];
+            $this->form->fill();
 
-                // Create program enrollment for the student
-                ProgramEnrollment::updateOrCreate(
-                    [
-                        'student_id' => $student->id,
-                        'program_id' => $studentData['program_id'],
-                    ],
-                    [
-                        'additional_info' => $this->data['additional_info'],
-                    ]
-                );
-            }
-        });
-
-        Notification::make()
-            ->title(__('frontend.program_register.success_title'))
-            ->body(__('frontend.program_register.success_message'))
-            ->success()
-            ->send();
-
-        $this->data = [];
-        $this->form->fill();
+        } catch (ValidationException $e) {
+            Notification::make()
+                ->title(__('frontend.program_register.error_title'))
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title(__('frontend.program_register.error_title'))
+                ->body(__('frontend.program_register.error_message'))
+                ->danger()
+                ->send();
+        }
     }
 
     public function render()
