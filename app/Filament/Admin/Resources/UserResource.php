@@ -1,0 +1,97 @@
+<?php
+
+namespace App\Filament\Admin\Resources;
+
+use App\Filament\Admin\Resources\UserResource\Pages;
+use App\Filament\Admin\Resources\UserResource\RelationManagers;
+use App\Models\User;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+
+class UserResource extends Resource
+{
+    protected static ?string $model = User::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.navigation_groups.users_and_roles');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.navigation.users');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.user.label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.user.plural_label');
+    }
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('name')
+                    ->label(__('admin.user.name'))
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('email')
+                    ->label(__('admin.user.email'))
+                    ->email()
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('password')
+                    ->label(__('admin.user.password'))
+                    ->revealable()
+                    ->password()
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\Select::make('role')
+                    ->label(__('admin.user.role'))
+                    ->relationship('roles', 'name')
+                    ->required(),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->label(__('admin.user.name'))
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->label(__('admin.user.email'))
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('roles.name')
+                    ->label(__('admin.user.role'))
+                    ->badge(),
+            ])
+            ->filters([
+                //
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ManageUsers::route('/'),
+        ];
+    }
+}

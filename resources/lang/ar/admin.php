@@ -5,6 +5,7 @@ return [
         'school' => 'المدرسة',
         'applications' => 'التقديمات',
         'finance' => 'المالية',
+        'users_and_roles' => 'المستخدمين والأدوار',
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
@@ -20,6 +21,8 @@ return [
         'branches' => 'الفروع',
         'academic_years' => 'الأعوام الدراسية',
         'program_enrollments' => 'التقديمات على البرامج',
+        'users' => 'المستخدمين',
+        'roles' => 'الأدوار',
     ],
     'branch' => [
         'label' => 'فرع',
@@ -239,5 +242,16 @@ return [
         'cancel_enrollment_description' => 'هل أنت متأكد من إلغاء الطلب؟',
         'upload_contract' => 'رفع العقد',
         'sign_contract' => 'توقيع العقد الكترونياً',
+    ],
+    'user' => [
+        'label' => 'مستخدم',
+        'plural_label' => 'المستخدمين',
+        'name' => 'اسم المستخدم',
+        'email' => 'البريد الإلكتروني',
+        'password' => 'كلمة المرور',
+        'role' => 'الأدوار',
+        'roles' => 'الأدوار',
+        'permissions' => 'الصلاحيات',
+        'permissions' => 'الصلاحيات',
     ],
 ];
