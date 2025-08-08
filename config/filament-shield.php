@@ -9,7 +9,7 @@ return [
         'navigation_group' => true,
         'sub_navigation_position' => null,
         'is_globally_searchable' => false,
-        'show_model_path' => true,
+        'show_model_path' => false,
         'is_scoped_to_tenant' => true,
         'cluster' => null,
     ],
@@ -35,8 +35,7 @@ return [
     'permission_prefixes' => [
         'resource' => [
             'view',
-            'view_all',
-            'view_branch',
+            'view_any',
             'create',
             'update',
             'delete',
