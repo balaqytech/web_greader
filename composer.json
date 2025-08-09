@@ -10,6 +10,7 @@
         "bezhansalleh/filament-shield": "^3.3",
         "carlos-meneses/laravel-mpdf": "^2.1",
         "filament/filament": "3.3",
+        "jkbroot/thawani": "^1.1",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
