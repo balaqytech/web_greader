@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\Pages;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\RelationManagers;
 use App\Filament\Admin\Actions\ProgramEnrollment as ProgramEnrollmentActions;
+use App\States\Enrollment\Draft;
 use App\States\Enrollment\Pending;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
@@ -100,7 +101,8 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                         ProgramEnrollmentActions\UploadContract::make(),
                         ProgramEnrollmentActions\SignContract::make(),
                         ProgramEnrollmentActions\ApproveEnrollment::make(),
-                        Tables\Actions\EditAction::make(),
+                        Tables\Actions\EditAction::make()
+                            ->visible(fn(ProgramEnrollment $record) => $record->status->equals(Draft::class) || $record->status->equals(Pending::class)),
                     ])
                         ->dropdown(false),
                     ProgramEnrollmentActions\CancelEnrollment::make(),
