@@ -242,6 +242,8 @@ return [
         'cancel_enrollment_description' => 'هل أنت متأكد من إلغاء الطلب؟',
         'upload_contract' => 'رفع العقد',
         'sign_contract' => 'توقيع العقد الكترونياً',
+        'reject_enrollment' => 'رفض التسجيل',
+        'reject_enrollment_description' => 'هل أنت متأكد من رفض التسجيل؟',
     ],
     'user' => [
         'label' => 'مستخدم',

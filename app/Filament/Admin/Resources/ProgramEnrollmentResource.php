@@ -103,6 +103,8 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                     ])
                         ->dropdown(false),
                     ProgramEnrollmentActions\CancelEnrollment::make(),
+                    ProgramEnrollmentActions\RejectEnrollment::make(),
+
                 ]),
             ]);
     }
