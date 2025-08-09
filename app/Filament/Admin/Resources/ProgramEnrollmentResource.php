@@ -22,8 +22,9 @@ use App\Filament\Admin\Resources\ProgramEnrollmentResource\Pages;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\RelationManagers;
 use App\Filament\Admin\Actions\ProgramEnrollment as ProgramEnrollmentActions;
 use App\States\Enrollment\Pending;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
-class ProgramEnrollmentResource extends Resource
+class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = ProgramEnrollment::class;
 
@@ -162,6 +163,16 @@ class ProgramEnrollmentResource extends Resource
         return [
             'index' => Pages\ListProgramEnrollments::route('/'),
             'view' => Pages\ViewProgramEnrollment::route('/{record}'),
+        ];
+    }
+
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'create',
+            'update',
         ];
     }
 }
