@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\InstallmentResource\Pages;
 use App\Filament\Admin\Resources\InstallmentResource\RelationManagers;
 use Filament\Infolists\Infolist;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
-class InstallmentResource extends Resource
+class InstallmentResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Installment::class;
 
@@ -72,7 +73,7 @@ class InstallmentResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
-                    ->options(InstallmentStatus::cases())
+                    ->options(InstallmentStatus::class)
                     ->label(__('admin.installment.status')),
             ])
             ->actions([
@@ -116,6 +117,15 @@ class InstallmentResource extends Resource
         return [
             'index' => Pages\ListInstallments::route('/'),
             'view' => Pages\ViewInstallment::route('/{record}'),
+        ];
+    }
+
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'update',
         ];
     }
 }

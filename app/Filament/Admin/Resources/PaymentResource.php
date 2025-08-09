@@ -2,19 +2,20 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\PaymentStatus;
-use App\Filament\Admin\Resources\PaymentResource\Pages;
-use App\Filament\Admin\Resources\PaymentResource\RelationManagers;
+use Filament\Tables;
 use App\Models\Payment;
 use Filament\Infolists;
+use Filament\Tables\Table;
+use App\Enums\PaymentStatus;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Admin\Resources\PaymentResource\Pages;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
+use App\Filament\Admin\Resources\PaymentResource\RelationManagers;
 
-class PaymentResource extends Resource
+class PaymentResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Payment::class;
 
@@ -133,6 +134,16 @@ class PaymentResource extends Resource
         return [
             'index' => Pages\ListPayments::route('/'),
             'view' => Pages\ViewPayment::route('/{record}'),
+        ];
+    }
+
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'create',
+            'update',
         ];
     }
 }
