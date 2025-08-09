@@ -15,6 +15,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "livewire/volt": "^1.7",
+        "opcodesio/log-viewer": "^3.19",
         "saade/filament-autograph": "^3.2",
         "spatie/laravel-model-states": "^2.12",
         "staudenmeir/belongs-to-through": "^2.5",
