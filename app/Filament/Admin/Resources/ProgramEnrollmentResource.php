@@ -99,6 +99,7 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                         ProgramEnrollmentActions\AddDiscounts::make(),
                         ProgramEnrollmentActions\UploadContract::make(),
                         ProgramEnrollmentActions\SignContract::make(),
+                        ProgramEnrollmentActions\ApproveEnrollment::make(),
                         Tables\Actions\EditAction::make(),
                     ])
                         ->dropdown(false),
