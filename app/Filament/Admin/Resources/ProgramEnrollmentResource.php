@@ -11,19 +11,21 @@ use App\Models\Discount;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Enums\EnrollmentStatus;
+use App\States\Enrollment\Draft;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use App\Models\ProgramEnrollment;
 use App\States\Enrollment\Signed;
+use App\States\Enrollment\Pending;
+use App\States\Enrollment\Approved;
+use App\States\Enrollment\Completed;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\Pages;
 use App\Filament\Admin\Resources\ProgramEnrollmentResource\RelationManagers;
 use App\Filament\Admin\Actions\ProgramEnrollment as ProgramEnrollmentActions;
-use App\States\Enrollment\Draft;
-use App\States\Enrollment\Pending;
-use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
 class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
 {
@@ -153,13 +155,30 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                             ->toArray()
                     )
                     ->columns(2),
+                Infolists\Components\Section::make(__('admin.program_enrollment.invoice_info'))
+                    ->schema([
+                        Infolists\Components\TextEntry::make('invoice.invoice_number')
+                            ->label(__('admin.program_enrollment.invoice_number')),
+                        Infolists\Components\TextEntry::make('invoice.amount')
+                            ->label(__('admin.program_enrollment.invoice_amount')),
+                        Infolists\Components\TextEntry::make('invoice.paid_amount')
+                            ->label(__('admin.program_enrollment.invoice_paid_amount')),
+                        Infolists\Components\TextEntry::make('invoice.remaining_amount')
+                            ->label(__('admin.program_enrollment.invoice_remaining_amount')),
+                        Infolists\Components\TextEntry::make('invoice.status')
+                            ->label(__('admin.program_enrollment.invoice_status'))
+                            ->badge()
+                            ->color(fn($state) => $state->color()),
+                    ])
+                    ->visible(fn(ProgramEnrollment $record) => $record->status->equals(Approved::class) || $record->status->equals(Completed::class))
+                    ->columns(2),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\InstallmentsRelationManager::class,
         ];
     }
 
