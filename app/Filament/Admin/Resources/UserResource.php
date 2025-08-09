@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resource
 {
@@ -84,7 +85,24 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('ban')
+                    ->label(__('admin.user.ban'))
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (User $record) => !$record->isBanned() && $record->id !== Auth::id())
+                    ->action(function (User $record) {
+                        $record->banned_at = now();
+                        $record->save();
+                    }),
+                Tables\Actions\Action::make('unban')
+                    ->label(__('admin.user.unban'))
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (User $record) => $record->isBanned() && $record->id !== Auth::id())
+                    ->action(function (User $record) {
+                        $record->banned_at = null;
+                        $record->save();
+                    }),
             ]);
     }
 
