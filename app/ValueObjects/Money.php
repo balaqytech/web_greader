@@ -24,6 +24,16 @@ class Money
         return $this->amount;
     }
 
+    public function sub(float|int $other): Money
+    {
+        return new Money($this->amount - $other);
+    }
+
+    public function add(float|int $other): Money
+    {
+        return new Money($this->amount + $other);
+    }
+
     public function __toString(): string
     {
         return Number::currency($this->amount, config('app.currency'), app()->getLocale());

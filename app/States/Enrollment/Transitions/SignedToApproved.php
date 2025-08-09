@@ -27,6 +27,10 @@ class SignedToApproved extends Transition
             $this->enrollment->save();
 
             $this->enrollment->installments()->createMany($this->installments);
+
+            $this->enrollment->invoice()->create([
+                'amount' => $this->enrollment->final_price,
+            ]);
         });
 
         return $this->enrollment;

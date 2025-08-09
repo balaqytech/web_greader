@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\AmountCast;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
@@ -17,16 +18,12 @@ class Invoice extends Model implements Auditable
         'invoice_date',
         'amount',
         'status',
-        'payment_method',
-        'payment_status',
     ];
 
     protected $casts = [
         'invoice_date' => 'date',
-        'amount' => 'decimal:2',
+        'amount' => AmountCast::class,
         'status' => InvoiceStatus::class,
-        'payment_method' => PaymentMethod::class,
-        'payment_status' => PaymentStatus::class,
     ];
 
     public function invoiceable()
@@ -37,5 +34,31 @@ class Invoice extends Model implements Auditable
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * The "booting" method of the model.
+     *
+     * @return void
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            $model->invoice_number = 'INV-' . str_pad(static::max('id') + 1, 6, '0', STR_PAD_LEFT);
+            $model->invoice_date = now();
+            $model->status = InvoiceStatus::PENDING;
+        });
+    }
+
+    public function getPaidAmountAttribute()
+    {
+        return $this->payments()->where('status', PaymentStatus::PAID)->sum('amount');
+    }
+
+    public function getRemainingAmountAttribute()
+    {
+        return $this->amount->sub($this->paid_amount);
     }
 }
