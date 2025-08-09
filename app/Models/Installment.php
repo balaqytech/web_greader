@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
+use Znck\Eloquent\Traits\BelongsToThrough;
 
 class Installment extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
+    use BelongsToThrough;
 
     protected $fillable = [
         'program_enrollment_id',
@@ -27,5 +29,15 @@ class Installment extends Model implements Auditable
     public function programEnrollment()
     {
         return $this->belongsTo(ProgramEnrollment::class);
+    }
+
+    public function payment()
+    {
+        return $this->hasOne(Payment::class);
+    }
+
+    public function student()
+    {
+        return $this->belongsToThrough(Student::class, ProgramEnrollment::class);
     }
 }

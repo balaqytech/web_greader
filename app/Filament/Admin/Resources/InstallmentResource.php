@@ -43,24 +43,17 @@ class InstallmentResource extends Resource implements HasShieldPermissions
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('program_enrollment.student.full_name')
-                    ->label(__('admin.student.student_name'))
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('student.name')
-                    ->label(__('admin.installment.student_name'))
-                    ->searchable()
-                    ->sortable(),
+                    ->label(__('admin.student.name'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->label(__('admin.installment.amount')),
                 Tables\Columns\TextColumn::make('due_date')
                     ->label(__('admin.installment.due_date'))
-                    ->date()
-                    ->sortable(),
+                    ->date(),
                 Tables\Columns\TextColumn::make('paid_date')
                     ->label(__('admin.installment.paid_date'))
-                    ->date()
-                    ->sortable(),
+                    ->date(),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('admin.installment.status'))
                     ->badge()
@@ -88,7 +81,7 @@ class InstallmentResource extends Resource implements HasShieldPermissions
                 Infolists\Components\Section::make(__('admin.installment.installment_info'))
                     ->columns(3)
                     ->schema([
-                        Infolists\Components\TextEntry::make('program_enrollment.student.full_name')
+                        Infolists\Components\TextEntry::make('student.name')
                             ->label(__('admin.student.name')),
                         Infolists\Components\TextEntry::make('amount')
                             ->label(__('admin.installment.amount')),
@@ -98,8 +91,9 @@ class InstallmentResource extends Resource implements HasShieldPermissions
                         Infolists\Components\TextEntry::make('paid_date')
                             ->label(__('admin.installment.paid_date'))
                             ->date(),
-                        Infolists\Components\IconEntry::make('status')
+                        Infolists\Components\TextEntry::make('status')
                             ->label(__('admin.installment.status'))
+                            ->badge()
                             ->color(fn($state) => $state->color()),
                     ]),
             ]);
