@@ -21,6 +21,7 @@ class ProgramResource extends JsonResource
             'type' => $this->type->getLabel(),
             'base_price' => $this->base_price->value(),
             'payment_type' => $this->payment_type->getLabel(),
+            'branches' => BranchResource::collection($this->whenLoaded('branches')),
             'additional_info' => $this->additional_info,
         ];
     }

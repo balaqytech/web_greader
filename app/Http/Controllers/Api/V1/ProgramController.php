@@ -10,7 +10,7 @@ class ProgramController extends Controller
 {
     public function index()
     {
-        $programs = Program::open()->get();
+        $programs = Program::open()->with('branches')->get();
         return ProgramResource::collection($programs);
     }
 }
