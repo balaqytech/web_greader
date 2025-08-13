@@ -39,7 +39,6 @@ class RegisterRequest extends FormRequest
             'students.*.date_of_birth' => 'required|date',
             'students.*.gender' => ['required', Rule::enum(Gender::class)],
             'students.*.relationship_with_parent' => ['required', Rule::enum(RelationshipWithParent::class)],
-            'students.*.branch_id' => 'required|exists:branches,id',
             'students.*.program_id' => 'required|exists:programs,id',
             'students.*.branch_id' => [
                 'required',
@@ -62,5 +61,17 @@ class RegisterRequest extends FormRequest
             ],
             'additional_info' => 'nullable|array',
         ];
+    }
+
+    /** @mixin \Illuminate\Foundation\Http\FormRequest $this */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'parent.phone' => convert_eastern_arabic_to_arabic($this->input('parent.phone', '')),
+            'students' => collect($this->input('students', []))->map(function ($student) {
+                $student['date_of_birth'] = convert_eastern_arabic_to_arabic($student['date_of_birth'] ?? '');
+                return $student;
+            })->toArray(),
+        ]);
     }
 }
