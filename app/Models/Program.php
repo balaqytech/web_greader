@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 use OwenIt\Auditing\Contracts\Auditable;
+use Illuminate\Database\Eloquent\Builder;
 
 class Program extends Model implements Auditable
 {
@@ -34,6 +34,11 @@ class Program extends Model implements Auditable
     public function enrollments()
     {
         return $this->hasMany(ProgramEnrollment::class);
+    }
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'branch_program');
     }
 
     public function scopeOpen(Builder $query)

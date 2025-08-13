@@ -22,6 +22,11 @@ class Branch extends Model implements Auditable
         'additional_info' => 'array',
     ];
 
+    public function programs()
+    {
+        return $this->belongsToMany(Program::class, 'branch_program')->withPivot('start_date', 'end_date');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
