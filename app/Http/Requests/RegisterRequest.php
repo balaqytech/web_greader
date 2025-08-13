@@ -8,6 +8,10 @@ use Illuminate\Validation\Rule;
 use App\Enums\RelationshipWithParent;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @method mixed input(string $key = null, mixed $default = null)
+ * @method $this merge(array $input)
+ */
 class RegisterRequest extends FormRequest
 {
     /**
@@ -40,7 +44,7 @@ class RegisterRequest extends FormRequest
             'students.*.gender' => ['required', Rule::enum(Gender::class)],
             'students.*.relationship_with_parent' => ['required', Rule::enum(RelationshipWithParent::class)],
             'students.*.program_id' => 'required|exists:programs,id',
-                        'students.*.branch_id' => [
+            'students.*.branch_id' => [
                 'required',
                 'exists:branches,id',
                 new BranchHasProgram,
@@ -49,7 +53,6 @@ class RegisterRequest extends FormRequest
         ];
     }
 
-    /** @mixin \Illuminate\Foundation\Http\FormRequest $this */
     protected function prepareForValidation(): void
     {
         $this->merge([
