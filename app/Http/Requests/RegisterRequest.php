@@ -3,8 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Enums\Gender;
+use App\Rules\BranchHasProgram;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
 use App\Enums\RelationshipWithParent;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -40,24 +40,10 @@ class RegisterRequest extends FormRequest
             'students.*.gender' => ['required', Rule::enum(Gender::class)],
             'students.*.relationship_with_parent' => ['required', Rule::enum(RelationshipWithParent::class)],
             'students.*.program_id' => 'required|exists:programs,id',
-            'students.*.branch_id' => [
+                        'students.*.branch_id' => [
                 'required',
                 'exists:branches,id',
-                function ($attribute, $value, $fail) {
-                    $studentIndex = explode('.', $attribute)[1];
-                    $programId = request()->input("students.{$studentIndex}.program_id");
-
-                    if ($programId) {
-                        $branchHasProgram = DB::table('branch_program')
-                            ->where('branch_id', $value)
-                            ->where('program_id', $programId)
-                            ->exists();
-
-                        if (!$branchHasProgram) {
-                            $fail('The selected branch does not offer this program.');
-                        }
-                    }
-                }
+                new BranchHasProgram,
             ],
             'additional_info' => 'nullable|array',
         ];

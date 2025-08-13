@@ -12,6 +12,7 @@ use Livewire\Component;
 use Filament\Forms\Form;
 use App\Models\AcademicYear;
 use App\Models\ParentAccount;
+use App\Rules\BranchHasProgram;
 use Livewire\Attributes\Layout;
 use App\Models\ProgramEnrollment;
 use Illuminate\Support\Facades\DB;
@@ -118,7 +119,8 @@ class ProgramRegister extends Component implements HasForms
                                                 ->pluck('branches.name', 'branches.id') ?? [];
                                         })
                                         ->disabled(fn(Get $get) => blank($get('program_id')))
-                                        ->required(),
+                                        ->required()
+                                        ->rule(new BranchHasProgram),
                                 ])
                                 ->columns(2),
                         ]),
