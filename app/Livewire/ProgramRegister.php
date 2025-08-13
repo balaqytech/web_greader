@@ -7,6 +7,7 @@ use App\Enums\Gender;
 use App\Models\Branch;
 use App\Models\Program;
 use App\Models\Student;
+use Filament\Forms\Get;
 use Livewire\Component;
 use Filament\Forms\Form;
 use App\Models\AcademicYear;
@@ -19,9 +20,9 @@ use App\Enums\RelationshipWithParent;
 use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Illuminate\Validation\ValidationException;
 use Filament\Forms\Concerns\InteractsWithForms;
 use App\Actions\ProgramEnrollment\Register as RegisterAction;
-use Illuminate\Validation\ValidationException;
 
 #[Layout('layouts.app')]
 class ProgramRegister extends Component implements HasForms
@@ -100,10 +101,23 @@ class ProgramRegister extends Component implements HasForms
                                     Forms\Components\Select::make('program_id')
                                         ->label(__('frontend.program_register.student_program'))
                                         ->options(Program::open()->pluck('name', 'id'))
+                                        ->live()
+                                        ->reactive()
                                         ->required(),
                                     Forms\Components\Select::make('branch_id')
                                         ->label(__('frontend.program_register.student_branch'))
-                                        ->options(Branch::all()->pluck('name', 'id'))
+                                        ->options(function (Get $get) {
+                                            $programId = $get('program_id');
+
+                                            if (!$programId) {
+                                                return [];
+                                            }
+
+                                            return Program::find($programId)?->branches()
+                                                ->active()
+                                                ->pluck('branches.name', 'branches.id') ?? [];
+                                        })
+                                        ->disabled(fn(Get $get) => blank($get('program_id')))
                                         ->required(),
                                 ])
                                 ->columns(2),
@@ -158,7 +172,6 @@ class ProgramRegister extends Component implements HasForms
 
             $this->data = [];
             $this->form->fill();
-
         } catch (ValidationException $e) {
             Notification::make()
                 ->title(__('frontend.program_register.error_title'))
