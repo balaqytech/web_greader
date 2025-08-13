@@ -2,18 +2,18 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\ProgramPaymentType;
-use App\Enums\ProgramType;
-use App\Filament\Admin\Resources\ProgramResource\Pages;
-use App\Filament\Admin\Resources\ProgramResource\RelationManagers;
-use App\Models\Program;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use App\Models\Program;
+use Filament\Forms\Form;
+use App\Enums\ProgramType;
 use Filament\Tables\Table;
+use Filament\Resources\Resource;
+use App\Enums\ProgramPaymentType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Admin\Resources\ProgramResource\Pages;
+use App\Filament\Admin\Resources\ProgramResource\RelationManagers;
 
 class ProgramResource extends Resource
 {
@@ -65,6 +65,11 @@ class ProgramResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->label(__('admin.program.description'))
                     ->maxLength(255),
+                Forms\Components\Select::make('branches')
+                    ->label(__('admin.program.branches'))
+                    ->multiple()
+                    ->relationship('branches', 'name')
+                    ->preload(),
                 Forms\Components\RichEditor::make('contract')
                     ->label(__('admin.program.contract'))
                     ->columnSpanFull()
