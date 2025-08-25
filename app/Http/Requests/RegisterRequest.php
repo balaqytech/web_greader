@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Gender;
+use App\Enums\EnrollmentSource;
 use App\Rules\BranchHasProgram;
 use Illuminate\Validation\Rule;
 use App\Enums\RelationshipWithParent;
@@ -49,6 +50,8 @@ class RegisterRequest extends FormRequest
                 'exists:branches,id',
                 new BranchHasProgram,
             ],
+            'students.*.already_registered' => 'required|boolean',
+            'students.*.has_siblings' => 'required|boolean',
             'additional_info' => 'nullable|array',
         ];
     }

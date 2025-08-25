@@ -274,4 +274,8 @@ return [
         'ban' => 'حظر',
         'unban' => 'الغاء الحظر',
     ],
+    'enrollment_source' => [
+        'website' => 'الموقع الإلكتروني',
+        'whatsapp' => 'بوت الواتساب',
+    ],
 ];

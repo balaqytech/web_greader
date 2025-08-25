@@ -2,12 +2,13 @@
 
 namespace App\Actions\ProgramEnrollment;
 
-use App\Models\ParentAccount;
-use App\Models\ProgramEnrollment;
 use App\Models\Student;
+use App\Models\ParentAccount;
+use App\Enums\EnrollmentSource;
+use App\Models\ProgramEnrollment;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class Register
@@ -22,15 +23,14 @@ class Register
     public function execute(array $data): array
     {
         // try {
-            DB::transaction(function () use ($data) {
-                $parent = $this->findOrCreateParent($data['parent']);
-                $enrollments = $this->createEnrollments($parent, $data['students'], $data['additional_info'] ?? []);
-
-            });
-            return [
-                'success' => true,
-                'message' => __('frontend.program_register.success_message'),
-            ];
+        DB::transaction(function () use ($data) {
+            $parent = $this->findOrCreateParent($data['parent']);
+            $enrollments = $this->createEnrollments($parent, $data['students'], $data['additional_info'] ?? []);
+        });
+        return [
+            'success' => true,
+            'message' => __('frontend.program_register.success_message'),
+        ];
         // } catch (\Exception $e) {
         //     Log::error('Program enrollment registration failed', [
         //         'error' => $e->getMessage(),
@@ -115,6 +115,9 @@ class Register
         return $student->programEnrollments()->create([
             'program_id' => $studentData['program_id'],
             'additional_info' => $additionalInfo,
+            'already_registered' => $studentData['already_registered'] ?? false,
+            'has_siblings' => $studentData['has_siblings'] ?? false,
+            'source' => $studentData['source'] ?? EnrollmentSource::WEBSITE->value,
         ]);
     }
 }

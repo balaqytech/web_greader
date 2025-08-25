@@ -65,7 +65,7 @@ class ProgramRegister extends Component implements HasForms
                                 ->label(__('frontend.program_register.parent_branch'))
                                 ->options(Branch::all()->pluck('name', 'id'))
                                 ->required(),
-                            Forms\Components\CheckboxList::make('parent.additional_info.' . __('frontend.program_register.parent_contact_method'))
+                            Forms\Components\Radio::make('parent.additional_info.' . __('frontend.program_register.parent_contact_method'))
                                 ->label(__('frontend.program_register.parent_contact_method'))
                                 ->options([
                                     __('frontend.program_register.parent_contact_method_email') => __('frontend.program_register.parent_contact_method_email'),
@@ -121,6 +121,16 @@ class ProgramRegister extends Component implements HasForms
                                         ->disabled(fn(Get $get) => blank($get('program_id')))
                                         ->required()
                                         ->rule(new BranchHasProgram),
+                                    Forms\Components\Radio::make('already_registered')
+                                        ->label(__('frontend.program_register.already_registered'))
+                                        ->boolean()
+                                        ->inline(false)
+                                        ->default(false),
+                                    Forms\Components\Radio::make('has_siblings')
+                                        ->label(__('frontend.program_register.has_siblings'))
+                                        ->boolean()
+                                        ->inline(false)
+                                        ->default(false),
                                 ])
                                 ->columns(2),
                         ]),

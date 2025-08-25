@@ -82,6 +82,12 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                     ->label(__('admin.program_enrollment.status'))
                     ->badge()
                     ->color(fn($state) => $state->color()),
+                Tables\Columns\IconColumn::make('already_registered')
+                    ->label(__('admin.program_enrollment.already_registered'))
+                    ->boolean(),
+                Tables\Columns\IconColumn::make('has_siblings')
+                    ->label(__('admin.program_enrollment.has_siblings'))
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('contract_signed_at')
                     ->label(__('admin.program_enrollment.contract_signed_at'))
                     ->date('Y-m-d')

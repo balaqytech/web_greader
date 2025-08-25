@@ -6,12 +6,13 @@ use App\Traits\HasInvoice;
 use App\Enums\DiscountType;
 use App\ValueObjects\Money;
 use App\Contracts\Invoiceable;
-use App\States\Enrollment\Signed;
+use App\Enums\EnrollmentSource;
 use App\States\Enrollment\Draft;
+use App\States\Enrollment\Signed;
 use Spatie\ModelStates\HasStates;
 use Illuminate\Database\Eloquent\Model;
-use App\States\Enrollment\EnrollmentState;
 use OwenIt\Auditing\Contracts\Auditable;
+use App\States\Enrollment\EnrollmentState;
 
 /**
  * @property EnrollmentState $status
@@ -28,6 +29,9 @@ class ProgramEnrollment extends Model implements Invoiceable, Auditable
         'status',
         'academic_year_id',
         'additional_info',
+        'already_registered',
+        'has_siblings',
+        'source',
     ];
 
     protected $casts = [
@@ -35,6 +39,9 @@ class ProgramEnrollment extends Model implements Invoiceable, Auditable
         'contract_signed_at' => 'datetime',
         'additional_info' => 'array',
         'status' => EnrollmentState::class,
+        'already_registered' => 'boolean',
+        'has_siblings' => 'boolean',
+        'source' => EnrollmentSource::class,
     ];
 
     public function student()
