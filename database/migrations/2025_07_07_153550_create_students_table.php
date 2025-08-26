@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -22,7 +22,14 @@ return new class extends Migration
             $table->string('name');
             $table->string('gender');
             $table->date('date_of_birth');
-            $table->string('relationship_with_parent')->nullable();
+            $table->string('civil_number');
+            $table->string('state')->nullable();
+            $table->string('province')->nullable();
+            $table->string('village')->nullable();
+            $table->string('house_number')->nullable();
+            $table->string('block_number')->nullable();
+            $table->string('category');
+            $table->string('parents_relationship')->nullable();
             $table->string('status')->default('active');
             $table->boolean('is_active')->default(true);
             $table->json('additional_info')->nullable(); // For any extra information

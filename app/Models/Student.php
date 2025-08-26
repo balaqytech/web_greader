@@ -16,7 +16,14 @@ class Student extends Model implements Auditable
         'name',
         'gender',
         'date_of_birth',
-        'relationship_with_parent',
+        'civil_number',
+        'state',
+        'province',
+        'village',
+        'house_number',
+        'block_number',
+        'category',
+        'parents_relationship',
         'status',
         'is_active',
         'additional_info',
@@ -24,7 +31,6 @@ class Student extends Model implements Auditable
 
     protected $casts = [
         'gender' => \App\Enums\Gender::class,
-        'relationship_with_parent' => \App\Enums\RelationshipWithParent::class,
         'is_active' => 'boolean',
         'status' => \App\Enums\StudentStatus::class,
         'date_of_birth' => 'date',

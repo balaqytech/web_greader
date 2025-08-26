@@ -10,6 +10,11 @@ return [
     'program_enrollment_not_found' => 'برنامج التسجيل غير موجود.',
     'program_enrollment_already_signed' => 'برنامج التسجيل موقع بالفعل.',
     'register' => 'تسجيل',
+    'student_category' => [
+        'new' => 'الفئة الأولى (جديد)',
+        'siblings' => 'الفئة الثانية (الأخوة)',
+        'old' => 'الفئة الثالثة (العملاء القدامى)',
+    ],
     'program_register' => [
         'parent_info' => 'معلومات ولي الأمر',
         'parent_name' => 'اسم ولي الأمر كاملا',

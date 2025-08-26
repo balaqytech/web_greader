@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -16,8 +16,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('phone')->unique();
-            $table->string('address')->nullable();
-            $table->string('city')->nullable();
+            $table->string('civil_number')->nullable();
+            $table->string('occupation')->nullable();
+            $table->string('occupation_address')->nullable();
+            $table->string('occupation_phone')->nullable();
             $table->string('password');
             $table->boolean('is_active')->default(true);
             $table->json('additional_info')->nullable();
