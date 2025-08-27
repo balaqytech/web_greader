@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\ProgramEnrollmentResource;
 
 class ListProgramEnrollments extends ListRecords
 {
+    protected ?string $maxContentWidth = 'full';
     protected static string $resource = ProgramEnrollmentResource::class;
 
     protected function getHeaderActions(): array
