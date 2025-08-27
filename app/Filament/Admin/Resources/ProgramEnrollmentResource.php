@@ -78,16 +78,75 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                     ->searchable(),
                 Tables\Columns\TextColumn::make('program.name')
                     ->label(__('admin.program_enrollment.program_name')),
+                Tables\Columns\TextColumn::make('student.branch.name')
+                    ->label(__('admin.student.branch_id')),
+                Tables\Columns\TextColumn::make('student.gender')
+                    ->label(__('admin.student.gender')),
+                Tables\Columns\TextColumn::make('student.date_of_birth')
+                    ->label(__('admin.student.date_of_birth'))
+                    ->date('d/m/Y'),
+                Tables\Columns\TextColumn::make('student.civil_number')
+                    ->label(__('admin.student.civil_number')),
+                Tables\Columns\TextColumn::make('student.state')
+                    ->label(__('admin.student.state')),
+                Tables\Columns\TextColumn::make('student.province')
+                    ->label(__('admin.student.province')),
+                Tables\Columns\TextColumn::make('student.village')
+                    ->label(__('admin.student.village')),
+                Tables\Columns\TextColumn::make('student.house_number')
+                    ->label(__('admin.student.house_number')),
+                Tables\Columns\TextColumn::make('student.block_number')
+                    ->label(__('admin.student.block_number')),
+                Tables\Columns\TextColumn::make('student.category')
+                    ->label(__('admin.student.category')),
+                Tables\Columns\TextColumn::make('student.parents_relationship')
+                    ->label(__('admin.student.parents_relationship')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.name')
+                    ->label(__('admin.student.father_name')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.email')
+                    ->label(__('admin.student.father_email')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.phone')
+                    ->label(__('admin.student.father_phone')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.civil_number')
+                    ->label(__('admin.student.father_civil_number')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.occupation')
+                    ->label(__('admin.student.father_occupation')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.occupation_address')
+                    ->label(__('admin.student.father_occupation_address')),
+                Tables\Columns\TextColumn::make('student.additional_info.father.occupation_phone')
+                    ->label(__('admin.student.father_occupation_phone')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.name')
+                    ->label(__('admin.student.mother_name')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.email')
+                    ->label(__('admin.student.mother_email')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.phone')
+                    ->label(__('admin.student.mother_phone')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.civil_number')
+                    ->label(__('admin.student.mother_civil_number')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.occupation')
+                    ->label(__('admin.student.mother_occupation')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.occupation_address')
+                    ->label(__('admin.student.mother_occupation_address')),
+                Tables\Columns\TextColumn::make('student.additional_info.mother.occupation_phone')
+                    ->label(__('admin.student.mother_occupation_phone')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.name')
+                    ->label(__('admin.student.relative_name')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.email')
+                    ->label(__('admin.student.relative_email')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.phone')
+                    ->label(__('admin.student.relative_phone')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.civil_number')
+                    ->label(__('admin.student.relative_civil_number')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.occupation')
+                    ->label(__('admin.student.relative_occupation')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.occupation_address')
+                    ->label(__('admin.student.relative_occupation_address')),
+                Tables\Columns\TextColumn::make('student.additional_info.relative.occupation_phone')
+                    ->label(__('admin.student.relative_occupation_phone')),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('admin.program_enrollment.status'))
                     ->badge()
                     ->color(fn($state) => $state->color()),
-                Tables\Columns\IconColumn::make('already_registered')
-                    ->label(__('admin.program_enrollment.already_registered'))
-                    ->boolean(),
-                Tables\Columns\IconColumn::make('has_siblings')
-                    ->label(__('admin.program_enrollment.has_siblings'))
-                    ->boolean(),
                 Tables\Columns\TextColumn::make('contract_signed_at')
                     ->label(__('admin.program_enrollment.contract_signed_at'))
                     ->date('Y-m-d')
