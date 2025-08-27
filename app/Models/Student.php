@@ -31,6 +31,7 @@ class Student extends Model implements Auditable
 
     protected $casts = [
         'gender' => \App\Enums\Gender::class,
+        'category' => \App\Enums\StudentCategory::class,
         'is_active' => 'boolean',
         'status' => \App\Enums\StudentStatus::class,
         'date_of_birth' => 'date',

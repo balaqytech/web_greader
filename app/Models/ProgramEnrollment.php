@@ -39,8 +39,6 @@ class ProgramEnrollment extends Model implements Invoiceable, Auditable
         'contract_signed_at' => 'datetime',
         'additional_info' => 'array',
         'status' => EnrollmentState::class,
-        'already_registered' => 'boolean',
-        'has_siblings' => 'boolean',
         'source' => EnrollmentSource::class,
     ];
 
