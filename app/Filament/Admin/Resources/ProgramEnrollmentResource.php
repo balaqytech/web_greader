@@ -160,6 +160,10 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                     ->label(__('admin.program_enrollment.program_name'))
                     ->options(Program::all()->pluck('name', 'id')),
             ])
+            ->defaultSort('created_at', 'desc')
+            ->headerActions([
+                \pxlrbt\FilamentExcel\Actions\Tables\ExportAction::make('export'),
+            ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\ActionGroup::make([
