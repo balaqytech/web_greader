@@ -22,8 +22,6 @@ class ListProgramEnrollments extends ListRecords
     public function getTabs(): array
     {
         return [
-            'draft' => Tab::make(__(EnrollmentStatus::DRAFT->getLabel()))
-                ->modifyQueryUsing(fn($query) => $query->where('status', EnrollmentStatus::DRAFT)),
             'pending' => Tab::make(__(EnrollmentStatus::PENDING->getLabel()))
                 ->modifyQueryUsing(fn($query) => $query->where('status', EnrollmentStatus::PENDING)),
             'signed' => Tab::make(__(EnrollmentStatus::SIGNED->getLabel()))

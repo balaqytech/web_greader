@@ -2,8 +2,8 @@
 
 namespace App\States\Enrollment;
 
-use App\Models\ProgramEnrollment;
 use Spatie\ModelStates\State;
+use App\Models\ProgramEnrollment;
 use Spatie\ModelStates\StateConfig;
 use Filament\Support\Contracts\HasLabel;
 
@@ -16,9 +16,7 @@ abstract class EnrollmentState extends State implements HasLabel
     public static function config(): StateConfig
     {
         return parent::config()
-            ->default(Draft::class)
-            ->allowTransition(Draft::class, Pending::class, Transitions\DraftToPending::class)
-            ->allowTransition(Draft::class, Canceled::class)
+            ->default(Pending::class)
             ->allowTransition(Pending::class, Signed::class, Transitions\PendingToSigned::class)
             ->allowTransition(Pending::class, Rejected::class)
             ->allowTransition(Signed::class, Approved::class, Transitions\SignedToApproved::class)
@@ -26,4 +24,4 @@ abstract class EnrollmentState extends State implements HasLabel
             ->allowTransition(Approved::class, Completed::class)
             ->allowTransition(Approved::class, Rejected::class);
     }
-} 
+}

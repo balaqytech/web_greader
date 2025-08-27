@@ -11,7 +11,6 @@ use App\Models\Discount;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Enums\EnrollmentStatus;
-use App\States\Enrollment\Draft;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use App\Models\ProgramEnrollment;
@@ -168,12 +167,11 @@ class ProgramEnrollmentResource extends Resource implements HasShieldPermissions
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ActionGroup::make([
-                        ProgramEnrollmentActions\AddDiscounts::make(),
                         ProgramEnrollmentActions\UploadContract::make(),
                         ProgramEnrollmentActions\SignContract::make(),
                         ProgramEnrollmentActions\ApproveEnrollment::make(),
                         Tables\Actions\EditAction::make()
-                            ->visible(fn(ProgramEnrollment $record) => $record->status->equals(Draft::class) || $record->status->equals(Pending::class)),
+                            ->visible(fn(ProgramEnrollment $record) => $record->status->equals(Pending::class)),
                     ])
                         ->dropdown(false),
                     ProgramEnrollmentActions\CancelEnrollment::make(),

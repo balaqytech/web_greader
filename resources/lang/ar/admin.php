@@ -178,7 +178,6 @@ return [
             'rejected' => 'تم الرفض',
             'canceled' => 'ملغي',
             'completed' => 'مكتمل',
-            'draft' => 'مسودة',
         ],
     ],
     'discount' => [

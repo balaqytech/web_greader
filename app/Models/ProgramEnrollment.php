@@ -3,13 +3,10 @@
 namespace App\Models;
 
 use App\Traits\HasInvoice;
-use App\Enums\DiscountType;
-use App\ValueObjects\Money;
 use App\Contracts\Invoiceable;
 use App\Enums\EnrollmentSource;
-use App\States\Enrollment\Draft;
-use App\States\Enrollment\Signed;
 use Spatie\ModelStates\HasStates;
+use App\States\Enrollment\Pending;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
 use App\States\Enrollment\EnrollmentState;
@@ -73,7 +70,7 @@ class ProgramEnrollment extends Model implements Invoiceable, Auditable
         parent::boot();
 
         static::creating(function ($model) {
-            $model->status = new Draft($model);
+            $model->status = new Pending($model);
             $model->academic_year_id = AcademicYear::where('is_current', true)->first()->id;
         });
     }

@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Actions\ProgramEnrollment;
 
-use App\States\Enrollment\Draft;
 use App\Models\ProgramEnrollment;
+use App\States\Enrollment\Pending;
 use App\States\Enrollment\Canceled;
 use Filament\Tables\Actions\Action;
 
@@ -13,7 +13,7 @@ class CancelEnrollment
     {
         return Action::make('cancel_enrollment')
             ->label(__('admin.program_enrollment.cancel_enrollment'))
-            ->visible(fn(ProgramEnrollment $record) => $record->status->equals(Draft::class))
+            ->visible(fn(ProgramEnrollment $record) => $record->status->equals(Pending::class))
             ->modalWidth('md')
             ->icon('heroicon-o-x-circle')
             ->color('danger')
