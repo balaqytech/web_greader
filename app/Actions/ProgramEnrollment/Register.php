@@ -7,8 +7,10 @@ use App\Models\ParentAccount;
 use App\Enums\EnrollmentSource;
 use App\Models\ProgramEnrollment;
 use Illuminate\Support\Facades\DB;
+use App\Mail\StudentRegisteredMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class Register
@@ -32,6 +34,8 @@ class Register
                 ];
 
                 $enrollment = $this->createEnrollment($parent, $data['student'], $data['student']['additional_info']);
+
+                Mail::to($parent->email)->send(new StudentRegisteredMail($enrollment));
             });
             return [
                 'success' => true,
@@ -77,7 +81,7 @@ class Register
      * @param ParentAccount $parent
      * @param array $studentsData
      * @param array $additionalInfo
-     * @return \Illuminate\Support\Collection
+     * @return ProgramEnrollment
      */
     private function createEnrollment(ParentAccount $parent, array $studentData, array $additionalInfo): ProgramEnrollment
     {
