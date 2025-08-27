@@ -22,25 +22,30 @@ class Register
      */
     public function execute(array $data): array
     {
-        // try {
-        DB::transaction(function () use ($data) {
-            $parent = $this->findOrCreateParent($data['parent']);
-            $enrollments = $this->createEnrollments($parent, $data['students'], $data['additional_info'] ?? []);
-        });
-        return [
-            'success' => true,
-            'message' => __('frontend.program_register.success_message'),
-        ];
-        // } catch (\Exception $e) {
-        //     Log::error('Program enrollment registration failed', [
-        //         'error' => $e->getMessage(),
-        //         'data' => $data
-        //     ]);
+        try {
+            DB::transaction(function () use ($data) {
+                $parent = $this->findOrCreateParent($data['father']);
+                $data['student']['additional_info'] = [
+                    'father' => $data['father'],
+                    'mother' => $data['mother'],
+                    'relative' => $data['relative'],
+                ];
+                $enrollments = $this->createEnrollments($parent, $data['student'], $data['student']['additional_info']);
+            });
+            return [
+                'success' => true,
+                'message' => __('frontend.program_register.success_message'),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Program enrollment registration failed', [
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
 
-        //     throw ValidationException::withMessages([
-        //         'general' => __('frontend.program_register.error_message')
-        //     ]);
-        // }
+            throw ValidationException::withMessages([
+                'general' => __('frontend.program_register.error_message')
+            ]);
+        }
     }
 
     /**
@@ -58,6 +63,7 @@ class Register
         if (!$parent) {
             $parentData['password'] = Hash::make('123456');
             $parentData['is_active'] = true;
+            $parentData['branch_id'] = 1;
             $parent = ParentAccount::create($parentData);
         }
 
@@ -76,11 +82,9 @@ class Register
     {
         $enrollments = collect();
 
-        foreach ($studentsData as $studentData) {
-            $student = $this->findOrCreateStudent($parent, $studentData);
-            $enrollment = $this->createEnrollment($student, $studentData, $additionalInfo);
-            $enrollments->push($enrollment);
-        }
+        $student = $this->findOrCreateStudent($parent, $studentsData);
+        $enrollment = $this->createEnrollment($student, $studentsData, $additionalInfo);
+        $enrollments->push($enrollment);
 
         return $enrollments;
     }
@@ -115,9 +119,8 @@ class Register
         return $student->programEnrollments()->create([
             'program_id' => $studentData['program_id'],
             'additional_info' => $additionalInfo,
-            'already_registered' => $studentData['already_registered'] ?? false,
-            'has_siblings' => $studentData['has_siblings'] ?? false,
             'source' => $studentData['source'] ?? EnrollmentSource::WEBSITE->value,
+
         ]);
     }
 }

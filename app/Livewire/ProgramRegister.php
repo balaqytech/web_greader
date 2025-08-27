@@ -17,6 +17,7 @@ use Livewire\Attributes\Layout;
 use App\Models\ProgramEnrollment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Log;
 use App\Enums\RelationshipWithParent;
 use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Contracts\HasForms;
@@ -42,119 +43,140 @@ class ProgramRegister extends Component implements HasForms
         return $form
             ->schema([
                 Forms\Components\Wizard::make([
-                    Forms\Components\Wizard\Step::make(__('frontend.program_register.parent_info'))
+                    Forms\Components\Wizard\Step::make(__('frontend.program_register.student_info'))
                         ->schema([
-                            Forms\Components\TextInput::make('parent.name')
-                                ->label(__('frontend.program_register.parent_name'))
+                            Forms\Components\TextInput::make('student.name')
+                                ->label(__('frontend.program_register.student_name'))
                                 ->required(),
-                            Forms\Components\TextInput::make('parent.email')
-                                ->label(__('frontend.program_register.parent_email'))
-                                ->email()
+                            Forms\Components\Select::make('student.program_id')
+                                ->label(__('frontend.program_register.student_program'))
+                                ->options(Program::open()->pluck('name', 'id'))
+                                ->live()
+                                ->reactive()
                                 ->required(),
-                            Forms\Components\TextInput::make('parent.phone')
-                                ->label(__('frontend.program_register.parent_phone'))
-                                ->tel()
+                            Forms\Components\Select::make('student.branch_id')
+                                ->label(__('frontend.program_register.student_branch'))
+                                ->options(function (Get $get) {
+                                    $programId = $get('student.program_id');
+
+                                    if (!$programId) {
+                                        return [];
+                                    }
+
+                                    return Program::find($programId)?->branches()
+                                        ->active()
+                                        ->pluck('branches.name', 'branches.id') ?? [];
+                                })
+                                ->disabled(fn(Get $get) => blank($get('student.program_id')))
+                                ->required()
+                                ->rule(new BranchHasProgram),
+                            Forms\Components\Select::make('student.gender')
+                                ->label(__('frontend.program_register.student_gender'))
+                                ->options(Gender::class)
                                 ->required(),
-                            Forms\Components\TextInput::make('parent.address')
-                                ->label(__('frontend.program_register.parent_address'))
+                            Forms\Components\DatePicker::make('student.date_of_birth')
+                                ->label(__('frontend.program_register.student_date_of_birth'))
                                 ->required(),
-                            Forms\Components\TextInput::make('parent.city')
-                                ->label(__('frontend.program_register.parent_city'))
+                            Forms\Components\TextInput::make('student.civil_number')
+                                ->label(__('frontend.program_register.student_civil_number'))
                                 ->required(),
-                            Forms\Components\Select::make('parent.branch_id')
-                                ->label(__('frontend.program_register.parent_branch'))
-                                ->options(Branch::all()->pluck('name', 'id'))
+                            Forms\Components\TextInput::make('student.state')
+                                ->label(__('frontend.program_register.student_state'))
                                 ->required(),
-                            Forms\Components\Radio::make('parent.additional_info.' . __('frontend.program_register.parent_contact_method'))
-                                ->label(__('frontend.program_register.parent_contact_method'))
-                                ->options([
-                                    __('frontend.program_register.parent_contact_method_email') => __('frontend.program_register.parent_contact_method_email'),
-                                    __('frontend.program_register.parent_contact_method_phone') => __('frontend.program_register.parent_contact_method_phone'),
-                                    __('frontend.program_register.parent_contact_method_whatsapp') => __('frontend.program_register.parent_contact_method_whatsapp'),
-                                ])
-                                ->columns(3)
+                            Forms\Components\TextInput::make('student.province')
+                                ->label(__('frontend.program_register.student_province'))
                                 ->required(),
-                            Forms\Components\TextInput::make('parent.additional_info.' . __('frontend.program_register.parent_contact_time'))
-                                ->label(__('frontend.program_register.parent_contact_time'))
+                            Forms\Components\TextInput::make('student.village')
+                                ->label(__('frontend.program_register.student_village'))
+                                ->required(),
+                            Forms\Components\TextInput::make('student.house_number')
+                                ->label(__('frontend.program_register.student_house_number'))
+                                ->required(),
+                            Forms\Components\TextInput::make('student.block_number')
+                                ->label(__('frontend.program_register.student_block_number'))
+                                ->required(),
+                            Forms\Components\Select::make('student.category')
+                                ->label(__('frontend.program_register.student_category'))
+                                ->options(\App\Enums\StudentCategory::class)
+                                ->required(),
+                            Forms\Components\TextInput::make('student.parents_relationship')
+                                ->label(__('frontend.program_register.student_parents_relationship'))
                                 ->required(),
                         ])
                         ->columns(2),
-                    Forms\Components\Wizard\Step::make(__('frontend.program_register.student_info'))
+                    Forms\Components\Wizard\Step::make(__('frontend.program_register.father_info'))
                         ->schema([
-                            Forms\Components\Repeater::make('students')
-                                ->label(__('frontend.program_register.students'))
-                                ->addActionLabel(__('frontend.program_register.add_to_students'))
-                                ->schema([
-                                    Forms\Components\TextInput::make('name')
-                                        ->label(__('frontend.program_register.student_name'))
-                                        ->required(),
-                                    Forms\Components\Select::make('gender')
-                                        ->label(__('frontend.program_register.student_gender'))
-                                        ->options(Gender::class)
-                                        ->required(),
-                                    Forms\Components\DatePicker::make('date_of_birth')
-                                        ->label(__('frontend.program_register.student_birth_date'))
-                                        ->required(),
-                                    Forms\Components\Select::make('relationship_with_parent')
-                                        ->label(__('frontend.program_register.student_relationship_with_parent'))
-                                        ->options(RelationshipWithParent::class)
-                                        ->required(),
-                                    Forms\Components\Select::make('program_id')
-                                        ->label(__('frontend.program_register.student_program'))
-                                        ->options(Program::open()->pluck('name', 'id'))
-                                        ->live()
-                                        ->reactive()
-                                        ->required(),
-                                    Forms\Components\Select::make('branch_id')
-                                        ->label(__('frontend.program_register.student_branch'))
-                                        ->options(function (Get $get) {
-                                            $programId = $get('program_id');
-
-                                            if (!$programId) {
-                                                return [];
-                                            }
-
-                                            return Program::find($programId)?->branches()
-                                                ->active()
-                                                ->pluck('branches.name', 'branches.id') ?? [];
-                                        })
-                                        ->disabled(fn(Get $get) => blank($get('program_id')))
-                                        ->required()
-                                        ->rule(new BranchHasProgram),
-                                    Forms\Components\Radio::make('already_registered')
-                                        ->label(__('frontend.program_register.already_registered'))
-                                        ->boolean()
-                                        ->inline(false)
-                                        ->default(false),
-                                    Forms\Components\Radio::make('has_siblings')
-                                        ->label(__('frontend.program_register.has_siblings'))
-                                        ->boolean()
-                                        ->inline(false)
-                                        ->default(false),
-                                ])
-                                ->columns(2),
-                        ]),
-                    Forms\Components\Wizard\Step::make(__('frontend.program_register.additional_info'))
+                            Forms\Components\TextInput::make('father.name')
+                                ->label(__('frontend.program_register.father_name'))
+                                ->required(),
+                            Forms\Components\TextInput::make('father.phone')
+                                ->label(__('frontend.program_register.father_phone'))
+                                ->required(),
+                            Forms\Components\TextInput::make('father.email')
+                                ->label(__('frontend.program_register.father_email'))
+                                ->required(),
+                            Forms\Components\TextInput::make('father.civil_number')
+                                ->label(__('frontend.program_register.father_civil_number'))
+                                ->required(),
+                            Forms\Components\TextInput::make('father.occupation')
+                                ->label(__('frontend.program_register.father_occupation'))
+                                ->required(),
+                            Forms\Components\TextInput::make('father.occupation_address')
+                                ->label(__('frontend.program_register.father_occupation_address'))
+                                ->required(),
+                            Forms\Components\TextInput::make('father.occupation_phone')
+                                ->label(__('frontend.program_register.father_occupation_phone'))
+                                ->required(),
+                        ])
+                        ->columns(2),
+                    Forms\Components\Wizard\Step::make(__('frontend.program_register.mother_info'))
                         ->schema([
-                            Forms\Components\CheckboxList::make('additional_info.' . __('frontend.program_register.how_did_you_hear_about_us'))
-                                ->label(__('frontend.program_register.how_did_you_hear_about_us'))
-                                ->options([
-                                    __('frontend.program_register.how_did_you_hear_about_us_instagram') => __('frontend.program_register.how_did_you_hear_about_us_instagram'),
-                                    __('frontend.program_register.how_did_you_hear_about_us_visit') => __('frontend.program_register.how_did_you_hear_about_us_visit'),
-                                    __('frontend.program_register.how_did_you_hear_about_us_friends') => __('frontend.program_register.how_did_you_hear_about_us_friends'),
-                                    __('frontend.program_register.how_did_you_hear_about_us_other') => __('frontend.program_register.how_did_you_hear_about_us_other'),
-                                ])
-                                ->columns(2)
+                            Forms\Components\TextInput::make('mother.name')
+                                ->label(__('frontend.program_register.mother_name'))
                                 ->required(),
-                            Forms\Components\Radio::make('additional_info.' . __('frontend.program_register.planning_to_visit'))
-                                ->label(__('frontend.program_register.planning_to_visit'))
-                                ->options([
-                                    __('frontend.program_register.planning_to_visit_yes') => __('frontend.program_register.planning_to_visit_yes'),
-                                    __('frontend.program_register.planning_to_visit_no') => __('frontend.program_register.planning_to_visit_no'),
-                                ])
+                            Forms\Components\TextInput::make('mother.phone')
+                                ->label(__('frontend.program_register.mother_phone'))
                                 ->required(),
-                            Forms\Components\Textarea::make('additional_info.' . __('frontend.program_register.notes'))
-                                ->label(__('frontend.program_register.notes')),
+                            Forms\Components\TextInput::make('mother.email')
+                                ->label(__('frontend.program_register.mother_email'))
+                                ->required(),
+                            Forms\Components\TextInput::make('mother.civil_number')
+                                ->label(__('frontend.program_register.mother_civil_number'))
+                                ->required(),
+                            Forms\Components\TextInput::make('mother.occupation')
+                                ->label(__('frontend.program_register.mother_occupation'))
+                                ->required(),
+                            Forms\Components\TextInput::make('mother.occupation_address')
+                                ->label(__('frontend.program_register.mother_occupation_address'))
+                                ->required(),
+                            Forms\Components\TextInput::make('mother.occupation_phone')
+                                ->label(__('frontend.program_register.mother_occupation_phone'))
+                                ->required(),
+                        ])
+                        ->columns(2),
+                    Forms\Components\Wizard\Step::make(__('frontend.program_register.relative_info'))
+                        ->schema([
+                            Forms\Components\TextInput::make('relative.name')
+                                ->label(__('frontend.program_register.relative_name'))
+                                ->required(),
+                            Forms\Components\TextInput::make('relative.phone')
+                                ->label(__('frontend.program_register.relative_phone'))
+                                ->required(),
+                            Forms\Components\TextInput::make('relative.email')
+                                ->label(__('frontend.program_register.relative_email'))
+                                ->required(),
+                            Forms\Components\TextInput::make('relative.civil_number')
+                                ->label(__('frontend.program_register.relative_civil_number'))
+                                ->required(),
+                            Forms\Components\TextInput::make('relative.occupation')
+                                ->label(__('frontend.program_register.relative_occupation'))
+                                ->required(),
+                            Forms\Components\TextInput::make('relative.occupation_address')
+                                ->label(__('frontend.program_register.relative_occupation_address'))
+                                ->required(),
+                            Forms\Components\TextInput::make('relative.occupation_phone')
+                                ->label(__('frontend.program_register.relative_occupation_phone'))
+                                ->required(),
                         ])
                         ->columns(2),
                 ])
