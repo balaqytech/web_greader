@@ -30,7 +30,8 @@ class Register
                     'mother' => $data['mother'],
                     'relative' => $data['relative'],
                 ];
-                $enrollments = $this->createEnrollments($parent, $data['student'], $data['student']['additional_info']);
+
+                $enrollment = $this->createEnrollment($parent, $data['student'], $data['student']['additional_info']);
             });
             return [
                 'success' => true,
@@ -78,15 +79,15 @@ class Register
      * @param array $additionalInfo
      * @return \Illuminate\Support\Collection
      */
-    private function createEnrollments(ParentAccount $parent, array $studentsData, array $additionalInfo): \Illuminate\Support\Collection
+    private function createEnrollment(ParentAccount $parent, array $studentData, array $additionalInfo): ProgramEnrollment
     {
-        $enrollments = collect();
+        $student = $this->findOrCreateStudent($parent, $studentData);
 
-        $student = $this->findOrCreateStudent($parent, $studentsData);
-        $enrollment = $this->createEnrollment($student, $studentsData, $additionalInfo);
-        $enrollments->push($enrollment);
-
-        return $enrollments;
+        return $student->programEnrollments()->create([
+            'program_id' => $studentData['program_id'],
+            'additional_info' => $additionalInfo,
+            'source' => $studentData['source'] ?? EnrollmentSource::WEBSITE->value,
+        ]);
     }
 
     /**
@@ -104,23 +105,5 @@ class Register
             ],
             $studentData
         );
-    }
-
-    /**
-     * Create program enrollment
-     *
-     * @param Student $student
-     * @param array $studentData
-     * @param array $additionalInfo
-     * @return ProgramEnrollment
-     */
-    private function createEnrollment(Student $student, array $studentData, array $additionalInfo): ProgramEnrollment
-    {
-        return $student->programEnrollments()->create([
-            'program_id' => $studentData['program_id'],
-            'additional_info' => $additionalInfo,
-            'source' => $studentData['source'] ?? EnrollmentSource::WEBSITE->value,
-
-        ]);
     }
 }
