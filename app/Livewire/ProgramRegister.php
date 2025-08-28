@@ -114,6 +114,7 @@ class ProgramRegister extends Component implements HasForms
                                 ->required(),
                             Forms\Components\TextInput::make('father.email')
                                 ->label(__('frontend.program_register.father_email'))
+                                ->email()
                                 ->required(),
                             Forms\Components\TextInput::make('father.civil_number')
                                 ->label(__('frontend.program_register.father_civil_number'))
@@ -139,6 +140,7 @@ class ProgramRegister extends Component implements HasForms
                                 ->required(),
                             Forms\Components\TextInput::make('mother.email')
                                 ->label(__('frontend.program_register.mother_email'))
+                                ->email()
                                 ->required(),
                             Forms\Components\TextInput::make('mother.civil_number')
                                 ->label(__('frontend.program_register.mother_civil_number'))
@@ -164,6 +166,7 @@ class ProgramRegister extends Component implements HasForms
                                 ->required(),
                             Forms\Components\TextInput::make('relative.email')
                                 ->label(__('frontend.program_register.relative_email'))
+                                ->email()
                                 ->required(),
                             Forms\Components\TextInput::make('relative.civil_number')
                                 ->label(__('frontend.program_register.relative_civil_number'))
