@@ -14,7 +14,6 @@ class CloseSeason
     public function execute(Season $season): Season
     {
         $season->forceFill([
-            'is_registration_open' => false,
             'is_active' => false,
             'closed_at' => now(),
         ])->saveOrFail();

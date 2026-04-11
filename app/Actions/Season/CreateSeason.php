@@ -15,7 +15,7 @@ class CreateSeason
      * The season will be activated automatically if no active season of the
      * same type exists. Otherwise it is created as inactive.
      *
-     * @param  array{name: mixed, type: mixed, start_date?: mixed, end_date?: mixed, is_registration_open?: mixed}  $input
+     * @param  array{name: mixed, type: mixed, start_date?: mixed, end_date?: mixed}  $input
      */
     public function execute(array $input): Season
     {
@@ -26,7 +26,6 @@ class CreateSeason
         $season = new Season([
             ...$validated,
             'is_active' => $isActive,
-            'is_registration_open' => (bool) ($validated['is_registration_open'] ?? false),
         ]);
 
         $season->saveOrFail();

@@ -30,7 +30,6 @@ return [
         'start_date' => 'تاريخ البدء',
         'end_date' => 'تاريخ الانتهاء',
         'is_active' => 'تفعيل',
-        'is_registration_open' => 'فتح التسجيل',
         'closed_at' => 'تاريخ الإغلاق',
         'actions' => [
             'open' => 'فتح',

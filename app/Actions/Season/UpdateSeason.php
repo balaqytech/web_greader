@@ -18,7 +18,7 @@ class UpdateSeason
      * `is_active` is managed exclusively via OpenSeason / CloseSeason and is
      * intentionally not accepted as user input here.
      *
-     * @param  array{name: mixed, type: mixed, start_date?: mixed, end_date?: mixed, is_registration_open?: mixed}  $input
+     * @param  array{name: mixed, type: mixed, start_date?: mixed, end_date?: mixed}  $input
      */
     public function execute(Season $season, array $input): Season
     {
@@ -26,8 +26,6 @@ class UpdateSeason
 
         $season->fill([
             ...$validated,
-            // is_registration_open may be absent when the toggle is not rendered
-            'is_registration_open' => (bool) ($validated['is_registration_open'] ?? $season->is_registration_open),
         ]);
 
         try {

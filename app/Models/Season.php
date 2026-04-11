@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'type', 'start_date', 'end_date', 'is_active', 'is_registration_open', 'closed_at'])]
+#[Fillable(['name', 'type', 'start_date', 'end_date', 'is_active', 'closed_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
@@ -30,7 +30,6 @@ class Season extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'is_active' => 'boolean',
-            'is_registration_open' => 'boolean',
             'closed_at' => 'datetime',
         ];
     }
@@ -38,11 +37,6 @@ class Season extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
-    }
-
-    public function scopeRegistrationOpen(Builder $query): Builder
-    {
-        return $query->where('is_registration_open', true);
     }
 
     public function scopeClosed(Builder $query): Builder

@@ -19,19 +19,18 @@ class SeasonFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Academic '.fake()->year().'-'.fake()->year(),
+            'name' => 'Academic ' . fake()->year() . '-' . fake()->year(),
             'type' => ProgramType::Academic,
             'start_date' => now()->subMonths(6)->toDateString(),
             'end_date' => now()->toDateString(),
             'is_active' => true,
-            'is_registration_open' => true,
             'is_closed' => false,
         ];
     }
 
     public function academic(): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn() => [
             'name' => 'Academic 2025-2026',
             'type' => ProgramType::Academic,
             'start_date' => now()->subMonths(9)->toDateString(),
@@ -41,7 +40,7 @@ class SeasonFactory extends Factory
 
     public function summer(): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn() => [
             'name' => 'Summer 2025',
             'type' => ProgramType::Summer,
             'start_date' => now()->subMonths(3)->toDateString(),
@@ -51,9 +50,8 @@ class SeasonFactory extends Factory
 
     public function closed(): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn() => [
             'is_active' => false,
-            'is_registration_open' => false,
             'is_closed' => true,
         ]);
     }

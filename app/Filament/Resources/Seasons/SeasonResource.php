@@ -65,9 +65,6 @@ class SeasonResource extends Resource
                 DatePicker::make('end_date')
                     ->label(__('admin.season.end_date'))
                     ->rule(Rule::date()->todayOrAfter()),
-                Toggle::make('is_registration_open')
-                    ->label(__('admin.season.is_registration_open'))
-                    ->required(),
             ]);
     }
 
@@ -93,9 +90,6 @@ class SeasonResource extends Resource
                     ->sortable(),
                 IconColumn::make('is_active')
                     ->label(__('admin.season.is_active'))
-                    ->boolean(),
-                IconColumn::make('is_registration_open')
-                    ->label(__('admin.season.is_registration_open'))
                     ->boolean(),
                 TextColumn::make('closed_at')
                     ->label(__('admin.season.closed_at'))

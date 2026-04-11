@@ -14,7 +14,7 @@ uses(RefreshDatabase::class);
 // ─── CreateSeason ─────────────────────────────────────────────────────────────
 
 test('it cannot create a season when the end date is after today', function () {
-    expect(fn () => app(CreateSeason::class)->execute([
+    expect(fn() => app(CreateSeason::class)->execute([
         'name' => 'Academic 2026-2027',
         'type' => ProgramType::Academic->value,
         'start_date' => now()->subDay()->toDateString(),
@@ -83,14 +83,14 @@ test('it cannot open a season when another active season of the same type exists
     Season::factory()->academic()->create(['is_active' => true]);
     $inactive = Season::factory()->academic()->create(['is_active' => false]);
 
-    expect(fn () => app(OpenSeason::class)->open($inactive))
+    expect(fn() => app(OpenSeason::class)->open($inactive))
         ->toThrow(ValidationException::class, 'يُسمح بموسم واحد نشط فقط لكل نوع.');
 });
 
 test('it cannot re-open a permanently closed season', function () {
     $closed = Season::factory()->academic()->closed()->create();
 
-    expect(fn () => app(OpenSeason::class)->open($closed))
+    expect(fn() => app(OpenSeason::class)->open($closed))
         ->toThrow(ValidationException::class, 'لا يمكن إعادة فتح موسم مغلق نهائياً.');
 });
 
@@ -110,7 +110,6 @@ test('it can close an active season and marks it as permanently closed', functio
     $closed = app(CloseSeason::class)->close($season);
 
     expect($closed->is_active)->toBeFalse();
-    expect($closed->is_registration_open)->toBeFalse();
     expect($closed->is_closed)->toBeTrue();
 });
 
@@ -121,12 +120,11 @@ test('it validates active season constraints when changing the type of an active
 
     $season = Season::factory()->summer()->create(['is_active' => true]);
 
-    expect(fn () => app(UpdateSeason::class)->update($season, [
+    expect(fn() => app(UpdateSeason::class)->update($season, [
         'name' => $season->name,
         'type' => ProgramType::Academic->value,
         'start_date' => now()->subMonths(3)->toDateString(),
         'end_date' => now()->toDateString(),
-        'is_registration_open' => $season->is_registration_open,
     ]))->toThrow(ValidationException::class, 'يُسمح بموسم واحد نشط فقط لكل نوع.');
 });
 
