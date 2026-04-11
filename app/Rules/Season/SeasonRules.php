@@ -19,7 +19,7 @@ class SeasonRules
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::enum(ProgramType::class)],
             'start_date' => ['nullable', 'date', 'before_or_equal:end_date'],
-            'end_date' => ['required', Rule::date()->todayOrBefore()],
+            'end_date' => ['required', Rule::date()->todayOrAfter()],
             'is_registration_open' => ['sometimes', 'boolean'],
         ];
     }

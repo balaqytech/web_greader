@@ -3,21 +3,32 @@
 namespace App\Actions\Season;
 
 use App\Models\Season;
+use Filament\Notifications\Notification;
 
 class OpenSeason
 {
+    public function __construct(
+        private EnsureSeasonCanBeActivated $ensureSeasonCanBeActivated
+    ) {}
     /**
      * Activate the given season.
      *
      * Permanently closed seasons cannot be re-opened.
      */
-    public function open(Season $season): Season
+    public function execute(Season $season): Season
     {
-        app(EnsureSeasonCanBeActivated::class)->ensure($season);
+        try {
+            $this->ensureSeasonCanBeActivated->ensure($season);
 
-        $season->forceFill([
-            'is_active' => true,
-        ])->saveOrFail();
+            $season->forceFill([
+                'is_active' => true,
+            ])->saveOrFail();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title($e->getMessage())
+                ->danger()
+                ->send();
+        }
 
         return $season->refresh();
     }

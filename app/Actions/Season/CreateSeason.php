@@ -21,9 +21,7 @@ class CreateSeason
     {
         $validated = Validator::make($input, SeasonRules::rules())->validate();
 
-        $type = ProgramType::from($validated['type']);
-
-        $isActive = ! Season::query()->active()->where('type', $type->value)->exists();
+        $isActive = ! Season::query()->active()->where('type', $validated['type'])->exists();
 
         $season = new Season([
             ...$validated,

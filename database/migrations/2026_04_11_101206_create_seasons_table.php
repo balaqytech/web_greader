@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('end_date')->nullable();
             $table->boolean('is_active')->default(true)->index();
             $table->boolean('is_registration_open')->default(false)->index();
-            $table->boolean('is_closed')->default(false)->index();
+            $table->timestamp('closed_at')->nullable()->index();
             $table->timestamps();
         });
     }

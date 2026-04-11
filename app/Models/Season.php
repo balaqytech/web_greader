@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'type', 'start_date', 'end_date', 'is_active', 'is_registration_open', 'is_closed'])]
+#[Fillable(['name', 'type', 'start_date', 'end_date', 'is_active', 'is_registration_open', 'closed_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
@@ -17,7 +17,7 @@ class Season extends Model
 
     protected $attributes = [
         'is_active' => true,
-        'is_closed' => false,
+        'closed_at' => null,
     ];
 
     /**
@@ -31,7 +31,7 @@ class Season extends Model
             'end_date' => 'date',
             'is_active' => 'boolean',
             'is_registration_open' => 'boolean',
-            'is_closed' => 'boolean',
+            'closed_at' => 'datetime',
         ];
     }
 

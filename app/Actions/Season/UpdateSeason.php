@@ -4,10 +4,14 @@ namespace App\Actions\Season;
 
 use App\Models\Season;
 use App\Rules\Season\SeasonRules;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Validator;
 
 class UpdateSeason
 {
+    public function __construct(
+        private EnsureSeasonCanBeActivated $ensureSeasonCanBeActivated
+    ) {}
     /**
      * Validate and update an existing season.
      *
@@ -16,7 +20,7 @@ class UpdateSeason
      *
      * @param  array{name: mixed, type: mixed, start_date?: mixed, end_date?: mixed, is_registration_open?: mixed}  $input
      */
-    public function update(Season $season, array $input): Season
+    public function execute(Season $season, array $input): Season
     {
         $validated = Validator::make($input, SeasonRules::rules())->validate();
 
@@ -26,11 +30,18 @@ class UpdateSeason
             'is_registration_open' => (bool) ($validated['is_registration_open'] ?? $season->is_registration_open),
         ]);
 
-        if ($season->is_active) {
-            app(EnsureSeasonCanBeActivated::class)->ensure($season);
-        }
+        try {
+            if ($season->is_active) {
+                $this->ensureSeasonCanBeActivated->ensure($season);
+            }
 
-        $season->saveOrFail();
+            $season->saveOrFail();
+        } catch (\Exception $th) {
+            Notification::make()
+                ->title($th->getMessage())
+                ->danger()
+                ->send();
+        }
 
         return $season->refresh();
     }

@@ -11,12 +11,12 @@ class CloseSeason
      *
      * A closed season cannot be re-opened.
      */
-    public function close(Season $season): Season
+    public function execute(Season $season): Season
     {
         $season->forceFill([
             'is_registration_open' => false,
             'is_active' => false,
-            'is_closed' => true,
+            'closed_at' => now(),
         ])->saveOrFail();
 
         return $season->refresh();

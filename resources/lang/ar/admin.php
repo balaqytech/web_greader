@@ -31,7 +31,7 @@ return [
         'end_date' => 'تاريخ الانتهاء',
         'is_active' => 'تفعيل',
         'is_registration_open' => 'فتح التسجيل',
-        'is_closed' => 'مغلق',
+        'closed_at' => 'تاريخ الإغلاق',
         'actions' => [
             'open' => 'فتح',
             'close' => 'إغلاق',

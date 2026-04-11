@@ -19,7 +19,7 @@ class EnsureSeasonCanBeActivated
      */
     public function ensure(Season $season): void
     {
-        if ($season->is_closed) {
+        if ($season->closed_at) {
             throw ValidationException::withMessages([
                 'is_active' => __('admin.season.validation.cannot_reopen_closed'),
             ]);
@@ -28,15 +28,15 @@ class EnsureSeasonCanBeActivated
         $type = $season->type instanceof ProgramType
             ? $season->type
             : ProgramType::tryFrom((string) $season->type)
-                ?? throw ValidationException::withMessages([
-                    'type' => __('admin.season.validation.type_required_to_activate'),
-                ]);
+            ?? throw ValidationException::withMessages([
+                'type' => __('admin.season.validation.type_required_to_activate'),
+            ]);
 
         $activeSeasons = Season::query()
             ->active()
             ->when(
                 $season->exists,
-                fn (Builder $query) => $query->whereKeyNot($season->getKey()),
+                fn(Builder $query) => $query->whereKeyNot($season->getKey()),
             );
 
         if ((clone $activeSeasons)->where('type', $type->value)->exists()) {

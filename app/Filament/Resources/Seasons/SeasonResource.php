@@ -21,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rule;
 
 class SeasonResource extends Resource
 {
@@ -62,7 +63,8 @@ class SeasonResource extends Resource
                 DatePicker::make('start_date')
                     ->label(__('admin.season.start_date')),
                 DatePicker::make('end_date')
-                    ->label(__('admin.season.end_date')),
+                    ->label(__('admin.season.end_date'))
+                    ->rule(Rule::date()->todayOrAfter()),
                 Toggle::make('is_registration_open')
                     ->label(__('admin.season.is_registration_open'))
                     ->required(),
@@ -95,15 +97,8 @@ class SeasonResource extends Resource
                 IconColumn::make('is_registration_open')
                     ->label(__('admin.season.is_registration_open'))
                     ->boolean(),
-                IconColumn::make('is_closed')
-                    ->label(__('admin.season.is_closed'))
-                    ->boolean()
-                    ->trueColor('danger')
-                    ->falseColor('gray')
-                    ->trueIcon('heroicon-o-lock-closed')
-                    ->falseIcon('heroicon-o-lock-open'),
-                TextColumn::make('created_at')
-                    ->label(__('admin.season.created_at'))
+                TextColumn::make('closed_at')
+                    ->label(__('admin.season.closed_at'))
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -116,22 +111,25 @@ class SeasonResource extends Resource
                     ->label(__('admin.season.actions.open'))
                     ->color('success')
                     ->requiresConfirmation()
-                    ->action(fn (Season $record) => app(OpenSeason::class)->open($record))
-                    ->hidden(fn (Season $record): bool => $record->is_active || $record->is_closed),
+                    ->icon('heroicon-o-lock-open')
+                    ->action(fn(Season $record) => app(OpenSeason::class)->execute($record))
+                    ->hidden(fn(Season $record): bool => $record->is_active || $record->closed_at),
                 Action::make('close')
                     ->label(__('admin.season.actions.close'))
-                    ->color('gray')
+                    ->color('danger')
                     ->requiresConfirmation()
-                    ->action(fn (Season $record) => app(CloseSeason::class)->close($record))
-                    ->hidden(fn (Season $record): bool => ! $record->is_active),
+                    ->icon('heroicon-o-lock-closed')
+                    ->action(fn(Season $record) => app(CloseSeason::class)->execute($record))
+                    ->hidden(fn(Season $record): bool => ! $record->is_active),
                 EditAction::make()
-                    ->using(fn (Season $record, array $data): Season => app(UpdateSeason::class)->update($record, $data)),
+                    ->using(fn(Season $record, array $data): Season => app(UpdateSeason::class)->execute($record, $data)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getPages(): array
