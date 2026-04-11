@@ -2,9 +2,11 @@
 
 return [
     'navigation_groups' => [
+        'school' => 'المدرسة',
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
+        'programs' => 'البرامج الدراسية والصيفية',
         'branches' => 'الفروع',
         'seasons' => 'المواسم',
     ],
@@ -19,8 +21,8 @@ return [
         'additional_info' => 'معلومات إضافية',
     ],
     'program_type' => [
-        'academic' => 'أكاديمي',
-        'summer' => 'صيفي',
+        'academic' => 'دراسي - رواء',
+        'summer' => 'صيفي - سنا',
     ],
     'season' => [
         'label' => 'موسم',
@@ -41,5 +43,19 @@ return [
             'one_active_per_type' => 'يُسمح بموسم واحد نشط فقط لكل نوع.',
             'max_active_seasons' => 'يمكن أن يكون موسمان نشطان كحد أقصى في نفس الوقت، أحدهما أكاديمي والآخر صيفي.',
         ],
+    ],
+    'program' => [
+        'label' => 'برنامج',
+        'plural_label' => 'البرامج',
+        'name' => 'اسم البرنامج',
+        'type' => 'نوع البرنامج',
+        'description' => 'وصف البرنامج',
+        'base_price' => 'السعر الأساسي',
+        'accept_installments' => 'يقبل الدفع بالتقسيط',
+        'contract' => 'العقد',
+        'is_open' => 'مفتوح للتسجيل',
+        'is_active' => 'تفعيل',
+        'sort_order' => 'ترتيب',
+        'contract_helper_text' => 'يمكنك استخدام المحرر لإضافة محتوى العقد، بما في ذلك النصوص والصور والجداول.',
     ],
 ];

@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['name', 'address', 'phone', 'mobile', 'is_active', 'additional_info'])]
 class Branch extends Model
@@ -27,6 +26,11 @@ class Branch extends Model
             'is_active' => 'boolean',
             'additional_info' => 'array',
         ];
+    }
+
+    public function programs(): BelongsToMany
+    {
+        return $this->belongsToMany(Program::class, 'program_branch');
     }
 
     public function scopeActive($query)
