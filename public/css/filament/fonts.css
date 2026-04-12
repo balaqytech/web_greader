@@ -1,0 +1,23 @@
+@font-face {
+    font-family: 'expo';
+    src: url('../../fonts/ExpoArabic-Book.woff2') format('woff2'),
+        url('../../fonts/ExpoArabic-Book.woff') format('woff'),
+        url('../../fonts/ExpoArabic-Book.ttf') format('truetype')
+        url('../../fonts/ExpoArabic-Book.svg') format('svg');
+    letter-spacing: 0;
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'expo';
+    src: url('../../fonts/ExpoArabic-SemiBold.woff2') format('woff2'),
+        url('../../fonts/ExpoArabic-SemiBold.woff') format('woff'),
+        url('../../fonts/ExpoArabic-SemiBold.ttf') format('truetype')
+        url('../../fonts/ExpoArabic-SemiBold.svg') format('svg');
+    letter-spacing: 0;
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}

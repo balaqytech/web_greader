@@ -90,6 +90,8 @@ return [
             'follow_up_later' => 'تم التواصل وجاري المتابعة لاحقاً',
         ],
         'contact' => [
+            'label' => 'تواصل',
+            'plural_label' => 'عمليات التواصل',
             'contacted_by' => 'تم التواصل بواسطة',
             'contact_method' => 'طريقة التواصل',
             'contact_result' => 'نتيجة التواصل',

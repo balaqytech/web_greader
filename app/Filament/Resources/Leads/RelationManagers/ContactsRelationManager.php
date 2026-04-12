@@ -56,6 +56,7 @@ class ContactsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('lead_id')
+            ->heading(__('admin.lead.contact.plural_label'))
             ->columns([
                 TextColumn::make('contacted_by')
                     ->label(__('admin.lead.contact.contacted_by'))
