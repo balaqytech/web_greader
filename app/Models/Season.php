@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use App\Enums\ProgramType;
-use Database\Factories\SeasonFactory;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -42,5 +41,10 @@ class Season extends Model
     public function scopeClosed(Builder $query): Builder
     {
         return $query->where('is_closed', true);
+    }
+
+    public static function current(ProgramType $program_type): self
+    {
+        return self::where('type', $program_type)->where('is_active', true)->first();
     }
 }
