@@ -3,9 +3,11 @@
 return [
     'navigation_groups' => [
         'school' => 'المدرسة',
+        'forms' => 'النماذج',
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
+        'leads' => 'نموذج إبداء الإهتمام',
         'programs' => 'البرامج الدراسية والصيفية',
         'branches' => 'الفروع',
         'seasons' => 'المواسم',
@@ -61,6 +63,7 @@ return [
     'lead' => [
         'label' => 'عميل محتمل',
         'plural_label' => 'العملاء المحتملين',
+        'lead_info' => 'معلومات الطلب',
         'ref_no' => 'الرقم المرجعي',
         'guardian_name' => 'اسم ولي الأمر',
         'student_name' => 'اسم الطالب',
@@ -71,7 +74,8 @@ return [
         'program_type' => 'نوع البرنامج',
         'status' => 'الحالة',
         'source' => 'المصدر',
-        'data' => 'البيانات',
+        'data' => 'بيانات إضافية',
+        'created_at' => 'تاريخ الإضافة',
         'states' => [
             'new' => 'جديد',
             'contacted' => 'تم التواصل',
@@ -84,6 +88,20 @@ return [
             'not_interested' => 'العميل غير مهتم',
             'no_response' => 'العميل لا يرد',
             'follow_up_later' => 'تم التواصل وجاري المتابعة لاحقاً',
+        ],
+        'contact' => [
+            'contacted_by' => 'تم التواصل بواسطة',
+            'contact_method' => 'طريقة التواصل',
+            'contact_result' => 'نتيجة التواصل',
+            'notes' => 'ملاحظات',
+            'follow_up_at' => 'تاريخ المتابعة',
+            'contacted_at' => 'تاريخ التواصل',
+        ],
+        'contact_methods' => [
+            'whatsapp' => 'واتساب',
+            'phone' => 'هاتف',
+            'email' => 'بريد إلكتروني',
+            'other' => 'أخرى',
         ],
     ],
 ];
