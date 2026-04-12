@@ -80,7 +80,7 @@ return [
         'states' => [
             'all' => 'الكل',
             'new' => 'جديد',
-            'contacted' => 'تم التواصل',
+            'contacted' => 'قيد التواصل',
             'interested' => 'مهتم',
             'not_interested' => 'غير مهتم',
             'no_response' => 'لا يوجد رد',
@@ -89,7 +89,7 @@ return [
             'interested' => 'العميل ابدى اهتمام وتم تحويل طلبه الى طلب تسجيل',
             'not_interested' => 'العميل غير مهتم',
             'no_response' => 'العميل لا يرد',
-            'follow_up_later' => 'تم التواصل وجاري المتابعة لاحقاً',
+            'follow_up_later' => 'تم التواصل وجاري المتابعة',
         ],
         'contact' => [
             'label' => 'تواصل',

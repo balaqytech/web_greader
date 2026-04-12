@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'webhooks' => [
+        'secret' => env('WEBHOOK_SECRET', 'secret'),
+        'lead' => [
+            'enabled' => env('WEBHOOK_LEAD_ENABLED', true),
+            'created_url' => env('WEBHOOK_LEAD_URL', 'https://www.uchat.com.au/api/iwh/fb149bff3f2f1dc61a752d37a527068e'),
+        ],
+    ],
+
 ];

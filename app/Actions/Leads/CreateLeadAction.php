@@ -2,9 +2,12 @@
 
 namespace App\Actions\Leads;
 
+use App\Enums\LeadContactMethod;
 use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
+use App\States\Leads\ContactedLead;
+use Spatie\WebhookServer\WebhookCall;
 
 class CreateLeadAction
 {
@@ -26,7 +29,7 @@ class CreateLeadAction
 
         $whatsapp = $this->formatWhatsapp($whatsapp);
 
-        return Lead::create([
+        $lead = Lead::create([
             'ref_no' => $ref_no,
             'whatsapp' => $whatsapp,
             'guardian_name' => $guardian_name,
@@ -38,11 +41,27 @@ class CreateLeadAction
             'season_id' => $season_id,
             'data' => $data,
         ]);
+
+        if (config('services.webhooks.lead.enabled')) {
+            $lead->status->transitionTo(
+                ContactedLead::class,
+                contactedBy: 'whatsapp_bot',
+                contactMethod: LeadContactMethod::Whatsapp,
+            );
+
+            WebhookCall::create()
+                ->url(config('services.webhooks.lead.created_url'))
+                ->payload($lead->toArray())
+                ->useSecret(config('services.webhooks.secret'))
+                ->dispatch();
+        }
+
+        return $lead;
     }
 
     private function generateRefNo(): string
     {
-        return now()->format('Ymd').str_pad(Lead::count() + 1, 6, '0', STR_PAD_LEFT);
+        return now()->format('Ymd') . str_pad(Lead::count() + 1, 6, '0', STR_PAD_LEFT);
     }
 
     private function formatWhatsapp(string $whatsapp): string

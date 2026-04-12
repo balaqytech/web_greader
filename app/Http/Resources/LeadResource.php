@@ -24,7 +24,8 @@ class LeadResource extends JsonResource
             'season_id' => $this->season_id,
             'program_id' => $this->program_id,
             'program_type' => $this->program_type->getLabel(),
-            'status' => $this->status->getLabel(),
+            'status' => $this->status,
+            'status_label' => $this->status->getLabel(),
             'source' => $this->source,
             'data' => $this->data,
         ];
