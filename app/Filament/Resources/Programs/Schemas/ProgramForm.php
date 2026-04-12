@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Programs\Schemas;
 
 use App\Enums\ProgramType;
+use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -58,6 +60,13 @@ class ProgramForm
                     ->required()
                     ->numeric()
                     ->default(0),
+                CheckboxList::make('branches')
+                    ->relationship('branches', 'name')
+                    ->label(__('admin.program.branches'))
+                    ->required()
+                    ->columns(4)
+                    ->columnSpanFull()
+                    ->bulkToggleable(),
             ]);
     }
 }
