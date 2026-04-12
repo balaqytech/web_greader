@@ -78,6 +78,7 @@ return [
         'data' => 'بيانات إضافية',
         'created_at' => 'تاريخ الإضافة',
         'states' => [
+            'all' => 'الكل',
             'new' => 'جديد',
             'contacted' => 'تم التواصل',
             'interested' => 'مهتم',
