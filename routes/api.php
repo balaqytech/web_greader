@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\ProgramController;
+use App\Http\Controllers\Api\V1\ReadingAssessmentFormSubmissionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -11,6 +12,13 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::apiResource('branches', BranchController::class)->only(['index', 'show']);
+
 Route::apiResource('programs', ProgramController::class)->only(['index', 'show']);
+
 Route::apiResource('leads', LeadController::class)->only(['index', 'store']);
 Route::post('leads/{lead}/transition', [LeadController::class, 'transition']);
+
+Route::apiResource(
+    'reading-assessment-form-submissions',
+    ReadingAssessmentFormSubmissionController::class
+)->only(['index', 'store', 'show']);

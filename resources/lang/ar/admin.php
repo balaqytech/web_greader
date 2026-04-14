@@ -7,10 +7,11 @@ return [
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
-        'leads' => 'نموذج إبداء الإهتمام',
+        'leads' => 'طلبات إبداء الإهتمام',
         'programs' => 'البرامج الدراسية والصيفية',
         'branches' => 'الفروع',
         'seasons' => 'المواسم',
+        'reading_assessment_form_submissions' => 'طلبات تقييم القراءة',
     ],
     'branch' => [
         'label' => 'فرع',
@@ -107,5 +108,23 @@ return [
             'email' => 'بريد إلكتروني',
             'other' => 'أخرى',
         ],
+    ],
+    'submission_statuses' => [
+        'new' => 'جديد',
+        'pending' => 'قيد الإنتظار',
+        'processing' => 'قيد المعالجة',
+        'completed' => 'مكتمل',
+    ],
+    'reading_assessment_form_submissions' => [
+        'label' => 'طلب تقييم قراءة',
+        'plural_label' => 'طلبات تقييم القراءة',
+        'student_name' => 'اسم الطالب',
+        'age' => 'العمر',
+        'grade_level' => 'المستوى الدراسي',
+        'guardian_name' => 'اسم ولي الأمر',
+        'whatsapp' => 'رقم الجوال',
+        'branch' => 'الفرع',
+        'additional_info' => 'معلومات إضافية',
+        'created_at' => 'تاريخ الإضافة',
     ],
 ];
