@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\DuplicateSubmissionException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReadingAssessmentFormSubmissionResource;
 use App\Models\ReadingAssessmentFormSubmission;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class ReadingAssessmentFormSubmissionController extends Controller
@@ -21,10 +23,10 @@ class ReadingAssessmentFormSubmissionController extends Controller
 
         $submissions = ReadingAssessmentFormSubmission::with('branch')
             ->when($request->branch_id, function ($query) use ($request) {
-                $query->where('branch_id', $request->branch_id);
+                $query->where('branch_id', 'like', '%' . $request->branch_id . '%');
             })
             ->when($request->whatsapp, function ($query) use ($request) {
-                $query->where('whatsapp', $request->whatsapp);
+                $query->where('whatsapp', 'like', '%' . $request->whatsapp . '%');
             })
             ->paginate(15);
 
@@ -46,7 +48,13 @@ class ReadingAssessmentFormSubmissionController extends Controller
             'additional_info' => 'nullable|array',
         ]);
 
-        $submission = ReadingAssessmentFormSubmission::create($data);
+        try {
+            $submission = ReadingAssessmentFormSubmission::create($data);
+        } catch (QueryException $e) {
+            if ($e->getCode() == 23000) {
+                throw new DuplicateSubmissionException();
+            }
+        }
 
         return new ReadingAssessmentFormSubmissionResource($submission);
     }
@@ -54,8 +62,8 @@ class ReadingAssessmentFormSubmissionController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ReadingAssessmentFormSubmission $readingAssessmentFormSubmission)
+    public function show(ReadingAssessmentFormSubmission $submission)
     {
-        return new ReadingAssessmentFormSubmissionResource($readingAssessmentFormSubmission);
+        return new ReadingAssessmentFormSubmissionResource($submission->load('branch'));
     }
 }

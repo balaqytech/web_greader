@@ -21,4 +21,8 @@ Route::post('leads/{lead}/transition', [LeadController::class, 'transition']);
 Route::apiResource(
     'reading-assessment-form-submissions',
     ReadingAssessmentFormSubmissionController::class
-)->only(['index', 'store', 'show']);
+)
+    ->parameters([
+        'reading-assessment-form-submissions' => 'submission'
+    ])
+    ->only(['index', 'store', 'show']);

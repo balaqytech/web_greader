@@ -21,7 +21,7 @@ class ReadingAssessmentFormSubmissionResource extends JsonResource
             'grade_level' => $this->grade_level,
             'guardian_name' => $this->guardian_name,
             'whatsapp' => $this->whatsapp,
-            'branch' => $this->branch->toArray(),
+            'branch' => new BranchResource($this->branch),
             'additional_info' => $this->additional_info,
         ];
     }
