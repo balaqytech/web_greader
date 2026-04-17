@@ -19,10 +19,16 @@ class ProgramResource extends JsonResource
             'name' => $this->name,
             'type' => $this->type->getLabel(),
             'description' => $this->description,
-            'base_price' => $this->base_price,
-            'accept_installments' => $this->accept_installments,
+            'min_birth_date' => $this->min_birth_date,
+            'max_birth_date' => $this->max_birth_date,
             'is_open' => $this->is_open,
-            'branches' => $this->branches->pluck('name', 'id'),
+            'branches' => $this->branches->map(function ($branch) {
+                return [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'price' => $branch->pivot->price,
+                ];
+            }),
         ];
     }
 }

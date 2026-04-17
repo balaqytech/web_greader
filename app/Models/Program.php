@@ -7,9 +7,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\Branch;
 
-#[Fillable(['type', 'name', 'description', 'base_price', 'accept_installments', 'contract', 'is_open', 'is_active', 'sort_order'])]
+#[Fillable(['type', 'name', 'description', 'accept_installments', 'min_birth_date', 'max_birth_date', 'contract', 'is_open', 'is_active', 'sort_order'])]
 class Program extends Model
 {
     use HasFactory;
@@ -19,7 +18,6 @@ class Program extends Model
         'is_active' => true,
         'is_open' => true,
         'accept_installments' => false,
-        'base_price' => 0,
     ];
 
     /**
@@ -29,8 +27,9 @@ class Program extends Model
     {
         return [
             'type' => ProgramType::class,
-            'base_price' => 'decimal:2',
             'accept_installments' => 'boolean',
+            'min_birth_date' => 'date',
+            'max_birth_date' => 'date',
             'is_open' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
@@ -39,7 +38,7 @@ class Program extends Model
 
     public function branches(): BelongsToMany
     {
-        return $this->belongsToMany(Branch::class, 'program_branch');
+        return $this->belongsToMany(Branch::class, 'program_branch')->withPivot('price');
     }
 
     public function scopeActive($query)

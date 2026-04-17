@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('branch_id')->constrained('branches')->onDelete('cascade');
             $table->foreignId('program_id')->constrained('programs')->onDelete('cascade');
+            $table->decimal('price', 10, 2)->default(0.00);
             $table->timestamps();
 
             $table->unique(['branch_id', 'program_id']);

@@ -16,8 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('description')->nullable();
             $table->string('type')->index();
-            $table->decimal('base_price', 10, 2)->default(0.00);
             $table->boolean('accept_installments')->default(false);
+            $table->date('min_birth_date')->nullable();
+            $table->date('max_birth_date')->nullable();
             $table->longText('contract')->nullable();
             $table->boolean('is_open')->default(true);
             $table->boolean('is_active')->default(true);

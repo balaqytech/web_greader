@@ -16,4 +16,26 @@ class EditProgram extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['branches'] = $this->record->branches
+            ->map(fn ($branch) => [
+                'branch_id' => $branch->id,
+                'price' => $branch->pivot->price,
+            ])
+            ->toArray();
+
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $branches = collect($this->data['branches'] ?? [])
+            ->mapWithKeys(fn (array $item) => [
+                $item['branch_id'] => ['price' => $item['price']],
+            ]);
+
+        $this->record->branches()->sync($branches);
+    }
 }

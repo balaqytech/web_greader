@@ -50,6 +50,10 @@ return [
     'program' => [
         'label' => 'برنامج',
         'plural_label' => 'البرامج',
+        'program_info' => 'معلومات البرنامج',
+        'branches_info' => 'معلومات الفروع',
+        'branch' => 'الفرع',
+        'branch_price' => 'سعر الفرع',
         'name' => 'اسم البرنامج',
         'type' => 'نوع البرنامج',
         'description' => 'وصف البرنامج',
