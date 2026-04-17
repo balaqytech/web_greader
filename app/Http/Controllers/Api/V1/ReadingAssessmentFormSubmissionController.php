@@ -2,15 +2,21 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\ReadingAssessment\CreateSubmission;
+use App\Enums\Source;
 use App\Exceptions\DuplicateSubmissionException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReadingAssessmentFormSubmissionResource;
 use App\Models\ReadingAssessmentFormSubmission;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ReadingAssessmentFormSubmissionController extends Controller
 {
+    public function  __construct(
+        private readonly CreateSubmission $createSubmission
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -40,21 +46,16 @@ class ReadingAssessmentFormSubmissionController extends Controller
     {
         $data = $request->validate([
             'student_name' => 'required|string',
-            'age' => 'required|integer',
+            'age' => 'required|integer|min:4|max:13',
             'grade_level' => 'required|string',
             'guardian_name' => 'required|string',
             'whatsapp' => 'required|string',
             'branch_id' => 'required|exists:branches,id',
+            'source' => ['required', Rule::enum(Source::class)],
             'additional_info' => 'nullable|array',
         ]);
 
-        try {
-            $submission = ReadingAssessmentFormSubmission::create($data);
-        } catch (QueryException $e) {
-            if ($e->getCode() == 23000) {
-                throw new DuplicateSubmissionException();
-            }
-        }
+        $submission = $this->createSubmission->execute($data);
 
         return new ReadingAssessmentFormSubmissionResource($submission);
     }

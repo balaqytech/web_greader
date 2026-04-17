@@ -20,4 +20,14 @@ enum SubmissionStatus: string implements HasLabel
             self::COMPELETED => __('admin.submission_statuses.completed'),
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::NEW => 'gray',
+            self::PENDING => 'warning',
+            self::PROCESSING => 'info',
+            self::COMPELETED => 'success',
+        };
+    }
 }

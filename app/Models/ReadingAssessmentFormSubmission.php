@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\Source;
+use App\Enums\SubmissionStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['student_name', 'age', 'grade_level', 'guardian_name', 'whatsapp', 'branch_id', 'status', 'additional_info'])]
+#[Fillable(['student_name', 'age', 'grade_level', 'guardian_name', 'whatsapp', 'branch_id', 'status', 'source', 'additional_info'])]
 class ReadingAssessmentFormSubmission extends Model
 {
     /**
@@ -15,6 +17,8 @@ class ReadingAssessmentFormSubmission extends Model
     protected function casts(): array
     {
         return [
+            'status' => SubmissionStatus::class,
+            'source' => Source::class,
             'additional_info' => 'array',
         ];
     }

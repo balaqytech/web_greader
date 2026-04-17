@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('whatsapp');
             $table->foreignIdFor(Branch::class)->constrained()->cascadeOnDelete();
             $table->string('status')->default('new');
+            $table->string('source')->default('website');
             $table->json('additional_info')->nullable();
             $table->timestamps();
 

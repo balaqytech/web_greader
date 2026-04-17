@@ -124,7 +124,13 @@ return [
         'guardian_name' => 'اسم ولي الأمر',
         'whatsapp' => 'رقم الجوال',
         'branch' => 'الفرع',
+        'status' => 'الحالة',
+        'source' => 'المصدر',
         'additional_info' => 'معلومات إضافية',
         'created_at' => 'تاريخ الإضافة',
+    ],
+    'sources' => [
+        'website' => 'الموقع',
+        'whatsapp_bot' => 'واتساب بوت',
     ],
 ];

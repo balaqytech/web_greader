@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ReadingAssessmentFormSubmissions;
 
+use App\Enums\SubmissionStatus;
 use App\Filament\Resources\ReadingAssessmentFormSubmissions\Pages\ManageReadingAssessmentFormSubmissions;
 use App\Models\ReadingAssessmentFormSubmission;
 use BackedEnum;
@@ -56,9 +57,17 @@ class ReadingAssessmentFormSubmissionResource extends Resource
                     ->label(__('admin.reading_assessment_form_submissions.whatsapp')),
                 TextColumn::make('branch.name')
                     ->label(__('admin.reading_assessment_form_submissions.branch')),
+                TextColumn::make('status')
+                    ->label(__('admin.reading_assessment_form_submissions.status'))
+                    ->badge()
+                    ->color(fn(Model $record): string => $record->status->color()),
+                TextColumn::make('source')
+                    ->label(__('admin.reading_assessment_form_submissions.source'))
+                    ->badge()
+                    ->color(fn(Model $record): string => $record->source->color()),
                 TextColumn::make('additional_info')
                     ->label(__('admin.reading_assessment_form_submissions.additional_info'))
-                    ->formatStateUsing(fn(Model $record) => collect($record->additional_info)->map(fn($item) => $item['key'] . ': ' . $item['value'])->implode('<br>'))
+                    ->formatStateUsing(fn(Model $record) => collect($record->additional_info)->each(fn($item, $key) => $key . ': ' . $item)->implode('<br>'))
                     ->html()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
@@ -71,14 +80,9 @@ class ReadingAssessmentFormSubmissionResource extends Resource
                 //
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                //
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getPages(): array
