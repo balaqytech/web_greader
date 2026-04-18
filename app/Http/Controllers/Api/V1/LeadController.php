@@ -46,9 +46,18 @@ class LeadController extends Controller
             'guardian_name' => 'required',
             'student_name' => 'required',
             'source' => 'required',
+            'affiliate_code' => 'nullable|string',
         ]);
 
-        $data = $request->input('data') ?? $request->except(['whatsapp', 'program_id', 'branch_id', 'guardian_name', 'student_name', 'source']);
+        $data = $request->input('data') ?? $request->except([
+            'whatsapp',
+            'program_id',
+            'branch_id',
+            'guardian_name',
+            'student_name',
+            'source',
+            'affiliate_code',
+        ]);
 
         $lead = $this->createLeadAction->execute(
             $validated['whatsapp'],
@@ -58,6 +67,7 @@ class LeadController extends Controller
             $validated['branch_id'],
             $validated['source'],
             $data,
+            $validated['affiliate_code'] ?? null,
         );
 
         return new LeadResource($lead);

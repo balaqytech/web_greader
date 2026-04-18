@@ -3,6 +3,7 @@
 namespace App\Actions\Leads;
 
 use App\Enums\LeadContactMethod;
+use App\Models\Affiliate;
 use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
@@ -22,12 +23,24 @@ class CreateLeadAction
         int $branch_id,
         string $source,
         array $data = [],
+        ?string $affiliate_code = null,
     ): Lead {
         $ref_no = $this->generateRefNo();
         $program_type = Program::find($program_id)?->type;
         $season_id = Season::current($program_type)->id;
 
         $whatsapp = $this->formatWhatsapp($whatsapp);
+
+        $affiliate_id = null;
+        $affiliate_code_snapshot = null;
+
+        if ($affiliate_code) {
+            $affiliate = Affiliate::where('code', $affiliate_code)->first();
+            if ($affiliate) {
+                $affiliate_id = $affiliate->id;
+                $affiliate_code_snapshot = $affiliate->code;
+            }
+        }
 
         $lead = Lead::create([
             'ref_no' => $ref_no,
@@ -40,9 +53,11 @@ class CreateLeadAction
             'program_type' => $program_type,
             'season_id' => $season_id,
             'data' => $data,
+            'affiliate_id' => $affiliate_id,
+            'affiliate_code_snapshot' => $affiliate_code_snapshot,
         ]);
 
-        if (config('services.webhooks.lead.enabled')) {
+        if (config('services.webhooks.lead.enabled') && app()->environment('production')) {
             $lead->status->transitionTo(
                 ContactedLead::class,
                 contactedBy: 'whatsapp_bot',
@@ -61,7 +76,7 @@ class CreateLeadAction
 
     private function generateRefNo(): string
     {
-        return now()->format('Ymd') . str_pad(Lead::count() + 1, 6, '0', STR_PAD_LEFT);
+        return now()->format('Ymd').str_pad(Lead::count() + 1, 6, '0', STR_PAD_LEFT);
     }
 
     private function formatWhatsapp(string $whatsapp): string

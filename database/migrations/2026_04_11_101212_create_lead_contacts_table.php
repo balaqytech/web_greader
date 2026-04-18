@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Affiliate;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,6 +21,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->dateTime('follow_up_at')->nullable()->index();
             $table->dateTime('contacted_at')->index();
+            $table->foreignIdFor(Affiliate::class, 'affiliate_id')->nullable();
+            $table->string('affiliate_code_snapshot')->nullable();
             $table->timestamps();
         });
     }

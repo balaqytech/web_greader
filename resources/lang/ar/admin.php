@@ -4,6 +4,7 @@ return [
     'navigation_groups' => [
         'school' => 'المدرسة',
         'forms' => 'النماذج',
+        'affiliate_marketing' => 'التسويق بالعمولة',
         'settings' => 'الإعدادات',
     ],
     'navigation' => [
@@ -11,6 +12,7 @@ return [
         'programs' => 'البرامج الدراسية والصيفية',
         'branches' => 'الفروع',
         'seasons' => 'المواسم',
+        'affiliates' => 'المسوقين',
         'reading_assessment_form_submissions' => 'طلبات تقييم القراءة',
     ],
     'branch' => [
@@ -136,5 +138,36 @@ return [
     'sources' => [
         'website' => 'الموقع',
         'whatsapp_bot' => 'واتساب بوت',
+        'dashboard' => 'لوحة التحكم',
+    ],
+    'affiliate' => [
+        'label' => 'مسوق',
+        'plural_label' => 'المسوقين',
+        'affiliate_information' => 'معلومات المسوق',
+        'name' => 'اسم المسوق',
+        'code' => 'رمز المسوق',
+        'category' => 'فئة المسوق',
+        'whatsapp' => 'رقم الجوال',
+        'password' => 'كلمة المرور',
+        'email' => 'البريد الإلكتروني',
+        'status' => 'الحالة',
+        'notes' => 'ملاحظات',
+        'verified_by' => 'تم التحقق بواسطة',
+        'verified_at' => 'تاريخ التحقق',
+        'rejected_by' => 'تم الرفض بواسطة',
+        'rejected_at' => 'تاريخ الرفض',
+        'creation_source' => 'مصدر الإضافة',
+        'verify' => 'قبول',
+        'reject' => 'رفض',
+        'states' => [
+            'pending' => 'قيد الانتظار',
+            'verified' => 'تم التحقق',
+            'rejected' => 'تم الرفض',
+        ],
+        'categories' => [
+            'marketer' => 'مسوق',
+            'influencer' => 'مؤثر',
+            'other' => 'أخرى',
+        ],
     ],
 ];
