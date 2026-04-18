@@ -1,0 +1,59 @@
+{
+  "public/fonts/ExpoArabic-Book.svg": {
+    "file": "assets/ExpoArabic-Book-PcCOyZY4.svg",
+    "src": "public/fonts/ExpoArabic-Book.svg"
+  },
+  "public/fonts/ExpoArabic-Book.ttf": {
+    "file": "assets/ExpoArabic-Book-DG4Cu4QO.ttf",
+    "src": "public/fonts/ExpoArabic-Book.ttf"
+  },
+  "public/fonts/ExpoArabic-Book.woff": {
+    "file": "assets/ExpoArabic-Book-BhqZztTy.woff",
+    "src": "public/fonts/ExpoArabic-Book.woff"
+  },
+  "public/fonts/ExpoArabic-Book.woff2": {
+    "file": "assets/ExpoArabic-Book-CHfNb4vI.woff2",
+    "src": "public/fonts/ExpoArabic-Book.woff2"
+  },
+  "public/fonts/ExpoArabic-SemiBold.svg": {
+    "file": "assets/ExpoArabic-SemiBold-CiMZQuro.svg",
+    "src": "public/fonts/ExpoArabic-SemiBold.svg"
+  },
+  "public/fonts/ExpoArabic-SemiBold.ttf": {
+    "file": "assets/ExpoArabic-SemiBold-CuDuaim-.ttf",
+    "src": "public/fonts/ExpoArabic-SemiBold.ttf"
+  },
+  "public/fonts/ExpoArabic-SemiBold.woff": {
+    "file": "assets/ExpoArabic-SemiBold-BBboKe_A.woff",
+    "src": "public/fonts/ExpoArabic-SemiBold.woff"
+  },
+  "public/fonts/ExpoArabic-SemiBold.woff2": {
+    "file": "assets/ExpoArabic-SemiBold-DjD7hrvy.woff2",
+    "src": "public/fonts/ExpoArabic-SemiBold.woff2"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-DbnERMcX.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "assets": [
+      "assets/ExpoArabic-Book-DG4Cu4QO.ttf",
+      "assets/ExpoArabic-Book-BhqZztTy.woff",
+      "assets/ExpoArabic-Book-CHfNb4vI.woff2",
+      "assets/ExpoArabic-Book-PcCOyZY4.svg",
+      "assets/ExpoArabic-SemiBold-CuDuaim-.ttf",
+      "assets/ExpoArabic-SemiBold-BBboKe_A.woff",
+      "assets/ExpoArabic-SemiBold-DjD7hrvy.woff2",
+      "assets/ExpoArabic-SemiBold-CiMZQuro.svg"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-34mOoJaZ.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  }
+}

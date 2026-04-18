@@ -12,14 +12,14 @@ use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 #[Fillable(['name', 'code', 'category', 'whatsapp', 'password', 'email', 'status', 'notes', 'verified_by', 'verified_at', 'rejected_by', 'rejected_at', 'creation_source'])]
-class Affiliate extends Model
+class Affiliate extends Authenticatable
 {
     use HasFactory;
     use HasWhatsapp;
@@ -29,7 +29,7 @@ class Affiliate extends Model
         'creation_source' => 'website',
     ];
 
-    protected $hidden = ['password'];
+    protected $hidden = ['password', 'remember_token'];
 
     protected function casts(): array
     {
@@ -45,8 +45,20 @@ class Affiliate extends Model
     protected function password(): Attribute
     {
         return Attribute::make(
-            set: fn(string $value) => Hash::make($value),
+            set: fn (string $value) => Hash::make($value),
         );
+    }
+
+    /**
+     * Get the user's initials.
+     */
+    public function initials(): string
+    {
+        return Str::of($this->name)
+            ->explode(' ')
+            ->take(2)
+            ->map(fn ($word) => Str::substr($word, 0, 1))
+            ->implode('');
     }
 
     public function verifiedBy(): BelongsTo
@@ -84,7 +96,7 @@ class Affiliate extends Model
         $prefix = strtoupper(Str::substr(Str::slug($name), 0, 3));
 
         do {
-            $code = $prefix . rand(100, 999);
+            $code = $prefix.rand(100, 999);
         } while (self::where('code', $code)->exists());
 
         return $code;
