@@ -32,28 +32,27 @@ class AffiliateInfolist
                         TextEntry::make('status')
                             ->label(__('admin.affiliate.status'))
                             ->badge()
-                            ->color(fn ($state) => $state->color())
-                            ->formatStateUsing(fn ($state) => $state->getLabel()),
+                            ->color(fn($state) => $state->color())
+                            ->formatStateUsing(fn($state) => $state->getLabel()),
                         TextEntry::make('verifiedBy.name')
                             ->label(__('admin.affiliate.verified_by'))
-                            ->visible(fn ($record) => $record->verified_by),
+                            ->visible(fn($record) => $record->verified_by),
                         TextEntry::make('verified_at')
                             ->label(__('admin.affiliate.verified_at'))
                             ->dateTime()
                             ->placeholder('-')
-                            ->visible(fn ($record) => $record->verified_at),
+                            ->visible(fn($record) => $record->verified_at),
                         TextEntry::make('rejectedBy.name')
                             ->label(__('admin.affiliate.rejected_by'))
-                            ->visible(fn ($record) => $record->rejected_by),
+                            ->visible(fn($record) => $record->rejected_by),
                         TextEntry::make('rejected_at')
                             ->label(__('admin.affiliate.rejected_at'))
                             ->dateTime()
                             ->placeholder('-')
-                            ->visible(fn ($record) => $record->rejected_at),
+                            ->visible(fn($record) => $record->rejected_at),
                         TextEntry::make('creation_source')
                             ->label(__('admin.affiliate.creation_source'))
-                            ->badge()
-                            ->color(fn ($state) => $state->color()),
+                            ->badge(),
                         TextEntry::make('created_at')
                             ->label(__('admin.lead.created_at'))
                             ->dateTime()
