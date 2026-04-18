@@ -25,10 +25,6 @@ class ProgramsTable
                     ->label(__('admin.program.type'))
                     ->badge()
                     ->searchable(),
-                TextColumn::make('base_price')
-                    ->label(__('admin.program.base_price'))
-                    ->suffix(' ر.ع')
-                    ->sortable(),
                 IconColumn::make('accept_installments')
                     ->label(__('admin.program.accept_installments'))
                     ->boolean(),

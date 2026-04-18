@@ -56,6 +56,9 @@ class BranchResource extends Resource
                 TextInput::make('address')
                     ->label(__('admin.branch.address'))
                     ->default(null),
+                TextInput::make('governorate')
+                    ->label(__('admin.branch.governorate'))
+                    ->default(null),
                 TextInput::make('phone')
                     ->label(__('admin.branch.phone'))
                     ->tel()
@@ -84,6 +87,9 @@ class BranchResource extends Resource
                     ->searchable(),
                 TextColumn::make('address')
                     ->label(__('admin.branch.address'))
+                    ->searchable(),
+                TextColumn::make('governorate')
+                    ->label(__('admin.branch.governorate'))
                     ->searchable(),
                 TextColumn::make('phone')
                     ->label(__('admin.branch.phone'))

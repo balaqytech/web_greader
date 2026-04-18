@@ -19,7 +19,7 @@ class AffiliateLoginController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'whatsapp' => ['required', 'string'],
+            'whatsapp' => ['required', 'string', 'regex:/^\+?[0-9]+$/'], //validate that it is phone number
             'password' => ['required', 'string'],
         ]);
 

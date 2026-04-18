@@ -26,6 +26,7 @@ class ProgramResource extends JsonResource
                 return [
                     'id' => $branch->id,
                     'name' => $branch->name,
+                    'governorate' => $branch->governorate,
                     'price' => $branch->pivot->price,
                 ];
             }),

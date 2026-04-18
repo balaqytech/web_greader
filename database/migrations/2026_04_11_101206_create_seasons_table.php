@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\ProgramType;
+use App\Models\Season;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -21,6 +23,22 @@ return new class extends Migration
             $table->timestamp('closed_at')->nullable()->index();
             $table->timestamps();
         });
+
+        Season::create([
+            'name' => 'صيف ' . date('Y'),
+            'type' => ProgramType::Summer,
+            'start_date' => date('Y') . '-06-01',
+            'end_date' => date('Y') . '-08-31',
+            'is_active' => true,
+        ]);
+
+        Season::create([
+            'name' => 'العام الدراسي ' . date('Y')  . '-' . date('Y') + 1,
+            'type' => ProgramType::Academic,
+            'start_date' => date('Y') . '-09-01',
+            'end_date' => (date('Y') + 1) . '-03-31',
+            'is_active' => true,
+        ]);
     }
 
     /**

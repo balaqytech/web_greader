@@ -16,6 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('name')->unique();
             $table->string('address')->nullable();
+            $table->string('governorate')->nullable();
             $table->string('phone')->nullable();
             $table->string('mobile')->nullable();
             $table->boolean('is_active')->default(true)->index();

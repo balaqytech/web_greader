@@ -20,6 +20,7 @@ return [
         'plural_label' => 'الفروع',
         'name' => 'اسم الفرع',
         'address' => 'عنوان الفرع',
+        'governorate' => 'المحافظة',
         'phone' => 'رقم الهاتف',
         'mobile' => 'رقم الجوال',
         'is_active' => 'تفعيل',

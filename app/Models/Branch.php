@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['name', 'address', 'phone', 'mobile', 'is_active', 'additional_info'])]
+#[Fillable(['name', 'address', 'governorate', 'phone', 'mobile', 'is_active', 'additional_info'])]
 class Branch extends Model
 {
     /** @use HasFactory<BranchFactory> */
@@ -36,5 +36,10 @@ class Branch extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeGovernorate($query, string $governorate)
+    {
+        return $query->where('governorate', $governorate);
     }
 }
