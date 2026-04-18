@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProgramType;
+use App\Enums\Source;
 use App\States\Leads\LeadState;
 use App\Traits\HasAffiliate;
 use App\Traits\HasWhatsapp;
@@ -30,6 +31,7 @@ class Lead extends Model
             'program_type' => ProgramType::class,
             'status' => LeadState::class,
             'data' => 'array',
+            'source' => Source::class,
         ];
     }
 

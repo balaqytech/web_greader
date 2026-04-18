@@ -6,12 +6,12 @@ class Interested extends LeadState
 {
     public static $name = 'interested';
 
-    public function getLabel(): string
+    public static function getLabel(): string
     {
         return __('admin.lead.states.interested');
     }
 
-    public function color(): string
+    public static function color(): string
     {
         return 'success';
     }

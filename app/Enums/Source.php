@@ -2,9 +2,10 @@
 
 namespace App\Enums;
 
+use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum Source: string implements HasLabel
+enum Source: string implements HasColor, HasLabel
 {
     case WEBSITE = 'website';
     case WHATSAPP_BOT = 'whatsapp_bot';
@@ -19,12 +20,12 @@ enum Source: string implements HasLabel
         };
     }
 
-    public function color(): string
+    public function getColor(): string
     {
         return match ($this) {
-            self::WEBSITE => 'gray',
+            self::WEBSITE => 'info',
             self::WHATSAPP_BOT => 'success',
-            self::DASHBOARD => 'info',
+            self::DASHBOARD => 'gray',
         };
     }
 }

@@ -6,12 +6,12 @@ class NewLead extends LeadState
 {
     public static $name = 'new';
 
-    public function getLabel(): string
+    public static function getLabel(): string
     {
         return __('admin.lead.states.new');
     }
 
-    public function color(): string
+    public static function color(): string
     {
         return 'gray';
     }

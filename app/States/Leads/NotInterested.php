@@ -6,12 +6,12 @@ class NotInterested extends LeadState
 {
     public static $name = 'not_interested';
 
-    public function getLabel(): string
+    public static function getLabel(): string
     {
         return __('admin.lead.states.not_interested');
     }
 
-    public function color(): string
+    public static function color(): string
     {
         return 'danger';
     }

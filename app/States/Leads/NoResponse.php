@@ -6,12 +6,12 @@ class NoResponse extends LeadState
 {
     public static $name = 'no_response';
 
-    public function getLabel(): string
+    public static function getLabel(): string
     {
         return __('admin.lead.states.no_response');
     }
 
-    public function color(): string
+    public static function color(): string
     {
         return 'warning';
     }

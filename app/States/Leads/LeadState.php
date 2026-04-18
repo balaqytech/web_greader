@@ -11,9 +11,9 @@ use Spatie\ModelStates\StateConfig;
 
 abstract class LeadState extends State
 {
-    abstract public function getLabel(): string;
+    abstract public static function getLabel(): string;
 
-    abstract public function color(): string;
+    abstract public static function color(): string;
 
     public static function config(): StateConfig
     {
