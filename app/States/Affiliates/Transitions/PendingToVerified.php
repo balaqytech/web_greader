@@ -17,6 +17,7 @@ class PendingToVerified extends Transition
     public function handle(): Affiliate
     {
         $this->affiliate->forceFill([
+            'code' => $this->affiliate->generateUniqueCode($this->affiliate->name),
             'status' => Verified::$name,
             'verified_by' => $this->verifiedBy->id,
             'verified_at' => now(),
