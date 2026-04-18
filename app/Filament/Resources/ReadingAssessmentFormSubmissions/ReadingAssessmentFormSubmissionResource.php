@@ -6,10 +6,12 @@ use App\Enums\SubmissionStatus;
 use App\Filament\Resources\ReadingAssessmentFormSubmissions\Pages\ManageReadingAssessmentFormSubmissions;
 use App\Models\ReadingAssessmentFormSubmission;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -63,8 +65,7 @@ class ReadingAssessmentFormSubmissionResource extends Resource
                     ->color(fn(Model $record): string => $record->status->color()),
                 TextColumn::make('source')
                     ->label(__('admin.reading_assessment_form_submissions.source'))
-                    ->badge()
-                    ->color(fn(Model $record): string => $record->source->color()),
+                    ->badge(),
                 TextColumn::make('additional_info')
                     ->label(__('admin.reading_assessment_form_submissions.additional_info'))
                     ->formatStateUsing(fn(Model $record) => collect($record->additional_info)->each(fn($item, $key) => $key . ': ' . $item)->implode('<br>'))
@@ -80,7 +81,19 @@ class ReadingAssessmentFormSubmissionResource extends Resource
                 //
             ])
             ->recordActions([
-                //
+                Action::make('change_status')
+                    ->label(__('admin.reading_assessment_form_submissions.change_status'))
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary')
+                    ->modalWidth('md')
+                    ->schema([
+                        Select::make('status')
+                            ->label(__('admin.reading_assessment_form_submissions.status'))
+                            ->options(SubmissionStatus::class),
+                    ])
+                    ->action(function (ReadingAssessmentFormSubmission $record, array $data): void {
+                        $record->update($data);
+                    }),
             ])
             ->defaultSort('created_at', 'desc');
     }

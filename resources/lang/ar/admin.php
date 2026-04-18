@@ -117,8 +117,9 @@ return [
         ],
     ],
     'submission_statuses' => [
+        'all' => 'الكل',
         'new' => 'جديد',
-        'pending' => 'قيد الإنتظار',
+        'pending' => 'قيد التواصل',
         'processing' => 'قيد المعالجة',
         'completed' => 'مكتمل',
     ],
@@ -135,6 +136,7 @@ return [
         'source' => 'المصدر',
         'additional_info' => 'معلومات إضافية',
         'created_at' => 'تاريخ الإضافة',
+        'change_status' => 'تغيير الحالة',
     ],
     'sources' => [
         'website' => 'الموقع',
