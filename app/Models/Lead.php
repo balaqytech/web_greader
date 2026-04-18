@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProgramType;
 use App\States\Leads\LeadState;
 use App\Traits\HasAffiliate;
+use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,10 +17,8 @@ use Spatie\ModelStates\HasStates;
 class Lead extends Model
 {
     use HasAffiliate;
-
-    /** @use HasFactory<LeadFactory> */
     use HasFactory;
-
+    use HasWhatsapp;
     use HasStates;
 
     /**
@@ -32,6 +31,18 @@ class Lead extends Model
             'status' => LeadState::class,
             'data' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $lead) {
+            $lead->ref_no = now()->format('Ymd') . str_pad(
+                (string) (Lead::latest()->first()?->id ?? 0 + 1),
+                6,
+                '0',
+                STR_PAD_LEFT
+            );
+        });
     }
 
     public function branch(): BelongsTo

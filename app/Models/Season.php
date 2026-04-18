@@ -45,6 +45,6 @@ class Season extends Model
 
     public static function current(ProgramType $program_type): self
     {
-        return self::where('type', $program_type)->where('is_active', true)->first();
+        return self::where('type', $program_type)->where('is_active', true)->firstOrFail();
     }
 }

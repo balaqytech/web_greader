@@ -5,6 +5,10 @@ namespace App\Models;
 use App\Enums\AffiliateCategory;
 use App\Enums\Source;
 use App\States\Affiliates\AffiliateState;
+use App\States\Affiliates\Pending;
+use App\States\Affiliates\Rejected;
+use App\States\Affiliates\Verified;
+use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +22,7 @@ use Illuminate\Support\Str;
 class Affiliate extends Model
 {
     use HasFactory;
+    use HasWhatsapp;
 
     protected $attributes = [
         'status' => 'pending',
@@ -40,16 +45,7 @@ class Affiliate extends Model
     protected function password(): Attribute
     {
         return Attribute::make(
-            set: fn (string $value) => Hash::make($value),
-        );
-    }
-
-    protected function whatsapp(): Attribute
-    {
-        return Attribute::make(
-            set: fn (string $value) => normalize_phone_number(
-                convert_eastern_arabic_to_arabic($value)
-            ),
+            set: fn(string $value) => Hash::make($value),
         );
     }
 
@@ -68,14 +64,44 @@ class Affiliate extends Model
         return $this->hasMany(Lead::class);
     }
 
+    public function scopeVerified($query)
+    {
+        return $query->where('status', Verified::class);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', Pending::class);
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', Rejected::class);
+    }
+
     public static function generateUniqueCode(string $name): string
     {
         $prefix = strtoupper(Str::substr(Str::slug($name), 0, 3));
 
         do {
-            $code = $prefix.rand(100, 999);
+            $code = $prefix . rand(100, 999);
         } while (self::where('code', $code)->exists());
 
         return $code;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->status->equals(Verified::class);
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status->equals(Pending::class);
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status->equals(Rejected::class);
     }
 }
