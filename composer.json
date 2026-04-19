@@ -18,6 +18,7 @@
         "laravel/tinker": "^3.0",
         "livewire/flux": "^2.13.1",
         "livewire/livewire": "^4.1",
+        "opcodesio/log-viewer": "^3.24",
         "spatie/laravel-model-states": "^2.13",
         "spatie/laravel-webhook-server": "^3.10",
         "tapp/filament-auditing": "~4.0"
