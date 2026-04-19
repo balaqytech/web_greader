@@ -41,6 +41,10 @@ return [
             'enabled' => env('WEBHOOK_LEAD_ENABLED', true),
             'created_url' => env('WEBHOOK_LEAD_URL', 'https://www.uchat.com.au/api/iwh/fb149bff3f2f1dc61a752d37a527068e'),
         ],
+        'affiliate' => [
+            'enabled' => env('WEBHOOK_AFFILIATE_ENABLED', true),
+            'verified_url' => env('WEBHOOK_AFFILIATE_VERIFIED_URL', 'https://www.uchat.com.au/api/iwh/464f76534bafb5f8a5904bd55f3747ae'),
+        ],
     ],
 
 ];
