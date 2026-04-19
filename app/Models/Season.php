@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Enums\ProgramType;
+use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['name', 'type', 'start_date', 'end_date', 'is_active', 'closed_at'])]
 class Season extends Model

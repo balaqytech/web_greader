@@ -17,12 +17,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use OwenIt\Auditing\Contracts\Auditable;
 
 #[Fillable(['name', 'code', 'category', 'whatsapp', 'password', 'email', 'status', 'notes', 'verified_by', 'verified_at', 'rejected_by', 'rejected_at', 'creation_source'])]
-class Affiliate extends Authenticatable
+class Affiliate extends Authenticatable implements Auditable
 {
     use HasFactory;
     use HasWhatsapp;
+    use \OwenIt\Auditing\Auditable;
 
     protected $attributes = [
         'status' => 'pending',
@@ -45,7 +47,7 @@ class Affiliate extends Authenticatable
     protected function password(): Attribute
     {
         return Attribute::make(
-            set: fn (string $value) => Hash::make($value),
+            set: fn(string $value) => Hash::make($value),
         );
     }
 
@@ -57,7 +59,7 @@ class Affiliate extends Authenticatable
         return Str::of($this->name)
             ->explode(' ')
             ->take(2)
-            ->map(fn ($word) => Str::substr($word, 0, 1))
+            ->map(fn($word) => Str::substr($word, 0, 1))
             ->implode('');
     }
 
@@ -96,7 +98,7 @@ class Affiliate extends Authenticatable
         $prefix = strtoupper(Str::substr(Str::slug($name), 0, 3));
 
         do {
-            $code = $prefix.rand(100, 999);
+            $code = $prefix . rand(100, 999);
         } while (self::where('code', $code)->exists());
 
         return $code;

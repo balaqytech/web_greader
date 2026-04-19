@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['name', 'address', 'governorate', 'phone', 'mobile', 'is_active', 'additional_info'])]

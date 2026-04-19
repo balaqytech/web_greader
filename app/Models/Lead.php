@@ -5,11 +5,11 @@ namespace App\Models;
 use App\Enums\ProgramType;
 use App\Enums\Source;
 use App\States\Leads\LeadState;
+use App\Support\Model;
 use App\Traits\HasAffiliate;
 use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\ModelStates\HasStates;
@@ -39,7 +39,7 @@ class Lead extends Model
     {
         static::creating(function (self $lead) {
             $lead->ref_no = now()->format('Ymd') . str_pad(
-                (string) (Lead::latest()->first()?->id ?? 0 + 1),
+                (string) (Lead::count() + 1),
                 6,
                 '0',
                 STR_PAD_LEFT

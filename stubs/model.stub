@@ -1,0 +1,11 @@
+<?php
+
+namespace {{ namespace }};
+
+{{ factoryImport }}
+use App\Support\Model;
+
+class {{ class }} extends Model
+{
+    {{ factory }}
+}

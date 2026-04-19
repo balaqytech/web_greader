@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Enums\ProgramType;
+use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['type', 'name', 'description', 'accept_installments', 'min_birth_date', 'max_birth_date', 'contract', 'is_open', 'is_active', 'sort_order'])]
