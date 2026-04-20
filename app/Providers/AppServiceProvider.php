@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
@@ -28,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         LogViewer::auth(fn($request) => Auth::check());
+
+        FilamentShield::prohibitDestructiveCommands(app()->isProduction());
     }
 
     /**
