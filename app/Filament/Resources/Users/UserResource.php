@@ -69,6 +69,11 @@ class UserResource extends Resource
                     ->label(__('admin.user.role'))
                     ->options(Role::all()->pluck('name', 'name')->toArray())
                     ->required(),
+                Select::make('branch_id')
+                    ->label(__('admin.user.branch'))
+                    ->relationship('branch', 'name')
+                    ->helperText(__('admin.user.branch_helper_text'))
+                    ->required(),
             ]);
     }
 
@@ -91,9 +96,19 @@ class UserResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('branch.name')
+                    ->label(__('admin.user.branch'))
+                    ->searchable(),
             ])
             ->filters([
                 //
+            ])
+            ->recordActions([
+                EditAction::make()
+                    ->after(function (User $record, $data) {
+                        $record->roles()->detach();
+                        $record->assignRole($data['role']);
+                    }),
             ]);
     }
 

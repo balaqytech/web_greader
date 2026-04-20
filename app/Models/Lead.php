@@ -4,16 +4,19 @@ namespace App\Models;
 
 use App\Enums\ProgramType;
 use App\Enums\Source;
+use App\Models\Scopes\BranchScope;
 use App\States\Leads\LeadState;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
 use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\ModelStates\HasStates;
 
+#[ScopedBy(BranchScope::class)]
 #[Fillable(['ref_no', 'guardian_name', 'student_name', 'whatsapp', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
 class Lead extends Model
 {

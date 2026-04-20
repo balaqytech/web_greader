@@ -4,10 +4,13 @@ namespace App\Models;
 
 use App\Enums\Source;
 use App\Enums\SubmissionStatus;
+use App\Models\Scopes\BranchScope;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ScopedBy(BranchScope::class)]
 #[Fillable(['student_name', 'age', 'grade_level', 'guardian_name', 'whatsapp', 'branch_id', 'status', 'source', 'additional_info'])]
 class ReadingAssessmentFormSubmission extends Model
 {
