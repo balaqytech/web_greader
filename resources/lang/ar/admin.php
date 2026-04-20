@@ -6,6 +6,7 @@ return [
         'forms' => 'النماذج',
         'affiliate_marketing' => 'التسويق بالعمولة',
         'settings' => 'الإعدادات',
+        'roles_and_permissions' => 'الأدوار والصلاحيات',
     ],
     'navigation' => [
         'leads' => 'طلبات إبداء الإهتمام',
@@ -14,6 +15,7 @@ return [
         'seasons' => 'المواسم',
         'affiliates' => 'المسوقين',
         'reading_assessment_form_submissions' => 'طلبات تقييم القراءة',
+        'users' => 'المستخدمين',
     ],
     'branch' => [
         'label' => 'فرع',
@@ -173,5 +175,14 @@ return [
             'influencer' => 'مؤثر',
             'other' => 'أخرى',
         ],
+    ],
+    'user' => [
+        'label' => 'مستخدم',
+        'plural_label' => 'المستخدمين',
+        'name' => 'اسم المستخدم',
+        'email' => 'البريد الإلكتروني',
+        'password' => 'كلمة المرور',
+        'role' => 'الدور',
+        'created_at' => 'تاريخ الإضافة',
     ],
 ];
