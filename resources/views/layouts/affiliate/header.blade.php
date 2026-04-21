@@ -37,6 +37,13 @@
             </div>
         </div>
         <flux:menu.separator />
+        <flux:menu.item icon="user" :href="route('affiliate.profile.edit')" wire:navigate data-test="profile-link">
+            {{ __('affiliate.profile.title') }}
+        </flux:menu.item>
+        <flux:menu.item icon="lock-closed" :href="route('affiliate.password.edit')" wire:navigate data-test="password-link">
+            {{ __('affiliate.password.title') }}
+        </flux:menu.item>
+        <flux:menu.separator />
         <flux:menu.radio.group>
             <form method="POST" action="{{ route('affiliate.logout') }}" class="w-full">
                 @csrf
@@ -67,6 +74,15 @@
                 <flux:sidebar.group :heading="__('Platform')">
                     <flux:sidebar.item icon="layout-grid" :href="route('affiliate.dashboard')" :current="request()->routeIs('affiliate.dashboard')" wire:navigate>
                         {{ __('affiliate.dashboard.title')  }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('affiliate.settings.title')">
+                    <flux:sidebar.item icon="user" :href="route('affiliate.profile.edit')" :current="request()->routeIs('affiliate.profile.*')" wire:navigate>
+                        {{ __('affiliate.profile.title') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="lock-closed" :href="route('affiliate.password.edit')" :current="request()->routeIs('affiliate.password.*')" wire:navigate>
+                        {{ __('affiliate.password.title') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>

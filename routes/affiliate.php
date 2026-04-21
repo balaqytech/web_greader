@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Affiliate\AffiliateLoginController;
 use App\Http\Controllers\Affiliate\AffiliateLogoutController;
+use App\Http\Controllers\Affiliate\AffiliatePasswordController;
+use App\Http\Controllers\Affiliate\AffiliateProfileController;
 use App\Http\Controllers\Affiliate\AffiliateRegisterController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +17,12 @@ Route::middleware('guest:affiliate')->group(function () {
 
 Route::middleware('auth:affiliate')->group(function () {
     Route::view('dashboard', 'affiliate.dashboard')->name('affiliate.dashboard');
+
+    Route::get('profile', [AffiliateProfileController::class, 'edit'])->name('affiliate.profile.edit');
+    Route::put('profile', [AffiliateProfileController::class, 'update'])->name('affiliate.profile.update');
+
+    Route::get('password', [AffiliatePasswordController::class, 'edit'])->name('affiliate.password.edit');
+    Route::put('password', [AffiliatePasswordController::class, 'update'])->name('affiliate.password.update');
 
     Route::post('logout', AffiliateLogoutController::class)->name('affiliate.logout');
 });

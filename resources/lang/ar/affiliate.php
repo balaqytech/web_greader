@@ -62,4 +62,36 @@ return [
         'your_affiliate_code_is' => 'رمز التسويق الخاص بك هو:',
         'your_affiliate_link_is' => 'رابط التسويق الخاص بك هو:',
     ],
+    'settings' => [
+        'title' => 'الإعدادات',
+    ],
+    'profile' => [
+        'title' => 'الملف الشخصي',
+        'description' => 'قم بتحديث اسمك ورقم جوالك',
+        'name' => 'الاسم',
+        'name_placeholder' => 'أدخل اسمك الكامل',
+        'whatsapp' => 'رقم الجوال',
+        'whatsapp_placeholder' => 'أدخل رقم الجوال',
+        'email' => 'البريد الإلكتروني',
+        'email_placeholder' => 'أدخل البريد الإلكتروني',
+        'save' => 'حفظ',
+        'alerts' => [
+            'updated' => 'تم تحديث الملف الشخصي بنجاح',
+        ],
+    ],
+    'password' => [
+        'title' => 'تغيير كلمة المرور',
+        'description' => 'تأكد من استخدام كلمة مرور طويلة وعشوائية للحفاظ على أمان حسابك',
+        'current_password' => 'كلمة المرور الحالية',
+        'current_password_placeholder' => 'أدخل كلمة المرور الحالية',
+        'new_password' => 'كلمة المرور الجديدة',
+        'new_password_placeholder' => 'أدخل كلمة المرور الجديدة',
+        'confirm_password' => 'تأكيد كلمة المرور',
+        'confirm_password_placeholder' => 'أدخل تأكيد كلمة المرور الجديدة',
+        'save' => 'حفظ',
+        'alerts' => [
+            'updated' => 'تم تحديث كلمة المرور بنجاح',
+            'current_password_incorrect' => 'كلمة المرور الحالية غير صحيحة',
+        ],
+    ],
 ];
