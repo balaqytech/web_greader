@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\BotContactController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\ProgramController;
@@ -26,3 +27,5 @@ Route::apiResource(
         'reading-assessment-form-submissions' => 'submission'
     ])
     ->only(['index', 'store', 'show']);
+
+Route::apiResource('bot-contacts', BotContactController::class)->only(['index', 'store', 'show']);
