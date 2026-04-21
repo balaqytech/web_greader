@@ -72,8 +72,7 @@ class UserResource extends Resource
                 Select::make('branch_id')
                     ->label(__('admin.user.branch'))
                     ->relationship('branch', 'name')
-                    ->helperText(__('admin.user.branch_helper_text'))
-                    ->required(),
+                    ->helperText(__('admin.user.branch_helper_text')),
             ]);
     }
 
