@@ -8,16 +8,10 @@ use App\Models\Affiliate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\View\View;
 
 class AffiliateRegisterController extends Controller
 {
-    public function create(): View
-    {
-        return view('affiliate.auth.register');
-    }
-
-    public function store(Request $request): RedirectResponse
+    public function __invoke(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],

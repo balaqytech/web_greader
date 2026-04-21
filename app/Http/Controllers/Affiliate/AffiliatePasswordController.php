@@ -10,18 +10,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 class AffiliatePasswordController extends Controller
 {
-    public function edit(): View
-    {
-        return view('affiliate.password', [
-            'affiliate' => Auth::guard('affiliate')->user(),
-        ]);
-    }
-
-    public function update(Request $request): RedirectResponse
+    public function __invoke(Request $request): RedirectResponse
     {
         /** @var Affiliate $affiliate */
         $affiliate = Auth::guard('affiliate')->user();

@@ -1,10 +1,12 @@
 <?php
 
 use App\Models\Affiliate;
+use Akira\QrCode\Facades\QrCode;
+use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Dashboard')] class extends Component
+new #[Title('Dashboard')] #[Layout('layouts.affiliate.header')] class extends Component
 {
     public Affiliate $affiliate;
     public int $leadsCount = 0;
@@ -14,18 +16,23 @@ new #[Title('Dashboard')] class extends Component
     {
         $this->affiliate = auth('affiliate')->user();
         $this->leadsCount = $this->affiliate->leads()->count();
-        $this->qr_code = QrCode::format('png')->size(200)->generate('https://g-reader-school.com/?ref=' . $this->affiliate->code ?? '#');
+        $this->qr_code = QrCode::format('svg')->size(200)->generate('https://g-reader-school.com/?ref=' . ($this->affiliate->code ?? '#'));
     }
 
     public function downloadQrCode()
     {
-        return response()->streamDownload(function () {
-            echo $this->qr_code;
-        }, 'qrcode.png');
-    }
-};?>
+        $link = 'https://g-reader-school.com/?ref=' . ($this->affiliate->code ?? '#');
+        $png = QrCode::format('png')->size(1000)->margin(2)->generate($link);
 
-<x-layouts::affiliate.header :title="__('affiliate.dashboard.title')">
+        return response()->streamDownload(function () use ($png) {
+            echo $png;
+        }, 'qrcode.png', [
+            'Content-Type' => 'image/png',
+        ]);
+    }
+}; ?>
+
+<section class="w-full">
     <flux:main container>
         <div class="flex h-full w-full flex-1 flex-col gap-6 rounded-xl">
             <!-- Stats Widget -->
@@ -53,11 +60,11 @@ new #[Title('Dashboard')] class extends Component
                     {{ __('affiliate.dashboard.your_affiliate_link_is') }}
                     <a href="{{ 'https://g-reader-school.com/?ref=' . $affiliate->code ?? '#' }}" target="_blank" class="font-mono font-semibold text-zinc-900 dark:text-zinc-100 hover:underline hover:text-accent-content">{{ 'https://g-reader-school.com/?ref=' . $affiliate->code ?? '—' }}</a>
                 </flux:text>
-                <div class="mt-4">
-                    {!! $qr_code !!}
+                <div class="mt-4 flex justify-center bg-white p-4 rounded-lg w-fit">
+                    {!! $this->qr_code !!}
                 </div>
                 <flux:button wire:click="downloadQrCode()" variant="primary">{{ __('affiliate.dashboard.download_qr_code') }}</flux:button>
             </div>
         </div>
     </flux:main>
-</x-layouts::affiliate.header>
+</section>

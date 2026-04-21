@@ -61,6 +61,7 @@ return [
         'all_leads_referred_by_you' => 'جميع العملاء المحتملين الذين أحلتهم',
         'your_affiliate_code_is' => 'رمز التسويق الخاص بك هو:',
         'your_affiliate_link_is' => 'رابط التسويق الخاص بك هو:',
+        'download_qr_code' => 'تحميل رمز QR',
     ],
     'settings' => [
         'title' => 'الإعدادات',

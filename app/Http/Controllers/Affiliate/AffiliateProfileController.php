@@ -8,18 +8,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 class AffiliateProfileController extends Controller
 {
-    public function edit(): View
-    {
-        return view('affiliate.profile', [
-            'affiliate' => Auth::guard('affiliate')->user(),
-        ]);
-    }
-
-    public function update(Request $request): RedirectResponse
+    public function __invoke(Request $request): RedirectResponse
     {
         /** @var Affiliate $affiliate */
         $affiliate = Auth::guard('affiliate')->user();

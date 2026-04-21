@@ -7,16 +7,10 @@ use App\Models\Affiliate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
 
 class AffiliateLoginController extends Controller
 {
-    public function create(): View
-    {
-        return view('affiliate.auth.login');
-    }
-
-    public function store(Request $request): RedirectResponse
+    public function __invoke(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
             'whatsapp' => ['required', 'string', 'regex:/^\+?[0-9]+$/'], //validate that it is phone number
