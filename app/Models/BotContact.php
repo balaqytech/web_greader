@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 ])]
 class BotContact extends Model
 {
-    use HasWhatsapp;
+    // use HasWhatsapp;
 
     protected $casts = [
         'status' => BotContactStatusEnum::class,

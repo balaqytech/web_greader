@@ -34,7 +34,19 @@ class BotContactController extends Controller
             'additional_data' => 'nullable|array',
         ]);
 
-        $contact = BotContact::create($data);
+        try {
+            $contact = BotContact::create($data);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $exception) {
+            return response()->json([
+                'error' => 422,
+                'message' => 'This whatsapp number is already exists',
+            ], 422);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'error' => 500,
+                'message' => $exception->getMessage(),
+            ], 500);
+        }
 
         return new BotContactResource($contact);
     }
