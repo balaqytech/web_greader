@@ -11,24 +11,17 @@ new #[Title('Dashboard')] #[Layout('layouts.affiliate.header')] class extends Co
     public Affiliate $affiliate;
     public int $leadsCount = 0;
     public string $qr_code = '';
+    public string $affiliate_url = '';
 
     public function mount()
     {
         $this->affiliate = auth('affiliate')->user();
         $this->leadsCount = $this->affiliate->leads()->count();
-        $this->qr_code = QrCode::format('svg')->size(200)->generate('https://g-reader-school.com/?ref=' . ($this->affiliate->code ?? '#'));
-    }
-
-    public function downloadQrCode()
-    {
-        $link = 'https://g-reader-school.com/?ref=' . ($this->affiliate->code ?? '#');
-        $png = QrCode::format('png')->size(1000)->margin(2)->generate($link);
-
-        return response()->streamDownload(function () use ($png) {
-            echo $png;
-        }, 'qrcode.png', [
-            'Content-Type' => 'image/png',
-        ]);
+        $this->affiliate_url = 'https://g-reader-school.com/?ref=' . ($this->affiliate->code ?? '#');
+        $this->qr_code = QrCode::format('svg')
+            ->size(200)
+            ->merge('public/logo.png', 0.2)
+            ->text($this->affiliate_url);
     }
 }; ?>
 
@@ -63,7 +56,7 @@ new #[Title('Dashboard')] #[Layout('layouts.affiliate.header')] class extends Co
                 <div class="mt-4 flex justify-center bg-white p-4 rounded-lg w-fit">
                     {!! $this->qr_code !!}
                 </div>
-                <flux:button wire:click="downloadQrCode()" variant="primary">{{ __('affiliate.dashboard.download_qr_code') }}</flux:button>
+                <flux:button href="{{ route('affiliate.download-qr-code') }}" variant="primary">{{ __('affiliate.dashboard.download_qr_code') }}</flux:button>
             </div>
         </div>
     </flux:main>
