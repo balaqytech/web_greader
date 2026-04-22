@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\ModelStates\HasStates;
 
 #[ScopedBy(BranchScope::class)]
@@ -22,8 +23,8 @@ class Lead extends Model
 {
     use HasAffiliate;
     use HasFactory;
-    use HasWhatsapp;
     use HasStates;
+    use HasWhatsapp;
 
     /**
      * @return array<string, string>
@@ -41,13 +42,18 @@ class Lead extends Model
     protected static function booted(): void
     {
         static::creating(function (self $lead) {
-            $lead->ref_no = now()->format('Ymd') . str_pad(
+            $lead->ref_no = now()->format('Ymd').str_pad(
                 (string) (Lead::count() + 1),
                 6,
                 '0',
                 STR_PAD_LEFT
             );
         });
+    }
+
+    public function application(): HasOne
+    {
+        return $this->hasOne(Application::class);
     }
 
     public function branch(): BelongsTo

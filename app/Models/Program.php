@@ -7,6 +7,7 @@ use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['type', 'name', 'description', 'accept_installments', 'min_birth_date', 'max_birth_date', 'contract', 'is_open', 'is_active', 'sort_order'])]
 class Program extends Model
@@ -34,6 +35,11 @@ class Program extends Model
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function programRules(): HasMany
+    {
+        return $this->hasMany(ProgramRule::class);
     }
 
     public function isAvailableIn(Branch $branch): bool
