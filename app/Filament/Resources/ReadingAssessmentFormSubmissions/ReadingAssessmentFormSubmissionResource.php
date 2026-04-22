@@ -5,16 +5,9 @@ namespace App\Filament\Resources\ReadingAssessmentFormSubmissions;
 use App\Enums\SubmissionStatus;
 use App\Filament\Resources\ReadingAssessmentFormSubmissions\Pages\ManageReadingAssessmentFormSubmissions;
 use App\Models\ReadingAssessmentFormSubmission;
-use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -94,6 +87,15 @@ class ReadingAssessmentFormSubmissionResource extends Resource
                     ->action(function (ReadingAssessmentFormSubmission $record, array $data): void {
                         $record->update($data);
                     }),
+            ])
+            ->headerActions([
+                \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
+                    \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
+                        ->fromTable()
+                        ->withFileName(function ($resource) {
+                            return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
+                        }),
+                ])
             ])
             ->defaultSort('created_at', 'desc');
     }

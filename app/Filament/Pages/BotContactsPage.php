@@ -59,6 +59,15 @@ class BotContactsPage extends Page implements HasTable
                 SelectFilter::make('status')
                     ->label(__('admin.bot_contact.status'))
                     ->options(BotContactStatusEnum::class),
+            ])
+            ->headerActions([
+                \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
+                    \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
+                        ->fromTable()
+                        ->withFileName(function () {
+                            return static::getNavigationLabel() . '-' . now()->format('Y-m-d');
+                        }),
+                ])
             ]);
     }
 }

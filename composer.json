@@ -21,6 +21,7 @@
         "livewire/flux": "^2.13.1",
         "livewire/livewire": "^4.1",
         "opcodesio/log-viewer": "^3.24",
+        "pxlrbt/filament-excel": "^3.6",
         "spatie/laravel-model-states": "^2.13",
         "spatie/laravel-webhook-server": "^3.10",
         "tapp/filament-auditing": "~4.0"

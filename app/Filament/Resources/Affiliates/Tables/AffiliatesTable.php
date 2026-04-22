@@ -38,8 +38,8 @@ class AffiliatesTable
                 TextColumn::make('status')
                     ->label(__('admin.affiliate.status'))
                     ->badge()
-                    ->color(fn ($state) => $state->color())
-                    ->formatStateUsing(fn ($state) => $state->getLabel())
+                    ->color(fn($state) => $state->color())
+                    ->formatStateUsing(fn($state) => $state->getLabel())
                     ->searchable(),
                 TextColumn::make('verified_by')
                     ->label(__('admin.affiliate.verified_by'))
@@ -77,7 +77,7 @@ class AffiliatesTable
                     ->options(AffiliateCategory::class),
                 SelectFilter::make('status')
                     ->label(__('admin.affiliate.status'))
-                    ->options(AffiliateState::all()->mapWithKeys(fn ($state) => [
+                    ->options(AffiliateState::all()->mapWithKeys(fn($state) => [
                         $state::getMorphClass() => $state::getLabel(),
                     ])),
                 SelectFilter::make('creation_source')
@@ -88,10 +88,14 @@ class AffiliatesTable
                 ViewAction::make(),
                 EditAction::make(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+            ->headerActions([
+                \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
+                    \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
+                        ->fromTable()
+                        ->withFileName(function ($resource) {
+                            return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
+                        }),
+                ])
             ]);
     }
 }

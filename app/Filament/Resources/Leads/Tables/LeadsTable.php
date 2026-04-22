@@ -4,10 +4,6 @@ namespace App\Filament\Resources\Leads\Tables;
 
 use App\Enums\Source;
 use App\Models\Lead;
-use App\States\Leads\LeadState;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -60,18 +56,25 @@ class LeadsTable
             ->filters([
                 SelectFilter::make('program_id')
                     ->label(__('admin.lead.program'))
-                    ->relationship('program', 'name')
-                    ->searchable(),
+                    ->relationship('program', 'name'),
                 SelectFilter::make('branch_id')
                     ->label(__('admin.lead.branch'))
-                    ->relationship('branch', 'name')
-                    ->searchable(),
+                    ->relationship('branch', 'name'),
                 SelectFilter::make('source')
                     ->label(__('admin.lead.source'))
                     ->options(Source::class),
             ])
             ->recordActions([
                 ViewAction::make(),
+            ])
+            ->headerActions([
+                \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
+                    \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
+                        ->fromTable()
+                        ->withFileName(function ($resource) {
+                            return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
+                        }),
+                ])
             ])
             ->defaultSort('created_at', 'desc');
     }
