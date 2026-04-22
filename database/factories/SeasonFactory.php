@@ -24,7 +24,6 @@ class SeasonFactory extends Factory
             'start_date' => now()->subMonths(6)->toDateString(),
             'end_date' => now()->toDateString(),
             'is_active' => true,
-            'is_closed' => false,
         ];
     }
 
@@ -52,7 +51,7 @@ class SeasonFactory extends Factory
     {
         return $this->state(fn() => [
             'is_active' => false,
-            'is_closed' => true,
+            'closed_at' => now(),
         ]);
     }
 }

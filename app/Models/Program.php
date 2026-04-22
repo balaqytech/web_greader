@@ -36,6 +36,11 @@ class Program extends Model
         ];
     }
 
+    public function isAvailableIn(Branch $branch): bool
+    {
+        return $this->branches()->wherePivot('branch_id', $branch->id)->exists();
+    }
+
     public function branches(): BelongsToMany
     {
         return $this->belongsToMany(Branch::class, 'program_branch')->withPivot('price');
