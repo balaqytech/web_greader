@@ -3,6 +3,7 @@
 namespace App\States\Affiliates;
 
 use App\States\Affiliates\Transitions\PendingToVerified;
+use App\States\Affiliates\Transitions\RejectedToVerified;
 use App\States\Affiliates\Transitions\ToRejected;
 use Spatie\ModelStates\State;
 use Spatie\ModelStates\StateConfig;
@@ -18,6 +19,7 @@ abstract class AffiliateState extends State
         return parent::config()
             ->default(Pending::class)
             ->allowTransition(Pending::class, Verified::class, PendingToVerified::class)
-            ->allowTransition([Pending::class, Verified::class], Rejected::class, ToRejected::class);
+            ->allowTransition([Pending::class, Verified::class], Rejected::class, ToRejected::class)
+            ->allowTransition(Rejected::class, Verified::class, RejectedToVerified::class);
     }
 }
