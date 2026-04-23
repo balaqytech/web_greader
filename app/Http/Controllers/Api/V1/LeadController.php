@@ -22,15 +22,13 @@ class LeadController extends Controller
 
     public function index(Request $request)
     {
-        $allowed = ['whatsapp', 'program_id', 'branch_id', 'status', 'source'];
+        $allowedFilters = ['whatsapp', 'program_id', 'branch_id', 'status', 'source'];
 
-        $leads = Lead::query();
+        $filters = $request->only($allowedFilters);
 
-        foreach ($request->all() as $key => $value) {
-            if (in_array($key, $allowed)) {
-                $leads = $leads->where($key, 'like', "%{$value}%");
-            }
-        }
+        $leads = Lead::query()
+            ->with(['branch', 'program', 'season', 'affiliate'])
+            ->filter($filters);
 
         $leads->when(
             $request->has('created_from') && $request->has('created_to'),
@@ -43,7 +41,7 @@ class LeadController extends Controller
             fn($query) => $query->whereDate('created_at', '<=', $request->created_to)
         );
 
-        $leads = $leads->get();
+        $leads = $leads->paginate(15);
 
         return LeadResource::collection($leads);
     }

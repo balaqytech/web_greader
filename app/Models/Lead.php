@@ -42,7 +42,7 @@ class Lead extends Model
     protected static function booted(): void
     {
         static::creating(function (self $lead) {
-            $lead->ref_no = now()->format('Ymd').str_pad(
+            $lead->ref_no = now()->format('Ymd') . str_pad(
                 (string) (Lead::count() + 1),
                 6,
                 '0',
@@ -74,5 +74,16 @@ class Lead extends Model
     public function season(): BelongsTo
     {
         return $this->belongsTo(Season::class);
+    }
+
+    public function scopeFilter($query, array $filters)
+    {
+        foreach ($filters as $field => $value) {
+            if (!is_null($value)) {
+                $query->where($field, $value);
+            }
+        }
+
+        return $query;
     }
 }
