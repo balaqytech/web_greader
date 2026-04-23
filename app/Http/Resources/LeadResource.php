@@ -28,6 +28,7 @@ class LeadResource extends JsonResource
             'status_label' => $this->status->getLabel(),
             'source' => $this->source,
             'data' => $this->data,
+            'created_at' => $this->created_at->format('d/m/Y H:i:s'),
         ];
     }
 }
