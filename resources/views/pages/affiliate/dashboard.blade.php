@@ -43,20 +43,25 @@ new #[Title('Dashboard')] #[Layout('layouts.affiliate.header')] class extends Co
             </div>
 
             <!-- Welcome Section -->
-            <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-                <flux:heading size="lg">{{ __('affiliate.dashboard.greeting', ['name' => $affiliate->name]) }}</flux:heading>
-                <flux:text class="mt-2 text-zinc-500 dark:text-zinc-400">
-                    {{ __('affiliate.dashboard.your_affiliate_code_is') }}
-                    <span class="font-mono font-semibold text-zinc-900 dark:text-zinc-100">{{ $affiliate->code ?? '—' }}</span>
-                </flux:text>
-                <flux:text class="mt-2 text-zinc-500 dark:text-zinc-400">
-                    {{ __('affiliate.dashboard.your_affiliate_link_is') }}
-                    <a href="{{ 'https://g-reader-school.com/?ref=' . $affiliate->code ?? '#' }}" target="_blank" class="font-mono font-semibold text-zinc-900 dark:text-zinc-100 hover:underline hover:text-accent-content">{{ 'https://g-reader-school.com/?ref=' . $affiliate->code ?? '—' }}</a>
-                </flux:text>
-                <div class="mt-4 flex justify-center bg-white p-4 rounded-lg w-fit">
-                    {!! $this->qr_code !!}
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+                    <flux:heading size="lg">{{ __('affiliate.dashboard.greeting', ['name' => $affiliate->name]) }}</flux:heading>
+                    <flux:text class="mt-2 text-zinc-500 dark:text-zinc-400">
+                        {{ __('affiliate.dashboard.your_affiliate_code_is') }}
+                        <flux:input.group class="flex w-full items-center justify-between gap-4 border border-neutral-200 dark:border-neutral-700 rounded-lg">
+                            <flux:text class="p-2">{{ $affiliate->code ?? '—' }}</flux:text>
+                            <flux:button icon="clipboard" x-on:click="navigator.clipboard.writeText('{{ $affiliate->code ?? '—' }}')" />
+                        </flux:input.group>
+                    </flux:text>
+                    <flux:text class="mt-2 text-zinc-500 dark:text-zinc-400">
+                        {{ __('affiliate.dashboard.your_affiliate_link_is') }}
+                        <a href="{{ 'https://g-reader-school.com/?ref=' . $affiliate->code ?? '#' }}" target="_blank" class="font-mono font-semibold text-zinc-900 dark:text-zinc-100 hover:underline hover:text-accent-content">{{ 'https://g-reader-school.com/?ref=' . $affiliate->code ?? '—' }}</a>
+                    </flux:text>
+                    <div class="mt-4 flex justify-center bg-white p-4 rounded-lg w-fit">
+                        {!! $this->qr_code !!}
+                    </div>
+                    <flux:button href="{{ route('affiliate.download-qr-code') }}" variant="primary">{{ __('affiliate.dashboard.download_qr_code') }}</flux:button>
                 </div>
-                <flux:button href="{{ route('affiliate.download-qr-code') }}" variant="primary">{{ __('affiliate.dashboard.download_qr_code') }}</flux:button>
             </div>
         </div>
     </flux:main>
