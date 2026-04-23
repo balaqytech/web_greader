@@ -89,6 +89,8 @@ return [
         'source' => 'المصدر',
         'data' => 'بيانات إضافية',
         'created_at' => 'تاريخ الإضافة',
+        'created_from' => 'من تاريخ',
+        'created_until' => 'الى تاريخ',
         'states' => [
             'all' => 'الكل',
             'new' => 'جديد',
