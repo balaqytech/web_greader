@@ -206,4 +206,12 @@ return [
             'employee' => 'موظف',
         ],
     ],
+    'application' => [
+        'states' => [
+            'pending_registration' => 'قيد الانتظار',
+            'under_review' => 'قيد المراجعة',
+            'accepted' => 'مقبول',
+            'rejected' => 'مرفوض',
+        ],
+    ],
 ];
