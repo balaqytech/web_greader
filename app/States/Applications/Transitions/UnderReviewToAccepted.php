@@ -4,6 +4,7 @@ namespace App\States\Applications\Transitions;
 
 use App\Models\Application;
 use App\States\Applications\Accepted;
+use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 class UnderReviewToAccepted extends Transition
@@ -18,15 +19,17 @@ class UnderReviewToAccepted extends Transition
     {
         $fromState = $this->application->status::$name;
 
-        $this->application->forceFill(['status' => Accepted::$name])->save();
+        DB::transaction(function () use ($fromState) {
+            $this->application->forceFill(['status' => Accepted::$name])->save();
 
-        $this->application->activities()->create([
-            'transitioned_by' => $this->transitionedBy,
-            'from_state' => $fromState,
-            'to_state' => Accepted::$name,
-            'notes' => $this->notes,
-            'transitioned_at' => now(),
-        ]);
+            $this->application->activities()->create([
+                'transitioned_by' => $this->transitionedBy,
+                'from_state' => $fromState,
+                'to_state' => Accepted::$name,
+                'notes' => $this->notes,
+                'transitioned_at' => now(),
+            ]);
+        });
 
         return $this->application->refresh();
     }

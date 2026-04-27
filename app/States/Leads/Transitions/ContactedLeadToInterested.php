@@ -2,6 +2,7 @@
 
 namespace App\States\Leads\Transitions;
 
+use App\Actions\Applications\ConvertLeadToApplicationAction;
 use App\Enums\LeadContactMethod;
 use App\Enums\LeadContactResult;
 use App\Exceptions\ProgramNotAvailableInBranchException;
@@ -39,6 +40,8 @@ class ContactedLeadToInterested extends Transition
         ]);
 
         $this->lead->forceFill(['status' => Interested::$name])->save();
+
+        app(ConvertLeadToApplicationAction::class)->execute($this->lead);
 
         return $this->lead->refresh();
     }

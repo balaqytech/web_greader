@@ -4,6 +4,7 @@ namespace App\States\Applications\Transitions;
 
 use App\Models\Application;
 use App\States\Applications\UnderReview;
+use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 class PendingRegistrationToUnderReview extends Transition
@@ -18,16 +19,18 @@ class PendingRegistrationToUnderReview extends Transition
     {
         $fromState = $this->application->status::$name;
 
-        $this->application->forceFill(['status' => UnderReview::$name])->save();
+        DB::transaction(function () use ($fromState) {
+            $this->application->forceFill(['status' => UnderReview::$name])->save();
 
-        $this->application->activities()->create([
-            'transitioned_by' => $this->transitionedBy,
-            'from_state' => $fromState,
-            'to_state' => UnderReview::$name,
-            'notes' => $this->notes,
-            'transitioned_at' => now(),
-        ]);
+            $this->application->activities()->create([
+                'transitioned_by' => $this->transitionedBy,
+                'from_state' => $fromState,
+                'to_state' => UnderReview::$name,
+                'notes' => $this->notes,
+                'transitioned_at' => now(),
+            ]);
+        });
 
-        return $this->application->refresh();
+        return $this->application->fresh();
     }
 }
