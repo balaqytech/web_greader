@@ -16,6 +16,7 @@ return [
         'affiliates' => 'المسوقين',
         'reading_assessment_form_submissions' => 'طلبات تقييم القراءة',
         'users' => 'المستخدمين',
+        'guardians' => 'أولياء الأمور',
         'bot_contacts' => 'عملاء واتساب',
     ],
     'branch' => [
@@ -212,6 +213,23 @@ return [
             'under_review' => 'قيد المراجعة',
             'accepted' => 'مقبول',
             'rejected' => 'مرفوض',
+        ],
+    ],
+    'guardian' => [
+        'label' => 'ولي أمر',
+        'plural_label' => 'أولياء الأمور',
+        'name' => 'اسم ولي الأمر',
+        'phone' => 'رقم الجوال',
+        'email' => 'البريد الإلكتروني',
+        'id_number' => 'رقم الهوية',
+        'occupation' => 'الوظيفة',
+        'work_address' => 'عنوان العمل',
+        'work_phone' => 'رقم هاتف العمل',
+        'relationship' => 'الصلة',
+        'relationships' => [
+            'father' => 'أب',
+            'mother' => 'أم',
+            'relative' => 'قريب',
         ],
     ],
 ];

@@ -13,9 +13,9 @@ enum GuardianRelationship: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Father => __('admin.guardian_relationship.father'),
-            self::Mother => __('admin.guardian_relationship.mother'),
-            self::Relative => __('admin.guardian_relationship.relative'),
+            self::Father => __('admin.guardian.relationships.father'),
+            self::Mother => __('admin.guardian.relationships.mother'),
+            self::Relative => __('admin.guardian.relationships.relative'),
         };
     }
 }
