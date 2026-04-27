@@ -125,6 +125,35 @@ class UnderReviewToAccepted extends Transition
             'village' => $app->student_village,
             'house_number' => $app->student_house_number,
             'parents_social_status' => $app->student_parents_social_status,
+            'father_data' => [
+                'name' => $app->father_name,
+                'phone' => $app->father_phone,
+                'email' => $app->father_email,
+                'id_number' => $app->father_id_number,
+                'occupation' => $app->father_occupation,
+                'work_address' => $app->father_work_address,
+                'work_phone' => $app->father_work_phone,
+                'is_guardian' => $app->father_is_guardian,
+            ],
+            'mother_data' => [
+                'name' => $app->mother_name,
+                'phone' => $app->mother_phone,
+                'email' => $app->mother_email,
+                'id_number' => $app->mother_id_number,
+                'occupation' => $app->mother_occupation,
+                'work_address' => $app->mother_work_address,
+                'work_phone' => $app->mother_work_phone,
+                'is_guardian' => $app->mother_is_guardian,
+            ],
+            'relative_data' => [
+                'name' => $app->relative_name,
+                'phone' => $app->relative_phone,
+                'email' => $app->relative_email,
+                'id_number' => $app->relative_id_number,
+                'occupation' => $app->relative_occupation,
+                'work_address' => $app->relative_work_address,
+                'work_phone' => $app->relative_work_phone,
+            ],
         ]);
     }
 }

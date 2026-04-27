@@ -41,6 +41,35 @@ class StudentFactory extends Factory
             'village' => fake()->city(),
             'house_number' => fake()->buildingNumber(),
             'parents_social_status' => fake()->word(),
+            'father_data' => [
+                'name' => fake()->name('male'),
+                'phone' => fake()->phoneNumber(),
+                'email' => fake()->safeEmail(),
+                'id_number' => fake()->numerify('########'),
+                'occupation' => fake()->jobTitle(),
+                'work_address' => fake()->address(),
+                'work_phone' => fake()->phoneNumber(),
+                'is_guardian' => true,
+            ],
+            'mother_data' => [
+                'name' => fake()->name('female'),
+                'phone' => fake()->phoneNumber(),
+                'email' => fake()->safeEmail(),
+                'id_number' => fake()->numerify('########'),
+                'occupation' => fake()->jobTitle(),
+                'work_address' => fake()->address(),
+                'work_phone' => fake()->phoneNumber(),
+                'is_guardian' => false,
+            ],
+            'relative_data' => [
+                'name' => fake()->name(),
+                'phone' => fake()->phoneNumber(),
+                'email' => fake()->safeEmail(),
+                'id_number' => fake()->numerify('########'),
+                'occupation' => fake()->jobTitle(),
+                'work_address' => fake()->address(),
+                'work_phone' => fake()->phoneNumber(),
+            ],
         ];
     }
 }

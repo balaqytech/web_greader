@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'application_id', 'guardian_id', 'branch_id', 'season_id', 'program_id',
     'name', 'gender', 'birth_date', 'civil_number',
     'state', 'governorate', 'village', 'house_number', 'parents_social_status',
+    'father_data', 'mother_data', 'relative_data',
 ])]
 class Student extends Model
 {
@@ -25,6 +26,9 @@ class Student extends Model
         return [
             'gender' => Gender::class,
             'birth_date' => 'date',
+            'father_data' => 'array',
+            'mother_data' => 'array',
+            'relative_data' => 'array',
         ];
     }
 
