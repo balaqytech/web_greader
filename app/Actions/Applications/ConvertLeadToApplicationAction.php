@@ -15,7 +15,6 @@ final class ConvertLeadToApplicationAction
         private CreateApplicationAction $createAction,
         private ExistingStudentLookupService $lookupService,
         private PrefillApplicationFromStudentAction $prefillAction,
-        private SubmitApplicationForReviewAction $submitAction,
     ) {}
 
     /**
@@ -38,11 +37,29 @@ final class ConvertLeadToApplicationAction
                 $application->refresh();
 
                 try {
-                    $this->submitAction->execute($application);
-                } catch (ValidationException $e) {
-                    // If the prefilled data is missing some required fields,
-                    // we simply leave the application in PendingRegistration state
-                    // so the user can complete it manually.
+                    // Check if all required fields are filled. If yes, transition to DataComplete.
+                    // This mirrors the old logic of submit action validation.
+                    $requiredFields = [
+                        'student_gender', 'student_birth_date', 'student_civil_number',
+                        'student_state', 'student_governorate', 'student_village',
+                        'student_house_number', 'student_parents_social_status',
+                        'father_name', 'father_phone', 'father_id_number',
+                        'mother_name', 'mother_phone', 'mother_id_number',
+                    ];
+                    
+                    $isComplete = true;
+                    foreach ($requiredFields as $field) {
+                        if (empty($application->{$field})) {
+                            $isComplete = false;
+                            break;
+                        }
+                    }
+
+                    if ($isComplete) {
+                        $application->status->transitionTo(\App\States\Applications\DataComplete::class);
+                    }
+                } catch (\Exception $e) {
+                    // Leave in pending registration
                 }
             }
 

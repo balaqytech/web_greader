@@ -9,7 +9,9 @@ use App\Models\Lead;
 use App\Models\Program;
 use App\States\Applications\DataComplete;
 use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContract;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Application>
@@ -68,6 +70,15 @@ class ApplicationFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => DataComplete::$name,
+        ]);
+    }
+
+    public function waitingContract(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => WaitingContract::$name,
+            'contract_token' => Str::uuid()->toString(),
+            'contract_token_expires_at' => now()->addDays(7),
         ]);
     }
 

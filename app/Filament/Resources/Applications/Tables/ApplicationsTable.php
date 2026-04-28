@@ -8,6 +8,7 @@ use App\States\Applications\DataComplete;
 use App\States\Applications\PendingRegistration;
 use App\States\Applications\Rejected;
 use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContract;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -61,6 +62,7 @@ class ApplicationsTable
                     ->options([
                         PendingRegistration::$name => __('admin.application.states.pending_registration'),
                         DataComplete::$name => __('admin.application.states.data_complete'),
+                        WaitingContract::$name => __('admin.application.states.waiting_contract'),
                         UnderReview::$name => __('admin.application.states.under_review'),
                         Accepted::$name => __('admin.application.states.accepted'),
                         Rejected::$name => __('admin.application.states.rejected'),

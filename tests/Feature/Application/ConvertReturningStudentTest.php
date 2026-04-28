@@ -38,7 +38,7 @@ it('fast-tracks and prefills application when guardian phone and student name ma
     $application = $action->execute($lead);
 
     // 4. Assertions
-    expect($application->status->getValue())->toBe(UnderReview::$name)
+    expect($application->status->getValue())->toBe(\App\States\Applications\DataComplete::$name)
         ->and($application->student_gender->value)->toBe('male')
         ->and($application->student_birth_date->format('Y-m-d'))->toBe('2010-01-01')
         ->and($application->father_name)->toBe($lead->guardian_name) // Priority from Lead

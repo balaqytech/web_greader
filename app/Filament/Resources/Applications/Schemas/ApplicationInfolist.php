@@ -3,6 +3,10 @@
 namespace App\Filament\Resources\Applications\Schemas;
 
 use App\Models\Application;
+use App\States\Applications\Accepted;
+use App\States\Applications\Rejected;
+use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContract;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -168,6 +172,51 @@ class ApplicationInfolist
                             ->label(__('admin.student.relative_work_phone'))
                             ->placeholder('-'),
                     ]),
+
+                Section::make(__('admin.application.contract'))
+                    ->columnSpanFull()
+                    ->columns(3)
+                    ->schema([
+                        TextEntry::make('contract_link')
+                            ->label(__('admin.application.contract_link'))
+                            ->getStateUsing(fn (Application $record) => $record->contract_token ? route('contract.show', $record->contract_token) : null)
+                            ->copyable()
+                            ->placeholder('-')
+                            ->visible(fn (Application $record) => filled($record->contract_token)),
+                        TextEntry::make('contract_token_expires_at')
+                            ->label(__('admin.application.contract_link_expires_at'))
+                            ->dateTime()
+                            ->placeholder('-')
+                            ->visible(fn (Application $record) => filled($record->contract_token)),
+                        TextEntry::make('contract_signed_at')
+                            ->label(__('admin.application.contract_signed_at'))
+                            ->dateTime()
+                            ->placeholder('-')
+                            ->visible(fn (Application $record) => filled($record->contract_signed_at)),
+                        TextEntry::make('contract_signed_by_applicant')
+                            ->label(__('admin.application.contract_signed_by'))
+                            ->formatStateUsing(fn ($state) => $state ? __('admin.application.contract_signed_online') : __('admin.application.contract_signed_by_staff'))
+                            ->placeholder('-')
+                            ->visible(fn (Application $record) => $record->contract_signed_by_applicant !== null),
+                        TextEntry::make('contract_signature_path')
+                            ->label(__('admin.application.contract_signature'))
+                            ->formatStateUsing(fn ($state) => 'Download')
+                            ->url(fn (Application $record) => $record->contract_signature_path ? asset('storage/'.$record->contract_signature_path) : null)
+                            ->openUrlInNewTab()
+                            ->visible(fn (Application $record) => filled($record->contract_signature_path)),
+                        TextEntry::make('contract_file_path')
+                            ->label(__('admin.application.contract_file'))
+                            ->formatStateUsing(fn ($state) => 'Download')
+                            ->url(fn (Application $record) => $record->contract_file_path ? asset('storage/'.$record->contract_file_path) : null)
+                            ->openUrlInNewTab()
+                            ->visible(fn (Application $record) => filled($record->contract_file_path)),
+                    ])
+                    ->visible(fn (Application $record) => in_array($record->status::$name, [
+                        WaitingContract::$name,
+                        UnderReview::$name,
+                        Accepted::$name,
+                        Rejected::$name,
+                    ])),
 
                 Section::make(__('admin.application.activity'))
                     ->columnSpanFull()

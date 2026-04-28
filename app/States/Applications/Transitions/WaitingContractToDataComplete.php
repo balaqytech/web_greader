@@ -3,11 +3,11 @@
 namespace App\States\Applications\Transitions;
 
 use App\Models\Application;
-use App\States\Applications\UnderReview;
+use App\States\Applications\DataComplete;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
-class DataCompleteToUnderReview extends Transition
+class WaitingContractToDataComplete extends Transition
 {
     public function __construct(
         private readonly Application $application,
@@ -20,12 +20,20 @@ class DataCompleteToUnderReview extends Transition
         $fromState = $this->application->status::$name;
 
         DB::transaction(function () use ($fromState) {
-            $this->application->forceFill(['status' => UnderReview::$name])->save();
+            $this->application->forceFill([
+                'status' => DataComplete::$name,
+                'contract_signed_at' => null,
+                'contract_signed_by_applicant' => null,
+                'contract_file_path' => null,
+                'contract_signature_path' => null,
+                'contract_token' => null,
+                'contract_token_expires_at' => null,
+            ])->save();
 
             $this->application->activities()->create([
                 'transitioned_by' => $this->transitionedBy,
                 'from_state' => $fromState,
-                'to_state' => UnderReview::$name,
+                'to_state' => DataComplete::$name,
                 'notes' => $this->notes,
                 'transitioned_at' => now(),
             ]);

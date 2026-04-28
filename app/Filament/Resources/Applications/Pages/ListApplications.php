@@ -8,6 +8,7 @@ use App\States\Applications\DataComplete;
 use App\States\Applications\PendingRegistration;
 use App\States\Applications\Rejected;
 use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContract;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 
@@ -31,6 +32,9 @@ class ListApplications extends ListRecords
             'data_complete' => Tab::make('Data Complete')
                 ->label(__('admin.application.states.data_complete'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', DataComplete::$name)),
+            'waiting_contract' => Tab::make('Waiting Contract')
+                ->label(__('admin.application.states.waiting_contract'))
+                ->modifyQueryUsing(fn ($query) => $query->where('status', WaitingContract::$name)),
             'under_review' => Tab::make('Under Review')
                 ->label(__('admin.application.states.under_review'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', UnderReview::$name)),

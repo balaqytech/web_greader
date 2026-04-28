@@ -83,21 +83,21 @@ test('it cannot open a season when another active season of the same type exists
     Season::factory()->academic()->create(['is_active' => true]);
     $inactive = Season::factory()->academic()->create(['is_active' => false]);
 
-    expect(fn() => app(OpenSeason::class)->open($inactive))
+    expect(fn() => app(OpenSeason::class)->execute($inactive))
         ->toThrow(ValidationException::class, 'يُسمح بموسم واحد نشط فقط لكل نوع.');
 });
 
 test('it cannot re-open a permanently closed season', function () {
     $closed = Season::factory()->academic()->closed()->create();
 
-    expect(fn() => app(OpenSeason::class)->open($closed))
+    expect(fn() => app(OpenSeason::class)->execute($closed))
         ->toThrow(ValidationException::class, 'لا يمكن إعادة فتح موسم مغلق نهائياً.');
 });
 
 test('it can open an inactive season when no active season of that type exists', function () {
     $inactive = Season::factory()->academic()->create(['is_active' => false]);
 
-    $opened = app(OpenSeason::class)->open($inactive);
+    $opened = app(OpenSeason::class)->execute($inactive);
 
     expect($opened->is_active)->toBeTrue();
 });
@@ -107,7 +107,7 @@ test('it can open an inactive season when no active season of that type exists',
 test('it can close an active season and marks it as permanently closed', function () {
     $season = Season::factory()->summer()->create(['is_active' => true]);
 
-    $closed = app(CloseSeason::class)->close($season);
+    $closed = app(CloseSeason::class)->execute($season);
 
     expect($closed->is_active)->toBeFalse();
     expect($closed->is_closed)->toBeTrue();
@@ -120,7 +120,7 @@ test('it validates active season constraints when changing the type of an active
 
     $season = Season::factory()->summer()->create(['is_active' => true]);
 
-    expect(fn() => app(UpdateSeason::class)->update($season, [
+    expect(fn() => app(UpdateSeason::class)->execute($season, [
         'name' => $season->name,
         'type' => ProgramType::Academic->value,
         'start_date' => now()->subMonths(3)->toDateString(),
@@ -131,7 +131,7 @@ test('it validates active season constraints when changing the type of an active
 test('it can update a season name without affecting its active status', function () {
     $season = Season::factory()->academic()->create(['is_active' => true]);
 
-    $updated = app(UpdateSeason::class)->update($season, [
+    $updated = app(UpdateSeason::class)->execute($season, [
         'name' => 'Renamed Academic',
         'type' => ProgramType::Academic->value,
         'start_date' => now()->subMonths(9)->toDateString(),
