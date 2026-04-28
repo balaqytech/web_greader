@@ -95,7 +95,7 @@ final readonly class UpdateApplicationDataDTO
     {
         return new self(
             studentName: $data['student_name'],
-            studentGender: isset($data['student_gender']) ? Gender::from($data['student_gender']) : null,
+            studentGender: $data['student_gender'],
             studentBirthDate: $data['student_birth_date'] ?? null,
             studentCivilNumber: $data['student_civil_number'] ?? null,
             studentState: $data['student_state'] ?? null,

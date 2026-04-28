@@ -11,11 +11,10 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\ModelStates\HasStates;
 
 #[Fillable([
-    'lead_id', 'season_id', 'program_id', 'branch_id', 'status',
+    'lead_id', 'student_id', 'season_id', 'program_id', 'branch_id', 'status',
     'student_name', 'student_gender', 'student_birth_date', 'student_civil_number',
     'student_state', 'student_governorate', 'student_village', 'student_house_number',
     'student_parents_social_status',
@@ -88,8 +87,8 @@ class Application extends Model
         return $this->belongsTo(Branch::class);
     }
 
-    public function student(): HasOne
+    public function student(): BelongsTo
     {
-        return $this->hasOne(Student::class);
+        return $this->belongsTo(Student::class);
     }
 }

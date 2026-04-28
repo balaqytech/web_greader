@@ -111,11 +111,8 @@ class UnderReviewToAccepted extends Transition
     {
         $app = $this->application;
 
-        $app->student()->create([
-            'guardian_id' => $guardian->id,
+        $student = $guardian->students()->create([
             'branch_id' => $app->branch_id,
-            'season_id' => $app->season_id,
-            'program_id' => $app->program_id,
             'name' => $app->student_name,
             'gender' => $app->student_gender,
             'birth_date' => $app->student_birth_date,
@@ -155,5 +152,7 @@ class UnderReviewToAccepted extends Transition
                 'work_phone' => $app->relative_work_phone,
             ],
         ]);
+
+        $app->forceFill(['student_id' => $student->id])->save();
     }
 }
