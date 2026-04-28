@@ -17,6 +17,7 @@ class CreateApplicationDTO
         public int $branchId,
         public int $seasonId,
         public Source $source,
+        public ?int $affiliateId,
 
         // Student data
         public string $studentName,
@@ -67,6 +68,7 @@ class CreateApplicationDTO
             'branch_id' => $this->branchId,
             'season_id' => $this->seasonId,
             'source' => $this->source,
+            'affiliate_id' => $this->affiliateId,
             'student_name' => $this->studentName,
             'student_gender' => $this->studentGender,
             'student_birth_date' => $this->studentBirthDate,
@@ -110,6 +112,7 @@ class CreateApplicationDTO
             branchId: $lead->branch_id,
             seasonId: $lead->season_id,
             source: $lead->source,
+            affiliateId: $lead->affiliate_id,
             studentName: $lead->student_name,
             fatherName: $lead->guardian_name,
             fatherPhone: $lead->whatsapp,

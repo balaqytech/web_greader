@@ -6,6 +6,7 @@ use App\Enums\Gender;
 use App\States\Applications\ApplicationState;
 use App\States\Applications\PendingRegistration;
 use App\Support\Model;
+use App\Traits\HasAffiliate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,7 @@ use Spatie\ModelStates\HasStates;
 ])]
 class Application extends Model
 {
+    use HasAffiliate;
     use HasFactory;
     use HasStates;
 
