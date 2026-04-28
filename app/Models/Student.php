@@ -7,12 +7,23 @@ use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'application_id', 'guardian_id', 'branch_id', 'season_id', 'program_id',
-    'name', 'gender', 'birth_date', 'civil_number',
-    'state', 'governorate', 'village', 'house_number', 'parents_social_status',
-    'father_data', 'mother_data', 'relative_data',
+    'guardian_id',
+    'branch_id',
+    'name',
+    'gender',
+    'birth_date',
+    'civil_number',
+    'state',
+    'governorate',
+    'village',
+    'house_number',
+    'parents_social_status',
+    'father_data',
+    'mother_data',
+    'relative_data',
 ])]
 class Student extends Model
 {
@@ -32,9 +43,9 @@ class Student extends Model
         ];
     }
 
-    public function application(): BelongsTo
+    public function applications(): HasMany
     {
-        return $this->belongsTo(Application::class);
+        return $this->hasMany(Application::class, 'student_id');
     }
 
     public function guardian(): BelongsTo
@@ -45,15 +56,5 @@ class Student extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
-    }
-
-    public function season(): BelongsTo
-    {
-        return $this->belongsTo(Season::class);
-    }
-
-    public function program(): BelongsTo
-    {
-        return $this->belongsTo(Program::class);
     }
 }

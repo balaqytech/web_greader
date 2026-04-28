@@ -3,11 +3,8 @@
 namespace Database\Factories;
 
 use App\Enums\Gender;
-use App\Models\Application;
 use App\Models\Branch;
 use App\Models\Guardian;
-use App\Models\Program;
-use App\Models\Season;
 use App\Models\Student;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,17 +18,10 @@ class StudentFactory extends Factory
      */
     public function definition(): array
     {
-        $branch = Branch::factory()->create();
-        $program = Program::factory()->create();
-        $program->branches()->attach($branch, ['price' => 0]);
-        $season = Season::factory()->create();
 
         return [
-            'application_id' => Application::factory(),
             'guardian_id' => Guardian::factory(),
-            'branch_id' => $branch->id,
-            'season_id' => $season->id,
-            'program_id' => $program->id,
+            'branch_id' => Branch::factory(),
             'name' => fake()->name(),
             'gender' => fake()->randomElement(Gender::cases()),
             'birth_date' => fake()->date(),
