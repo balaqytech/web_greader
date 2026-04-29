@@ -26,12 +26,14 @@ class CompleteApplicationDataFilamentAction extends Action
         $this->label(__('admin.application.actions.complete_data'));
         $this->icon('heroicon-o-check-circle');
         $this->color('success');
-        
+
         $this->modalHeading(__('admin.application.actions.complete_data'));
-        
+
         // Populate the modal with the ApplicationForm components
         $schema = ApplicationForm::configure(Schema::make());
-        $this->form($schema->getComponents());
+        $this->schema($schema->getComponents());
+
+        $this->slideOver();
 
         // Fill the form with the current application data
         $this->fillForm(function (Application $record): array {
@@ -39,7 +41,7 @@ class CompleteApplicationDataFilamentAction extends Action
         });
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof PendingRegistration
+            fn(?Application $record): bool => $record?->status instanceof PendingRegistration
         );
 
         $this->action(function (Application $record, array $data) {

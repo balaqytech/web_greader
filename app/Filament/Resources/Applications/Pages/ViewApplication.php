@@ -4,6 +4,9 @@ namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\Actions\AcceptApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\CompleteApplicationDataFilamentAction;
+use App\Filament\Resources\Applications\Actions\CopyContractLinkFilamentAction;
+use App\Filament\Resources\Applications\Actions\MoveToWaitingContractFilamentAction;
+use App\Filament\Resources\Applications\Actions\OpenContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\RejectApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\ReturnForCorrectionFilamentAction;
 use App\Filament\Resources\Applications\Actions\RevertToDataCompleteFilamentAction;
@@ -23,9 +26,12 @@ class ViewApplication extends ViewRecord
     {
         return [
             EditAction::make()
-                ->visible(fn (Application $record): bool => $record->status instanceof PendingRegistration),
+                ->visible(fn(Application $record): bool => $record->status instanceof PendingRegistration),
             CompleteApplicationDataFilamentAction::make(),
+            MoveToWaitingContractFilamentAction::make(),
             SendContractFilamentAction::make(),
+            OpenContractLinkFilamentAction::make(),
+            CopyContractLinkFilamentAction::make(),
             UploadContractFilamentAction::make(),
             RevertToDataCompleteFilamentAction::make(),
             AcceptApplicationFilamentAction::make(),
