@@ -33,12 +33,12 @@ class UploadContractFilamentAction extends Action
                 ->disk('public')
                 ->required()
                 ->directory('contracts/uploads')
-                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
+                ->acceptedFileTypes(['image/*', 'application/pdf'])
                 ->maxSize(5120),
         ]);
 
         $this->visible(
-            fn(?Application $record): bool => $record?->status instanceof DataComplete
+            fn(?Application $record): bool => $record?->status instanceof WaitingContract
         );
 
         $this->action(function (Application $record, array $data) {

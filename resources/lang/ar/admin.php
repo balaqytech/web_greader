@@ -92,6 +92,10 @@ return [
         'source' => 'المصدر',
         'data' => 'بيانات إضافية',
         'created_at' => 'تاريخ الإضافة',
+        'transition_status_to' => 'تحويل الحالة الى',
+        'to_status' => 'الحالة المستهدفة',
+        'contact_method' => 'طريقة التواصل',
+        'notes' => 'ملاحظات',
         'states' => [
             'all' => 'الكل',
             'new' => 'جديد',
@@ -118,8 +122,9 @@ return [
         ],
         'contact_methods' => [
             'whatsapp' => 'واتساب',
-            'phone' => 'هاتف',
+            'call' => 'هاتف',
             'email' => 'بريد إلكتروني',
+            'visit' => 'زيارة',
             'other' => 'أخرى',
         ],
     ],
