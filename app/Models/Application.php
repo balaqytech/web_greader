@@ -6,14 +6,17 @@ use App\Enums\Gender;
 use App\States\Applications\ApplicationState;
 use App\States\Applications\PendingRegistration;
 use App\Support\Model;
+use App\Traits\HasAffiliate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use Spatie\ModelStates\HasStates;
 
 #[Fillable([
     'lead_id',
+    'student_id',
     'season_id',
     'program_id',
     'branch_id',
@@ -51,9 +54,16 @@ use Spatie\ModelStates\HasStates;
     'relative_work_address',
     'relative_work_phone',
     'rejection_reason',
+    'contract_token',
+    'contract_token_expires_at',
+    'contract_signed_at',
+    'contract_signed_by_applicant',
+    'contract_file_path',
+    'contract_signature_path',
 ])]
 class Application extends Model
 {
+    use HasAffiliate;
     use HasFactory;
     use HasStates;
 
@@ -68,6 +78,9 @@ class Application extends Model
             'student_birth_date' => 'date',
             'father_is_guardian' => 'boolean',
             'mother_is_guardian' => 'boolean',
+            'contract_token_expires_at' => 'datetime',
+            'contract_signed_at' => 'datetime',
+            'contract_signed_by_applicant' => 'boolean',
         ];
     }
 
@@ -110,5 +123,23 @@ class Application extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class);
+    }
+
+    public function hasValidContractToken(): bool
+    {
+        return $this->contract_token !== null
+            && $this->contract_token_expires_at !== null
+            && $this->contract_token_expires_at->isFuture();
+    }
+
+    public function hasValidContractFile(): bool
+    {
+        return $this->contract_file_path !== null
+            && Storage::disk('public')->exists($this->contract_file_path);
     }
 }
