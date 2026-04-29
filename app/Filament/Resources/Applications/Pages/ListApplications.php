@@ -9,6 +9,7 @@ use App\States\Applications\PendingRegistration;
 use App\States\Applications\Rejected;
 use App\States\Applications\UnderReview;
 use App\States\Applications\WaitingContract;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 
@@ -18,7 +19,9 @@ class ListApplications extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            CreateAction::make(),
+        ];
     }
 
     public function getTabs(): array

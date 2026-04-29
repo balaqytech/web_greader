@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Applications\Actions;
 
 use App\Actions\Applications\SendContractAction;
 use App\Models\Application;
-use App\States\Applications\DataComplete;
+use App\States\Applications\WaitingContract;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -29,7 +29,7 @@ class SendContractFilamentAction extends Action
         $this->modalDescription(__('admin.application.send_contract_description'));
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof DataComplete
+            fn (?Application $record): bool => $record?->status instanceof WaitingContract
         );
 
         $this->action(function (Application $record) {

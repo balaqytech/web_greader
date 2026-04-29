@@ -8,9 +8,7 @@ use App\States\Applications\Rejected;
 use App\States\Applications\UnderReview;
 use App\States\Applications\WaitingContract;
 use Filament\Infolists\Components\IconEntry;
-use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -217,36 +215,6 @@ class ApplicationInfolist
                         Accepted::$name,
                         Rejected::$name,
                     ])),
-
-                Section::make(__('admin.application.activity'))
-                    ->columnSpanFull()
-                    ->schema([
-                        RepeatableEntry::make('activities')
-                            ->label('')
-                            ->schema([
-                                Grid::make(4)->schema([
-                                    TextEntry::make('from_state')
-                                        ->label(__('admin.application.activity_from'))
-                                        ->formatStateUsing(fn (string $state) => __("admin.application.states.{$state}"))
-                                        ->badge(),
-                                    TextEntry::make('to_state')
-                                        ->label(__('admin.application.activity_to'))
-                                        ->formatStateUsing(fn (string $state) => __("admin.application.states.{$state}"))
-                                        ->badge(),
-                                    TextEntry::make('transitionedBy.name')
-                                        ->label(__('admin.application.activity_by'))
-                                        ->placeholder(__('admin.application.activity_system')),
-                                    TextEntry::make('transitioned_at')
-                                        ->label(__('admin.application.activity_at'))
-                                        ->dateTime(),
-                                    TextEntry::make('notes')
-                                        ->label(__('admin.application.notes'))
-                                        ->placeholder('-')
-                                        ->columnSpanFull(),
-                                ]),
-                            ])
-                            ->columnSpanFull(),
-                    ]),
             ]);
     }
 }

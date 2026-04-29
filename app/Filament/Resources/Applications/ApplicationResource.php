@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Applications;
 
+use App\Filament\Resources\Applications\Pages\CreateApplication;
 use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
+use App\Filament\Resources\Applications\RelationManagers\ActivitiesRelationManager;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
 use App\Filament\Resources\Applications\Tables\ApplicationsTable;
@@ -56,13 +58,16 @@ class ApplicationResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            ActivitiesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListApplications::route('/'),
+            'create' => CreateApplication::route('/create'),
             'view' => ViewApplication::route('/{record}'),
             'edit' => EditApplication::route('/{record}/edit'),
         ];
