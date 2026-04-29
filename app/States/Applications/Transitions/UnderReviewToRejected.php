@@ -4,6 +4,7 @@ namespace App\States\Applications\Transitions;
 
 use App\Models\Application;
 use App\States\Applications\Rejected;
+use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 class UnderReviewToRejected extends Transition
@@ -18,18 +19,20 @@ class UnderReviewToRejected extends Transition
     {
         $fromState = $this->application->status::$name;
 
-        $this->application->forceFill([
-            'status' => Rejected::$name,
-            'rejection_reason' => $this->rejectionReason,
-        ])->save();
+        DB::transaction(function () use ($fromState) {
+            $this->application->forceFill([
+                'status' => Rejected::$name,
+                'rejection_reason' => $this->rejectionReason,
+            ])->save();
 
-        $this->application->activities()->create([
-            'transitioned_by' => $this->transitionedBy,
-            'from_state' => $fromState,
-            'to_state' => Rejected::$name,
-            'notes' => $this->rejectionReason,
-            'transitioned_at' => now(),
-        ]);
+            $this->application->activities()->create([
+                'transitioned_by' => $this->transitionedBy,
+                'from_state' => $fromState,
+                'to_state' => Rejected::$name,
+                'notes' => $this->rejectionReason,
+                'transitioned_at' => now(),
+            ]);
+        });
 
         return $this->application->refresh();
     }

@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
         apiPrefix: 'api/v1',
-        commands: __DIR__.'/../routes/console.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
         then: function () {
             Route::middleware('web')
@@ -20,16 +20,22 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn (Request $request) => $request->routeIs('affiliate.*')
-            ? route('affiliate.login')
-            : route('login'),
+        $middleware->redirectGuestsTo(
+            fn(Request $request) => $request->routeIs('affiliate.*')
+                ? route('affiliate.login')
+                : route('login'),
         );
 
-        $middleware->redirectUsersTo(fn (Request $request) => $request->routeIs('affiliate.*')
-            ? route('affiliate.dashboard')
-            : route('dashboard'),
+        $middleware->redirectUsersTo(
+            fn(Request $request) => $request->routeIs('affiliate.*')
+                ? route('affiliate.dashboard')
+                : route('dashboard'),
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {
+            if ($request->is('affiliate/*')) {
+                return redirect()->guest(route('affiliate.login'));
+            }
+        });
     })->create();

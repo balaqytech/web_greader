@@ -7,6 +7,7 @@ use App\States\Applications\DataComplete;
 use App\States\Applications\PendingRegistration;
 use App\States\Applications\Rejected;
 use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\ModelStates\Exceptions\TransitionNotFound;
 
@@ -28,13 +29,31 @@ it('transitions from pending_registration to data_complete', function () {
     expect($application->status)->toBeInstanceOf(DataComplete::class);
 });
 
-it('transitions from data_complete to under_review', function () {
+it('transitions from data_complete to waiting_contract', function () {
     $application = Application::factory()->dataComplete()->create();
 
-    $application->status->transitionTo(UnderReview::class);
+    $application->status->transitionTo(WaitingContract::class);
+    $application->refresh();
+
+    expect($application->status)->toBeInstanceOf(WaitingContract::class);
+});
+
+it('transitions from waiting_contract to under_review', function () {
+    $application = Application::factory()->waitingContract()->create();
+
+    $application->status->transitionTo(UnderReview::class, signedByApplicant: true);
     $application->refresh();
 
     expect($application->status)->toBeInstanceOf(UnderReview::class);
+});
+
+it('transitions from waiting_contract to data_complete', function () {
+    $application = Application::factory()->waitingContract()->create();
+
+    $application->status->transitionTo(DataComplete::class);
+    $application->refresh();
+
+    expect($application->status)->toBeInstanceOf(DataComplete::class);
 });
 
 it('transitions from under_review to accepted', function () {
@@ -69,7 +88,7 @@ it('transitions from under_review back to pending_registration with notes', func
 it('prevents invalid transitions', function () {
     $application = Application::factory()->create(); // pending_registration
 
-    expect(fn () => $application->status->transitionTo(Accepted::class))
+    expect(fn() => $application->status->transitionTo(Accepted::class))
         ->toThrow(TransitionNotFound::class);
 });
 
@@ -120,15 +139,18 @@ it('builds a full activity timeline across multiple transitions', function () {
 
     $application->status->transitionTo(DataComplete::class);
     $application->refresh();
-    $application->status->transitionTo(UnderReview::class);
+    $application->status->transitionTo(WaitingContract::class);
+    $application->refresh();
+    $application->status->transitionTo(UnderReview::class, signedByApplicant: true);
     $application->refresh();
     $application->status->transitionTo(Accepted::class);
     $application->refresh();
 
-    expect($application->activities)->toHaveCount(3)
+    expect($application->activities)->toHaveCount(4)
         ->and($application->activities->pluck('to_state')->toArray())->toBe([
             Accepted::$name,
             UnderReview::$name,
+            WaitingContract::$name,
             DataComplete::$name,
         ]);
 });

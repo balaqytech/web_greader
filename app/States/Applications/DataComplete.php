@@ -6,12 +6,12 @@ class DataComplete extends ApplicationState
 {
     public static string $name = 'data_complete';
 
-    public static function getLabel(): string
+    public function getLabel(): string
     {
-        return __('admin.application_status.data_complete');
+        return __('admin.application.states.data_complete');
     }
 
-    public static function color(): string
+    public function getColor(): string
     {
         return 'info';
     }

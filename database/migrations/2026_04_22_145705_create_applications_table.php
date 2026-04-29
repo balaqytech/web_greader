@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('applications', function (Blueprint $table) {
             $table->id();
             $table->string('ref_no')->unique();
-            $table->foreignId('lead_id')->unique()->constrained()->restrictOnDelete();
+            $table->foreignId('lead_id')->unique()->nullable()->constrained()->nullOnDelete();
             $table->foreignId('season_id')->constrained()->restrictOnDelete();
             $table->foreignId('program_id')->constrained()->restrictOnDelete();
             $table->foreignId('branch_id')->constrained()->restrictOnDelete();
@@ -63,8 +63,8 @@ return new class extends Migration
             $table->text('rejection_reason')->nullable();
             $table->timestamps();
 
-            // Civil number unique per season
-            $table->unique(['student_civil_number', 'season_id']);
+            // Civil number unique per season per program
+            $table->unique(['student_civil_number', 'season_id', 'program_id']);
         });
     }
 

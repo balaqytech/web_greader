@@ -6,12 +6,12 @@ class UnderReview extends ApplicationState
 {
     public static string $name = 'under_review';
 
-    public static function getLabel(): string
+    public function getLabel(): string
     {
-        return __('admin.application_status.under_review');
+        return __('admin.application.states.under_review');
     }
 
-    public static function color(): string
+    public function getColor(): string
     {
         return 'primary';
     }

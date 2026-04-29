@@ -6,12 +6,12 @@ class PendingRegistration extends ApplicationState
 {
     public static string $name = 'pending_registration';
 
-    public static function getLabel(): string
+    public function getLabel(): string
     {
-        return __('admin.application_status.pending_registration');
+        return __('admin.application.states.pending_registration');
     }
 
-    public static function color(): string
+    public function getColor(): string
     {
         return 'warning';
     }
