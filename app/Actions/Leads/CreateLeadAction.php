@@ -31,7 +31,15 @@ final class CreateLeadAction
 
         $affiliate = $this->resolveAffiliate($affiliate_code);
 
-        $lead = Lead::create([
+        // prevent duplicate lead
+        $lead = Lead::firstOrCreate([
+            'whatsapp' => $whatsapp,
+            'program_id' => $program->id,
+            'season_id' => $season->id,
+            'branch_id' => $branch_id,
+            'student_name' => $student_name,
+            'guardian_name' => $guardian_name,
+        ], [
             'whatsapp' => $whatsapp,
             'guardian_name' => $guardian_name,
             'student_name' => $student_name,

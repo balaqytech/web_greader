@@ -92,6 +92,8 @@ return [
         'source' => 'المصدر',
         'data' => 'بيانات إضافية',
         'created_at' => 'تاريخ الإضافة',
+        'created_from' => 'من تاريخ',
+        'created_until' => 'الى تاريخ',
         'transition_status_to' => 'تحويل الحالة الى',
         'to_status' => 'الحالة المستهدفة',
         'contact_method' => 'طريقة التواصل',

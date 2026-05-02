@@ -5,9 +5,14 @@ namespace App\Filament\Resources\Leads\Tables;
 use App\Enums\Source;
 use App\Models\Lead;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use pxlrbt\FilamentExcel\Columns\Column;
 
 class LeadsTable
 {
@@ -50,8 +55,7 @@ class LeadsTable
                 TextColumn::make('created_at')
                     ->label(__('admin.lead.created_at'))
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('program_id')
@@ -63,7 +67,27 @@ class LeadsTable
                 SelectFilter::make('source')
                     ->label(__('admin.lead.source'))
                     ->options(Source::class),
-            ])
+                Filter::make('created_at')
+                    ->columns(2)
+                    ->columnSpan(2)
+                    ->schema([
+                        DatePicker::make('created_from')
+                            ->label(__('admin.lead.created_from')),
+                        DatePicker::make('created_until')
+                            ->label(__('admin.lead.created_until')),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+            ], FiltersLayout::AboveContentCollapsible)
             ->recordActions([
                 ViewAction::make(),
             ])
@@ -71,6 +95,10 @@ class LeadsTable
                 \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
                     \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
                         ->fromTable()
+                        ->withColumns([
+                            Column::make('created_at')
+                                ->heading(__('admin.lead.created_at')),
+                        ])
                         ->withFileName(function ($resource) {
                             return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
                         }),

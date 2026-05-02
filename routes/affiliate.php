@@ -8,6 +8,10 @@ use App\Http\Controllers\Affiliate\AffiliateRegisterController;
 use Akira\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/', function () {
+    return redirect()->route('affiliate.login');
+});
+
 Route::middleware('guest:affiliate')->group(function () {
     Route::view('login', 'pages::affiliate.auth.login')->name('affiliate.login');
     Route::post('login', AffiliateLoginController::class)->name('affiliate.login.store');
