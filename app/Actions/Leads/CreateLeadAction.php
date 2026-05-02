@@ -9,8 +9,6 @@ use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
 use App\States\Leads\ContactedLead;
-use DomainException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Spatie\WebhookServer\WebhookCall;
 
 final class CreateLeadAction

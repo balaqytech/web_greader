@@ -12,7 +12,9 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use pxlrbt\FilamentExcel\Actions\ExportAction;
 use pxlrbt\FilamentExcel\Columns\Column;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class LeadsTable
 {
@@ -46,8 +48,8 @@ class LeadsTable
                     ->label(__('admin.lead.status'))
                     ->searchable()
                     ->badge()
-                    ->color(fn(Lead $record) => $record->status->color())
-                    ->formatStateUsing(fn(Lead $record) => $record->status->getLabel()),
+                    ->color(fn (Lead $record) => $record->status->color())
+                    ->formatStateUsing(fn (Lead $record) => $record->status->getLabel()),
                 TextColumn::make('source')
                     ->label(__('admin.lead.source'))
                     ->badge()
@@ -80,29 +82,29 @@ class LeadsTable
                         return $query
                             ->when(
                                 $data['created_from'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['created_until'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
-                    })
+                    }),
             ], FiltersLayout::AboveContentCollapsible)
             ->recordActions([
                 ViewAction::make(),
             ])
             ->headerActions([
-                \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
-                    \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
+                ExportAction::make()->exports([
+                    ExcelExport::make('table')
                         ->fromTable()
                         ->withColumns([
                             Column::make('created_at')
                                 ->heading(__('admin.lead.created_at')),
                         ])
                         ->withFileName(function ($resource) {
-                            return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
+                            return $resource::getNavigationLabel().'-'.now()->format('Y-m-d');
                         }),
-                ])
+                ]),
             ])
             ->defaultSort('created_at', 'desc');
     }

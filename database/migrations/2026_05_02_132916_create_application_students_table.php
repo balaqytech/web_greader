@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('gender')->nullable();
             $table->date('birth_date')->nullable();
-            $table->string('civil_number')->index(); // Required — not nullable. Enforced at DB level.
+            $table->string('civil_number')->nullable()->index(); // Required for submission — validated by ValidateApplicationCompletionAction.
 
             $table->string('state')->nullable();
             $table->string('governorate')->nullable();

@@ -9,7 +9,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Wizard;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 
 class CreateApplicationForm
@@ -19,7 +20,7 @@ class CreateApplicationForm
         return $schema
             ->components([
                 Wizard::make([
-                    Wizard\Step::make(__('admin.application.enrollment_info'))
+                    Step::make(__('admin.application.enrollment_info'))
                         ->icon('heroicon-o-academic-cap')
                         ->description(__('admin.application.wizard_enrollment_description'))
                         ->schema([
@@ -44,7 +45,7 @@ class CreateApplicationForm
                         ])
                         ->columns(3),
 
-                    Wizard\Step::make(__('admin.student.student_information'))
+                    Step::make(__('admin.student.student_information'))
                         ->icon('heroicon-o-user')
                         ->description(__('admin.application.wizard_student_description'))
                         ->schema([
@@ -73,7 +74,7 @@ class CreateApplicationForm
                         ])
                         ->columns(2),
 
-                    Wizard\Step::make(__('admin.application.contacts_section'))
+                    Step::make(__('admin.application.contacts_section'))
                         ->icon('heroicon-o-users')
                         ->description(__('admin.application.wizard_contacts_description'))
                         ->schema([
