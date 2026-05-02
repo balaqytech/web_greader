@@ -3,21 +3,19 @@
 namespace App\Actions\Applications;
 
 use App\Models\Application;
-use App\States\Applications\Rejected;
+use Illuminate\Support\Facades\DB;
 
-final class RejectApplicationAction
+class RejectApplicationAction
 {
-    /**
-     * Reject an application under review with a reason.
-     */
-    public function execute(Application $application, ?string $rejectionReason = null, ?int $transitionedBy = null): Application
+    public function handle(Application $application, string $reason): Application
     {
-        $application->status->transitionTo(
-            Rejected::class,
-            rejectionReason: $rejectionReason,
-            transitionedBy: $transitionedBy,
-        );
+        return DB::transaction(function () use ($application, $reason) {
+            $application->update([
+                'rejection_reason' => $reason,
+                'rejected_at' => now(),
+            ]);
 
-        return $application->fresh();
+            return $application;
+        });
     }
 }

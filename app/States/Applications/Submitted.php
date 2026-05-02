@@ -2,13 +2,13 @@
 
 namespace App\States\Applications;
 
-class WaitingContract extends ApplicationState
+class Submitted extends ApplicationState
 {
-    public static string $name = 'waiting_contract';
+    public static string $name = 'submitted';
 
     public function getLabel(): string
     {
-        return __('admin.application.states.waiting_contract');
+        return __('admin.application.states.submitted');
     }
 
     public function getColor(): string

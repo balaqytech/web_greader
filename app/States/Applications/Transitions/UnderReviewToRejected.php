@@ -2,38 +2,23 @@
 
 namespace App\States\Applications\Transitions;
 
+use App\Actions\Applications\RejectApplicationAction;
 use App\Models\Application;
 use App\States\Applications\Rejected;
-use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 class UnderReviewToRejected extends Transition
 {
-    public function __construct(
-        private readonly Application $application,
-        private readonly ?string $rejectionReason = null,
-        private readonly ?int $transitionedBy = null,
-    ) {}
+    public function __construct(public Application $application) {}
 
     public function handle(): Application
     {
-        $fromState = $this->application->status::$name;
+        app(RejectApplicationAction::class)->handle($this->application, $this->application->rejection_reason ?? 'Rejected');
 
-        DB::transaction(function () use ($fromState) {
-            $this->application->forceFill([
-                'status' => Rejected::$name,
-                'rejection_reason' => $this->rejectionReason,
-            ])->save();
+        $this->application->status = Rejected::class;
+        $this->application->rejected_at = now();
+        $this->application->save();
 
-            $this->application->activities()->create([
-                'transitioned_by' => $this->transitionedBy,
-                'from_state' => $fromState,
-                'to_state' => Rejected::$name,
-                'notes' => $this->rejectionReason,
-                'transitioned_at' => now(),
-            ]);
-        });
-
-        return $this->application->refresh();
+        return $this->application;
     }
 }
