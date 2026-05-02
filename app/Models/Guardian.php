@@ -27,4 +27,16 @@ class Guardian extends Model
     {
         return $this->hasMany(Student::class);
     }
+
+    public function applications()
+    {
+        return $this->hasManyThrough(
+            Application::class,
+            Student::class,
+            'guardian_id',
+            'student_id',
+            'id',
+            'id'
+        );
+    }
 }

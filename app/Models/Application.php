@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Enums\Gender;
 use App\States\Applications\ApplicationState;
-use App\States\Applications\PendingRegistration;
+use App\States\Applications\Draft;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 use Spatie\ModelStates\HasStates;
 
@@ -21,6 +22,11 @@ use Spatie\ModelStates\HasStates;
     'program_id',
     'branch_id',
     'status',
+    'submitted_at',
+    'accepted_at',
+    'rejected_at',
+    'cancelled_at',
+    'rejection_reason',
     'student_name',
     'student_gender',
     'student_birth_date',
@@ -53,7 +59,6 @@ use Spatie\ModelStates\HasStates;
     'relative_occupation',
     'relative_work_address',
     'relative_work_phone',
-    'rejection_reason',
     'contract_token',
     'contract_token_expires_at',
     'contract_signed_at',
@@ -87,7 +92,7 @@ class Application extends Model
     protected static function booted(): void
     {
         static::creating(function (self $application) {
-            $application->ref_no = 'APP-' . now()->format('Y') . str_pad(
+            $application->ref_no = 'APP-'.now()->format('Y').str_pad(
                 (string) (Application::withoutGlobalScopes()->count() + 1),
                 6,
                 '0',
@@ -95,7 +100,7 @@ class Application extends Model
             );
 
             if (empty($application->status)) {
-                $application->status = PendingRegistration::$name;
+                $application->status = Draft::$name;
             }
         });
     }
@@ -141,5 +146,27 @@ class Application extends Model
     {
         return $this->contract_file_path !== null
             && Storage::disk('public')->exists($this->contract_file_path);
+    }
+
+    public function applicationStudent(): HasOne
+    {
+        return $this->hasOne(ApplicationStudent::class);
+    }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(ApplicationContact::class);
+    }
+
+    public function guardianContact(): HasOne
+    {
+        // Always eager-load this via ->with('guardianContact') to avoid N+1.
+        return $this->hasOne(ApplicationContact::class)
+            ->where('is_guardian', true);
+    }
+
+    public function contract(): HasOne
+    {
+        return $this->hasOne(ApplicationContract::class);
     }
 }

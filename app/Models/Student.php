@@ -57,4 +57,9 @@ class Student extends Model
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(StudentContact::class);
+    }
 }
