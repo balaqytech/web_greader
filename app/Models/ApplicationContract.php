@@ -22,6 +22,7 @@ class ApplicationContract extends Model
         return [
             'token_expires_at' => 'datetime',
             'signed_at' => 'datetime',
+            'signed_by_applicant' => 'boolean',
         ];
     }
 

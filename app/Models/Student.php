@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 #[Fillable([
     'guardian_id',
@@ -43,9 +44,16 @@ class Student extends Model
         ];
     }
 
-    public function applications(): HasMany
+    public function applications(): HasManyThrough
     {
-        return $this->hasMany(Application::class, 'student_id');
+        return $this->hasManyThrough(
+            Application::class,
+            ApplicationStudent::class,
+            'civil_number', // Foreign key on ApplicationStudent
+            'id',           // Foreign key on Application
+            'civil_number', // Local key on Student
+            'application_id' // Local key on ApplicationStudent
+        );
     }
 
     public function guardian(): BelongsTo

@@ -4,15 +4,17 @@ namespace App\Filament\Resources\Guardians\RelationManagers;
 
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
+use App\Models\Guardian;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class ApplicationsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'applications';
+    protected static string $relationship = 'students';
 
     public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
@@ -31,9 +33,12 @@ class ApplicationsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
+        /** @var Guardian $guardian */
+        $guardian = $this->getOwnerRecord();
+
         return $table
+            ->query(fn (): Builder => $guardian->getApplicationsQuery()->with(['program', 'branch', 'season', 'applicationStudent']))
             ->recordTitleAttribute('ref_no')
-            ->modifyQueryUsing(fn ($query) => $query->with(['program', 'branch', 'season', 'applicationStudent']))
             ->columns([
                 TextColumn::make('ref_no')
                     ->label(__('admin.application.ref_no'))

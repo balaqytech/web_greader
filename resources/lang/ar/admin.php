@@ -240,7 +240,7 @@ return [
         'states' => [
             'all' => 'الكل',
             'draft' => 'مسودة',
-            'submitted' => 'مقدم',
+            'submitted' => 'تم اكمال البيانات',
             'waiting_contract_signature' => 'في انتظار توقيع العقد',
             'under_review' => 'قيد المراجعة',
             'accepted' => 'مقبول',

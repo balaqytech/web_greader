@@ -2,6 +2,7 @@
 
 namespace App\Actions\Applications;
 
+use App\Enums\GuardianRelationship;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\Models\ApplicationContact;
@@ -37,13 +38,9 @@ class AcceptApplicationAction
 
             $guardian = $this->createOrUpdateGuardian($guardianContact);
 
-            $student = $this->createOrUpdateStudent($applicationStudent, $guardian);
+            $student = $this->createOrUpdateStudent($application, $applicationStudent, $guardian);
 
             $this->syncStudentContacts($student, $application);
-
-            $application->update([
-                'student_id' => $student->id,
-            ]);
 
             return $student;
         });
@@ -51,6 +48,13 @@ class AcceptApplicationAction
 
     private function createOrUpdateGuardian(ApplicationContact $contact): Guardian
     {
+        // Map ContactType to GuardianRelationship safely — only father/mother/relative are valid.
+        $relationship = match ($contact->type?->value) {
+            'father' => GuardianRelationship::Father,
+            'mother' => GuardianRelationship::Mother,
+            default => GuardianRelationship::Relative,
+        };
+
         // id_number is required for guardian contacts — enforced during submission validation.
         return Guardian::updateOrCreate(
             ['id_number' => $contact->id_number],
@@ -62,11 +66,13 @@ class AcceptApplicationAction
                 'occupation' => $contact->occupation,
                 'work_address' => $contact->work_address,
                 'work_phone' => $contact->work_phone,
+                'relationship' => $relationship,
             ]
         );
     }
 
     private function createOrUpdateStudent(
+        Application $application,
         ApplicationStudent $applicationStudent,
         Guardian $guardian
     ): Student {
@@ -75,6 +81,7 @@ class AcceptApplicationAction
             ['civil_number' => $applicationStudent->civil_number],
             [
                 'guardian_id' => $guardian->id,
+                'branch_id' => $application->branch_id,
                 'name' => $applicationStudent->name,
                 'gender' => $applicationStudent->gender,
                 'birth_date' => $applicationStudent->birth_date,
@@ -91,13 +98,12 @@ class AcceptApplicationAction
     private function syncStudentContacts(Student $student, Application $application): void
     {
         foreach ($application->contacts as $contact) {
+            $lookup = $this->contactLookup($student, $contact);
+
             StudentContact::updateOrCreate(
+                $lookup,
                 [
-                    'student_id' => $student->id,
                     'type' => $contact->type,
-                    'id_number' => $contact->id_number,
-                ],
-                [
                     'relationship' => $contact->relationship,
                     'name' => $contact->name,
                     'phone' => $contact->phone,
@@ -109,5 +115,29 @@ class AcceptApplicationAction
                 ]
             );
         }
+    }
+
+    private function contactLookup(Student $student, ApplicationContact $contact): array
+    {
+        if ($contact->id_number) {
+            return [
+                'student_id' => $student->id,
+                'id_number' => $contact->id_number,
+            ];
+        }
+
+        if ($contact->phone) {
+            return [
+                'student_id' => $student->id,
+                'type' => $contact->type,
+                'phone' => $contact->phone,
+            ];
+        }
+
+        return [
+            'student_id' => $student->id,
+            'type' => $contact->type,
+            'name' => $contact->name,
+        ];
     }
 }
