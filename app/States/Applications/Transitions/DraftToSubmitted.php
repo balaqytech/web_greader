@@ -2,8 +2,10 @@
 
 namespace App\States\Applications\Transitions;
 
+use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Actions\Applications\ValidateApplicationCompletionAction;
 use App\Models\Application;
+use App\States\Applications\Draft;
 use App\States\Applications\Submitted;
 use Spatie\ModelStates\Transition;
 
@@ -15,9 +17,16 @@ class DraftToSubmitted extends Transition
     {
         app(ValidateApplicationCompletionAction::class)->handle($this->application);
 
-        $this->application->submitted_at = now();
+        $fromState = Draft::getMorphClass();
+
         $this->application->status = Submitted::class;
         $this->application->save();
+
+        app(RecordApplicationActivityAction::class)->handle(
+            $this->application,
+            $fromState,
+            Submitted::getMorphClass(),
+        );
 
         return $this->application;
     }

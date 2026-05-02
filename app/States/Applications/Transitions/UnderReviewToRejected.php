@@ -2,9 +2,11 @@
 
 namespace App\States\Applications\Transitions;
 
+use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Actions\Applications\RejectApplicationAction;
 use App\Models\Application;
 use App\States\Applications\Rejected;
+use App\States\Applications\UnderReview;
 use Spatie\ModelStates\Transition;
 
 class UnderReviewToRejected extends Transition
@@ -13,11 +15,20 @@ class UnderReviewToRejected extends Transition
 
     public function handle(): Application
     {
-        app(RejectApplicationAction::class)->handle($this->application, $this->application->rejection_reason ?? 'Rejected');
+        $fromState = UnderReview::getMorphClass();
+        $reason = $this->application->rejection_reason ?? 'Rejected';
+
+        app(RejectApplicationAction::class)->handle($this->application, $reason);
 
         $this->application->status = Rejected::class;
-        $this->application->rejected_at = now();
         $this->application->save();
+
+        app(RecordApplicationActivityAction::class)->handle(
+            $this->application,
+            $fromState,
+            Rejected::getMorphClass(),
+            $reason,
+        );
 
         return $this->application;
     }

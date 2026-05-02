@@ -12,7 +12,6 @@ class RejectApplicationAction
         return DB::transaction(function () use ($application, $reason) {
             $application->update([
                 'rejection_reason' => $reason,
-                'rejected_at' => now(),
             ]);
 
             return $application;

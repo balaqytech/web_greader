@@ -43,7 +43,6 @@ class AcceptApplicationAction
 
             $application->update([
                 'student_id' => $student->id,
-                'accepted_at' => now(),
             ]);
 
             return $student;

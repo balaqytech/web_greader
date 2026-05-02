@@ -3,10 +3,15 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\States\Applications\Accepted;
 use App\States\Applications\ApplicationState;
+use App\States\Applications\Cancelled;
 use App\States\Applications\Draft;
+use App\States\Applications\Rejected;
+use App\States\Applications\Submitted;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,10 +27,6 @@ use Spatie\ModelStates\HasStates;
     'program_id',
     'branch_id',
     'status',
-    'submitted_at',
-    'accepted_at',
-    'rejected_at',
-    'cancelled_at',
     'rejection_reason',
     'student_name',
     'student_gender',
@@ -92,7 +93,7 @@ class Application extends Model
     protected static function booted(): void
     {
         static::creating(function (self $application) {
-            $application->ref_no = 'APP-'.now()->format('Y').str_pad(
+            $application->ref_no = 'APP-' . now()->format('Y') . str_pad(
                 (string) (Application::withoutGlobalScopes()->count() + 1),
                 6,
                 '0',
@@ -168,5 +169,38 @@ class Application extends Model
     public function contract(): HasOne
     {
         return $this->hasOne(ApplicationContract::class);
+    }
+
+    /**
+     * Timestamp accessors derived from ApplicationActivity records.
+     * These replace the removed submitted_at, accepted_at, rejected_at, cancelled_at columns.
+     */
+    public function getSubmittedAtAttribute(): ?Carbon
+    {
+        return $this->activities()
+            ->where('to_state', Submitted::getMorphClass())
+            ->oldest('transitioned_at')
+            ->value('transitioned_at');
+    }
+
+    public function getAcceptedAtAttribute(): ?Carbon
+    {
+        return $this->activities()
+            ->where('to_state', Accepted::getMorphClass())
+            ->value('transitioned_at');
+    }
+
+    public function getRejectedAtAttribute(): ?Carbon
+    {
+        return $this->activities()
+            ->where('to_state', Rejected::getMorphClass())
+            ->value('transitioned_at');
+    }
+
+    public function getCancelledAtAttribute(): ?Carbon
+    {
+        return $this->activities()
+            ->where('to_state', Cancelled::getMorphClass())
+            ->value('transitioned_at');
     }
 }

@@ -2,8 +2,10 @@
 
 namespace App\States\Applications\Transitions;
 
+use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Models\Application;
 use App\States\Applications\Cancelled;
+use App\States\Applications\Submitted;
 use Spatie\ModelStates\Transition;
 
 class SubmittedToCancelled extends Transition
@@ -12,9 +14,16 @@ class SubmittedToCancelled extends Transition
 
     public function handle(): Application
     {
+        $fromState = Submitted::getMorphClass();
+
         $this->application->status = Cancelled::class;
-        $this->application->cancelled_at = now();
         $this->application->save();
+
+        app(RecordApplicationActivityAction::class)->handle(
+            $this->application,
+            $fromState,
+            Cancelled::getMorphClass(),
+        );
 
         return $this->application;
     }
