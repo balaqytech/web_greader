@@ -6,6 +6,8 @@ use App\Filament\Resources\Students\Pages\CreateStudent;
 use App\Filament\Resources\Students\Pages\EditStudent;
 use App\Filament\Resources\Students\Pages\ListStudents;
 use App\Filament\Resources\Students\Pages\ViewStudent;
+use App\Filament\Resources\Students\RelationManagers\ApplicationsRelationManager;
+use App\Filament\Resources\Students\RelationManagers\ContactsRelationManager;
 use App\Filament\Resources\Students\Schemas\StudentForm;
 use App\Filament\Resources\Students\Schemas\StudentInfolist;
 use App\Filament\Resources\Students\Tables\StudentsTable;
@@ -56,7 +58,8 @@ class StudentResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ContactsRelationManager::class,
+            ApplicationsRelationManager::class,
         ];
     }
 

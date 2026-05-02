@@ -3,18 +3,17 @@
 namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\Actions\AcceptApplicationFilamentAction;
-use App\Filament\Resources\Applications\Actions\CompleteApplicationDataFilamentAction;
+use App\Filament\Resources\Applications\Actions\CancelApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\CopyContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\MoveToWaitingContractFilamentAction;
 use App\Filament\Resources\Applications\Actions\OpenContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\RejectApplicationFilamentAction;
-use App\Filament\Resources\Applications\Actions\ReturnForCorrectionFilamentAction;
-use App\Filament\Resources\Applications\Actions\RevertToDataCompleteFilamentAction;
-use App\Filament\Resources\Applications\Actions\SendContractFilamentAction;
+use App\Filament\Resources\Applications\Actions\ReturnToSubmittedFilamentAction;
+use App\Filament\Resources\Applications\Actions\SubmitApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\UploadContractFilamentAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
-use App\States\Applications\PendingRegistration;
+use App\States\Applications\Draft;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -26,17 +25,16 @@ class ViewApplication extends ViewRecord
     {
         return [
             EditAction::make()
-                ->visible(fn(Application $record): bool => $record->status instanceof PendingRegistration),
-            CompleteApplicationDataFilamentAction::make(),
+                ->visible(fn (Application $record): bool => $record->status instanceof Draft),
+            SubmitApplicationFilamentAction::make(),
             MoveToWaitingContractFilamentAction::make(),
-            SendContractFilamentAction::make(),
             OpenContractLinkFilamentAction::make(),
             CopyContractLinkFilamentAction::make(),
             UploadContractFilamentAction::make(),
-            RevertToDataCompleteFilamentAction::make(),
+            ReturnToSubmittedFilamentAction::make(),
             AcceptApplicationFilamentAction::make(),
             RejectApplicationFilamentAction::make(),
-            ReturnForCorrectionFilamentAction::make(),
+            CancelApplicationFilamentAction::make(),
         ];
     }
 }

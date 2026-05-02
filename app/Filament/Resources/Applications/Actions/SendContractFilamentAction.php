@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
-use App\Actions\Applications\SendContractAction;
 use App\Models\Application;
-use App\States\Applications\WaitingContract;
+use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 
 class SendContractFilamentAction extends Action
 {
@@ -29,14 +27,15 @@ class SendContractFilamentAction extends Action
         $this->modalDescription(__('admin.application.send_contract_description'));
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof WaitingContract
+            fn (?Application $record): bool => $record?->status instanceof WaitingContractSignature
+                && $record->contract !== null
+                && filled($record->contract->token)
         );
 
         $this->action(function (Application $record) {
             try {
-                $application = app(SendContractAction::class)->execute($record, Auth::id());
-
-                $link = route('contract.show', $application->contract_token);
+                // TODO: Implement actual sending logic (WhatsApp, email, etc.)
+                $link = route('contract.show', $record->contract->token);
 
                 Notification::make()
                     ->title(__('admin.application.actions.send_contract_success'))

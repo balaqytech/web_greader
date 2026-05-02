@@ -3,31 +3,30 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
-use App\States\Applications\DataComplete;
-use App\States\Applications\WaitingContract;
+use App\States\Applications\Submitted;
+use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 
-class RevertToDataCompleteFilamentAction extends Action
+class ReturnToSubmittedFilamentAction extends Action
 {
     public static function getDefaultName(): ?string
     {
-        return 'revert_to_data_complete';
+        return 'return_to_submitted';
     }
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->label(__('admin.application.actions.revert_to_data_complete'));
+        $this->label(__('admin.application.actions.return_to_submitted'));
         $this->icon('heroicon-o-arrow-uturn-left');
-        $this->color('danger');
+        $this->color('warning');
         $this->requiresConfirmation();
-        $this->modalHeading(__('admin.application.actions.revert_to_data_complete'));
+        $this->modalHeading(__('admin.application.actions.return_to_submitted'));
 
-        $this->form([
+        $this->schema([
             Textarea::make('notes')
                 ->label(__('admin.application.notes'))
                 ->placeholder(__('admin.application.notes_placeholder'))
@@ -35,19 +34,16 @@ class RevertToDataCompleteFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof WaitingContract
+            fn (?Application $record): bool => $record?->status instanceof WaitingContractSignature
+                && ($record->status->canTransitionTo(Submitted::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record) {
             try {
-                $record->status->transitionTo(
-                    DataComplete::class,
-                    transitionedBy: Auth::id(),
-                    notes: $data['notes'] ?? null
-                );
+                $record->status->transitionTo(Submitted::class);
 
                 Notification::make()
-                    ->title(__('admin.application.actions.revert_to_data_complete_success'))
+                    ->title(__('admin.application.actions.return_to_submitted_success'))
                     ->success()
                     ->send();
             } catch (\Exception $e) {

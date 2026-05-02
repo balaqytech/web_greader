@@ -2,14 +2,12 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
-use App\Actions\Applications\UploadSignedContractAction;
 use App\Models\Application;
-use App\States\Applications\DataComplete;
-use App\States\Applications\WaitingContract;
+use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 
 class UploadContractFilamentAction extends Action
 {
@@ -38,12 +36,22 @@ class UploadContractFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn(?Application $record): bool => $record?->status instanceof WaitingContract
+            fn (?Application $record): bool => $record?->status instanceof WaitingContractSignature
         );
 
         $this->action(function (Application $record, array $data) {
             try {
-                app(UploadSignedContractAction::class)->execute($record, $data['contract_file'], Auth::id());
+                // Store file path on the ApplicationContract
+                if ($record->contract) {
+                    $record->contract->update([
+                        'file_path' => $data['contract_file'],
+                        'signed_at' => now(),
+                        'signed_by_applicant' => false,
+                    ]);
+                }
+
+                // Transition to UnderReview
+                $record->status->transitionTo(UnderReview::class);
 
                 Notification::make()
                     ->title(__('admin.application.actions.upload_signed_contract_success'))

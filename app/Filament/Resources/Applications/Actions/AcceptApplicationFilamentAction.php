@@ -2,14 +2,12 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
-use App\Actions\Applications\AcceptApplicationAction;
 use App\Models\Application;
 use App\States\Applications\Accepted;
 use App\States\Applications\UnderReview;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 
 class AcceptApplicationFilamentAction extends Action
 {
@@ -37,13 +35,13 @@ class AcceptApplicationFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn(?Application $record): bool => $record?->status instanceof UnderReview
+            fn (?Application $record): bool => $record?->status instanceof UnderReview
                 && ($record->status->canTransitionTo(Accepted::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record) {
             try {
-                app(AcceptApplicationAction::class)->execute($record, Auth::id(), $data['notes'] ?? null);
+                $record->status->transitionTo(Accepted::class);
 
                 Notification::make()
                     ->title(__('admin.application.actions.accept_success'))

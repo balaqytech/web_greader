@@ -22,15 +22,16 @@ class OpenContractLinkFilamentAction extends Action
         $this->outlined();
 
         $this->url(function (Application $record): string {
-            return route('contract.show', $record->contract_token);
+            return route('contract.show', $record->contract->token);
         });
 
         $this->openUrlInNewTab();
 
         $this->visible(
             fn (?Application $record): bool => $record !== null
-                && filled($record->contract_token)
-                && $record->hasValidContractToken()
+                && $record->contract !== null
+                && filled($record->contract->token)
+                && ! $record->contract->isTokenExpired()
         );
     }
 }

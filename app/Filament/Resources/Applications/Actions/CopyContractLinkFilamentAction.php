@@ -28,7 +28,7 @@ class CopyContractLinkFilamentAction extends Action
         $this->modalCancelActionLabel('');
 
         $this->infolist(function (Schema $schema, Application $record): Schema {
-            $link = route('contract.show', $record->contract_token);
+            $link = route('contract.show', $record->contract->token);
 
             return $schema->components([
                 TextEntry::make('contract_link')
@@ -40,6 +40,7 @@ class CopyContractLinkFilamentAction extends Action
                     ->columnSpanFull(),
                 TextEntry::make('contract_token_expires_at')
                     ->label(__('admin.application.contract_link_expires_at'))
+                    ->state($record->contract->token_expires_at)
                     ->dateTime()
                     ->columnSpanFull(),
             ]);
@@ -49,7 +50,8 @@ class CopyContractLinkFilamentAction extends Action
 
         $this->visible(
             fn (?Application $record): bool => $record !== null
-                && filled($record->contract_token)
+                && $record->contract !== null
+                && filled($record->contract->token)
         );
     }
 }

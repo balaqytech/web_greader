@@ -2,14 +2,12 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
-use App\Actions\Applications\RejectApplicationAction;
 use App\Models\Application;
 use App\States\Applications\Rejected;
 use App\States\Applications\UnderReview;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 
 class RejectApplicationFilamentAction extends Action
 {
@@ -42,12 +40,21 @@ class RejectApplicationFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
-            app(RejectApplicationAction::class)->execute($record, $data['rejection_reason'], Auth::id());
+            try {
+                // Set rejection reason before transitioning
+                $record->update(['rejection_reason' => $data['rejection_reason']]);
+                $record->status->transitionTo(Rejected::class);
 
-            Notification::make()
-                ->title(__('admin.application.actions.reject_success'))
-                ->danger()
-                ->send();
+                Notification::make()
+                    ->title(__('admin.application.actions.reject_success'))
+                    ->danger()
+                    ->send();
+            } catch (\Exception $e) {
+                Notification::make()
+                    ->title($e->getMessage())
+                    ->danger()
+                    ->send();
+            }
         });
     }
 }
