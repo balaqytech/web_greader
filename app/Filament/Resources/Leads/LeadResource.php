@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Leads;
 
 use App\Filament\Resources\Leads\Pages\CreateLead;
-use App\Filament\Resources\Leads\Pages\EditLead;
 use App\Filament\Resources\Leads\Pages\ListLeads;
 use App\Filament\Resources\Leads\Pages\ViewLead;
 use App\Filament\Resources\Leads\RelationManagers\ContactsRelationManager;
@@ -11,10 +10,8 @@ use App\Filament\Resources\Leads\Schemas\LeadForm;
 use App\Filament\Resources\Leads\Schemas\LeadInfolist;
 use App\Filament\Resources\Leads\Tables\LeadsTable;
 use App\Models\Lead;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 class LeadResource extends Resource

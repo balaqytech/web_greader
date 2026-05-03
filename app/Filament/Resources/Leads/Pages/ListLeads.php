@@ -31,23 +31,23 @@ class ListLeads extends ListRecords
             'all' => Tab::make('All')->label(__('admin.lead.states.all')),
             'new' => Tab::make('New')->label(__('admin.lead.states.new'))
                 ->modifyQueryUsing(function ($query) {
-                    $query->where('status', NewLead::$name);
+                    $query->whereState('status', NewLead::class);
                 }),
             'contacted' => Tab::make('Contacted')->label(__('admin.lead.states.contacted'))
                 ->modifyQueryUsing(function ($query) {
-                    $query->where('status', ContactedLead::$name);
+                    $query->whereState('status', ContactedLead::class);
                 }),
             'interested' => Tab::make('Interested')->label(__('admin.lead.states.interested'))
                 ->modifyQueryUsing(function ($query) {
-                    $query->where('status', Interested::$name);
+                    $query->whereState('status', Interested::class);
                 }),
             'not_interested' => Tab::make('Not Interested')->label(__('admin.lead.states.not_interested'))
                 ->modifyQueryUsing(function ($query) {
-                    $query->where('status', NotInterested::$name);
+                    $query->whereState('status', NotInterested::class);
                 }),
             'no_response' => Tab::make('No Response')->label(__('admin.lead.states.no_response'))
                 ->modifyQueryUsing(function ($query) {
-                    $query->where('status', NoResponse::$name);
+                    $query->whereState('status', NoResponse::class);
                 }),
         ];
     }

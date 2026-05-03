@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\BranchScope;
 use App\States\Applications\Accepted;
 use App\States\Applications\ApplicationState;
 use App\States\Applications\Cancelled;
@@ -12,12 +13,14 @@ use App\Support\Model;
 use App\Traits\HasAffiliate;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\ModelStates\HasStates;
 
+#[ScopedBy(BranchScope::class)]
 #[Fillable([
     'lead_id',
     'season_id',
@@ -45,7 +48,7 @@ class Application extends Model
     protected static function booted(): void
     {
         static::creating(function (self $application) {
-            $application->ref_no = 'APP-'.now()->format('Y').str_pad(
+            $application->ref_no = 'APP-' . now()->format('Y') . str_pad(
                 (string) (Application::withoutGlobalScopes()->count() + 1),
                 6,
                 '0',

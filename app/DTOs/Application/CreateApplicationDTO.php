@@ -8,9 +8,6 @@ use App\Models\Lead;
 
 class CreateApplicationDTO
 {
-    /**
-     * @param  array<int, array{type?: ContactType, relationship?: string, name: string, phone?: string, email?: string, id_number?: string, occupation?: string, work_address?: string, work_phone?: string, is_guardian?: bool}>  $contacts
-     */
     public function __construct(
         public int $programId,
         public int $branchId,
@@ -66,7 +63,7 @@ class CreateApplicationDTO
             'village' => $this->studentVillage,
             'house_number' => $this->studentHouseNumber,
             'parents_social_status' => $this->studentParentsSocialStatus,
-        ], fn ($value) => filled($value));
+        ], fn($value) => filled($value));
     }
 
     /**
