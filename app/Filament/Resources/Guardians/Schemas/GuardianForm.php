@@ -37,10 +37,6 @@ class GuardianForm
                     ->label(__('admin.guardian.work_phone'))
                     ->tel()
                     ->default(null),
-                Select::make('relationship')
-                    ->options(GuardianRelationship::class)
-                    ->label(__('admin.guardian.relationship'))
-                    ->required(),
             ]);
     }
 }

@@ -38,6 +38,9 @@ class StudentInfolist
                             ->label(__('admin.student.house_number')),
                         TextEntry::make('parents_social_status')
                             ->label(__('admin.student.parents_social_status')),
+                        TextEntry::make('relationship_with_guardian')
+                            ->label(__('admin.student.relationship_with_guardian'))
+                            ->badge(),
                         TextEntry::make('created_at')
                             ->label(__('admin.student.created_at'))
                             ->dateTime()

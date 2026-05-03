@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('village')->nullable();
             $table->string('house_number')->nullable();
             $table->string('parents_social_status')->nullable();
+            $table->string('relationship_with_guardian')->nullable();
             $table->timestamps();
         });
     }

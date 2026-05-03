@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use App\Models\Scopes\BranchScope;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,9 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
     'village',
     'house_number',
     'parents_social_status',
-    'father_data',
-    'mother_data',
-    'relative_data',
+    'relationship_with_guardian',
 ])]
 class Student extends Model
 {
@@ -41,9 +40,7 @@ class Student extends Model
         return [
             'gender' => Gender::class,
             'birth_date' => 'date',
-            'father_data' => 'array',
-            'mother_data' => 'array',
-            'relative_data' => 'array',
+            'relationship_with_guardian' => GuardianRelationship::class,
         ];
     }
 

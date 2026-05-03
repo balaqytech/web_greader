@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Students\Schemas;
 
 use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -52,6 +53,10 @@ class StudentForm
                             ->required(),
                         TextInput::make('parents_social_status')
                             ->label(__('admin.student.parents_social_status'))
+                            ->required(),
+                        Select::make('relationship_with_guardian')
+                            ->options(GuardianRelationship::class)
+                            ->label(__('admin.student.relationship_with_guardian'))
                             ->required(),
                     ])
                     ->columns(2)

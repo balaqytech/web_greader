@@ -36,10 +36,6 @@ class GuardiansTable
                 TextColumn::make('work_phone')
                     ->label(__('admin.guardian.work_phone'))
                     ->searchable(),
-                TextColumn::make('relationship')
-                    ->label(__('admin.guardian.relationship'))
-                    ->badge()
-                    ->searchable(),
                 TextColumn::make('created_at')
                     ->label(__('admin.created_at'))
                     ->dateTime()

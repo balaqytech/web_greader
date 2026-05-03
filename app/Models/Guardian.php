@@ -9,20 +9,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'phone', 'email', 'id_number', 'occupation', 'work_address', 'work_phone', 'relationship'])]
+#[Fillable(['name', 'phone', 'email', 'id_number', 'occupation', 'work_address', 'work_phone'])]
 class Guardian extends Model
 {
     use HasFactory;
-
-    /**
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'relationship' => GuardianRelationship::class,
-        ];
-    }
 
     public function students(): HasMany
     {

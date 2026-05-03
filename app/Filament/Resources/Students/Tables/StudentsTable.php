@@ -43,6 +43,9 @@ class StudentsTable
                     ->label(__('admin.student.house_number')),
                 TextColumn::make('parents_social_status')
                     ->label(__('admin.student.parents_social_status')),
+                TextColumn::make('relationship_with_guardian')
+                    ->label(__('admin.student.relationship_with_guardian'))
+                    ->badge(),
                 TextColumn::make('created_at')
                     ->label(__('admin.created_at'))
                     ->dateTime()

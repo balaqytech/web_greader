@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('occupation')->nullable();
             $table->string('work_address')->nullable();
             $table->string('work_phone')->nullable();
-            $table->string('relationship')->index();
             $table->timestamps();
         });
     }
