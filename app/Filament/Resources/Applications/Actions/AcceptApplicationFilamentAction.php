@@ -39,9 +39,9 @@ class AcceptApplicationFilamentAction extends Action
                 && ($record->status->canTransitionTo(Accepted::class) ?? false)
         );
 
-        $this->action(function (Application $record) {
+        $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(Accepted::class);
+                $record->status->transitionTo(Accepted::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.accept_success'))

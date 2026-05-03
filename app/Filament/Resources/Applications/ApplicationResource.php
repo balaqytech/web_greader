@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications;
 
 use App\Filament\Resources\Applications\Pages\CreateApplication;
+use App\Filament\Resources\Applications\Pages\CreateApplicationFromExisting;
 use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
@@ -68,6 +69,7 @@ class ApplicationResource extends Resource
         return [
             'index' => ListApplications::route('/'),
             'create' => CreateApplication::route('/create'),
+            'create-existing' => CreateApplicationFromExisting::route('/create-existing'),
             'view' => ViewApplication::route('/{record}'),
             'edit' => EditApplication::route('/{record}/edit'),
         ];

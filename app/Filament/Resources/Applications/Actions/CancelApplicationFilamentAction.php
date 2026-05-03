@@ -44,9 +44,9 @@ class CancelApplicationFilamentAction extends Action
                 && ($record->status->canTransitionTo(Cancelled::class) ?? false)
         );
 
-        $this->action(function (Application $record) {
+        $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(Cancelled::class);
+                $record->status->transitionTo(Cancelled::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.cancel_success'))

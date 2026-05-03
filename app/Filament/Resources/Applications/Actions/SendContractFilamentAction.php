@@ -32,6 +32,8 @@ class SendContractFilamentAction extends Action
                 && filled($record->contract->token)
         );
 
+        $this->disabled();
+
         $this->action(function (Application $record) {
             try {
                 // TODO: Implement actual sending logic (WhatsApp, email, etc.)

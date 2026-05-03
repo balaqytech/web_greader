@@ -17,7 +17,7 @@ class WaitingContractSignatureToSubmitted extends Transition
 
     public function handle(): Application
     {
-        $fromState = WaitingContractSignature::class;
+        $fromState = WaitingContractSignature::$name;
 
         // Invalidate old contract data via the ApplicationContract model
         if ($this->application->contract) {
@@ -35,7 +35,7 @@ class WaitingContractSignatureToSubmitted extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            Submitted::class,
+            Submitted::$name,
             $this->notes,
         );
 

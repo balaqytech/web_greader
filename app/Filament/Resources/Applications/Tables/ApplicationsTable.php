@@ -12,6 +12,7 @@ use App\States\Applications\UnderReview;
 use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -85,7 +86,7 @@ class ApplicationsTable
                         Rejected::$name => __('admin.application.states.rejected'),
                         Cancelled::$name => __('admin.application.states.cancelled'),
                     ]),
-            ])
+            ], FiltersLayout::AboveContentCollapsible)
             ->recordActions([
                 ViewAction::make(),
             ])

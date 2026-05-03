@@ -10,11 +10,14 @@ use Spatie\ModelStates\Transition;
 
 class DraftToCancelled extends Transition
 {
-    public function __construct(public Application $application) {}
+    public function __construct(
+        public Application $application,
+        public ?string $notes = null,
+    ) {}
 
     public function handle(): Application
     {
-        $fromState = Draft::getMorphClass();
+        $fromState = Draft::$name;
 
         $this->application->status = Cancelled::class;
         $this->application->save();
@@ -22,7 +25,8 @@ class DraftToCancelled extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            Cancelled::getMorphClass(),
+            Cancelled::$name,
+            $this->notes,
         );
 
         return $this->application;

@@ -21,7 +21,7 @@ class WaitingContractSignatureToUnderReview extends Transition
             throw new \Exception(__('alerts.application.application_contract_is_not_signed'));
         }
 
-        $fromState = WaitingContractSignature::class;
+        $fromState = WaitingContractSignature::$name;
 
         $this->application->status = UnderReview::class;
         $this->application->save();
@@ -29,7 +29,7 @@ class WaitingContractSignatureToUnderReview extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            UnderReview::class,
+            UnderReview::$name,
             $this->notes,
         );
 

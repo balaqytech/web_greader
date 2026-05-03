@@ -10,6 +10,8 @@ use App\States\Applications\Rejected;
 use App\States\Applications\Submitted;
 use App\States\Applications\UnderReview;
 use App\States\Applications\WaitingContractSignature;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -21,7 +23,18 @@ class ListApplications extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            // ActionGroup::make([
+            CreateAction::make()
+                ->label(__('admin.application.actions.create')),
+            // Action::make('create_from_existing')
+            //     ->label(__('admin.application.actions.create_from_existing'))
+            //     ->icon('heroicon-o-user-plus')
+            //     ->color('info')
+            //     ->url(ApplicationResource::getUrl('create-existing')),
+            // ])
+            //     ->label(__('admin.application.actions.create'))
+            //     ->color('primary')
+            //     ->button(),
         ];
     }
 
@@ -42,12 +55,12 @@ class ListApplications extends ListRecords
             'under_review' => Tab::make('Under Review')
                 ->label(__('admin.application.states.under_review'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', UnderReview::$name)),
-            'accepted' => Tab::make('Accepted')
-                ->label(__('admin.application.states.accepted'))
-                ->modifyQueryUsing(fn ($query) => $query->where('status', Accepted::$name)),
-            'rejected' => Tab::make('Rejected')
-                ->label(__('admin.application.states.rejected'))
-                ->modifyQueryUsing(fn ($query) => $query->where('status', Rejected::$name)),
+            // 'accepted' => Tab::make('Accepted')
+            //     ->label(__('admin.application.states.accepted'))
+            //     ->modifyQueryUsing(fn ($query) => $query->where('status', Accepted::$name)),
+            // 'rejected' => Tab::make('Rejected')
+            //     ->label(__('admin.application.states.rejected'))
+            //     ->modifyQueryUsing(fn ($query) => $query->where('status', Rejected::$name)),
             'cancelled' => Tab::make('Cancelled')
                 ->label(__('admin.application.states.cancelled'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', Cancelled::$name)),

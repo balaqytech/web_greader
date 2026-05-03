@@ -2,8 +2,8 @@
 
 namespace App\DTOs\Application;
 
-use App\Enums\ContactType;
 use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use App\Models\Lead;
 
 class CreateApplicationDTO
@@ -63,7 +63,7 @@ class CreateApplicationDTO
             'village' => $this->studentVillage,
             'house_number' => $this->studentHouseNumber,
             'parents_social_status' => $this->studentParentsSocialStatus,
-        ], fn($value) => filled($value));
+        ], fn ($value) => filled($value));
     }
 
     /**
@@ -82,7 +82,6 @@ class CreateApplicationDTO
         $contacts = [];
         if (filled($lead->guardian_name)) {
             $contacts[] = [
-                'type' => ContactType::Father,
                 'name' => $lead->guardian_name,
                 'phone' => $lead->whatsapp,
                 'is_guardian' => true,
@@ -97,6 +96,56 @@ class CreateApplicationDTO
             affiliateId: $lead->affiliate_id,
             studentName: $lead->student_name,
             contacts: $contacts,
+        );
+    }
+
+    /**
+     * Build a DTO from Filament form data (wizard submit).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromFormData(array $data): self
+    {
+        $studentData = $data['applicationStudent'] ?? [];
+        $contactData = $data['contacts'] ?? [];
+
+        // Convert each contact to a clean array with proper keys
+        $contacts = array_map(function ($contact) {
+            $relationshipWithGuardian = $contact['relationship_with_guardian'] ?? null;
+            $isGuardian = $relationshipWithGuardian !== null;
+
+            // Convert enum values from string to enum instance if necessary
+            $relationshipWithGuardianEnum = $relationshipWithGuardian instanceof GuardianRelationship
+                ? $relationshipWithGuardian
+                : GuardianRelationship::tryFrom($relationshipWithGuardian);
+
+            return array_filter([
+                'relationship' => $relationshipWithGuardianEnum,
+                'name' => $contact['name'] ?? null,
+                'phone' => $contact['phone'] ?? null,
+                'email' => $contact['email'] ?? null,
+                'id_number' => $contact['id_number'] ?? null,
+                'occupation' => $contact['occupation'] ?? null,
+                'work_address' => $contact['work_address'] ?? null,
+                'work_phone' => $contact['work_phone'] ?? null,
+                'is_guardian' => $isGuardian,
+            ], fn ($value) => filled($value));
+        }, $contactData);
+
+        return new self(
+            programId: $data['program_id'],
+            branchId: $data['branch_id'],
+            seasonId: $data['season_id'],
+            studentName: $studentData['name'] ?? null,
+            studentGender: $studentData['gender'] instanceof Gender ? $studentData['gender'] : Gender::tryFrom($studentData['gender']),
+            studentBirthDate: $studentData['birth_date'] ?? null,
+            studentCivilNumber: $studentData['civil_number'] ?? null,
+            studentState: $studentData['state'] ?? null,
+            studentGovernorate: $studentData['governorate'] ?? null,
+            studentVillage: $studentData['village'] ?? null,
+            studentHouseNumber: $studentData['house_number'] ?? null,
+            studentParentsSocialStatus: $studentData['parents_social_status'] ?? null,
+            contacts: array_values($data['contacts'] ?? []),
         );
     }
 }

@@ -33,7 +33,8 @@ class MoveToWaitingContractFilamentAction extends Action
             Textarea::make('notes')
                 ->label(__('admin.application.notes'))
                 ->placeholder(__('admin.application.notes_placeholder'))
-                ->rows(3),
+                ->rows(3)
+                ->maxLength(255),
         ]);
 
         $this->visible(
@@ -41,9 +42,9 @@ class MoveToWaitingContractFilamentAction extends Action
                 && ($record->status->canTransitionTo(WaitingContractSignature::class) ?? false)
         );
 
-        $this->action(function (Application $record) {
+        $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(WaitingContractSignature::class);
+                $record->status->transitionTo(WaitingContractSignature::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.move_to_waiting_contract_success'))

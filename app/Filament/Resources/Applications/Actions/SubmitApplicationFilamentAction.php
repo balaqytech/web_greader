@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\States\Applications\Draft;
 use App\States\Applications\Submitted;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 
 class SubmitApplicationFilamentAction extends Action
@@ -26,14 +27,22 @@ class SubmitApplicationFilamentAction extends Action
         $this->modalHeading(__('admin.application.actions.submit'));
         $this->modalDescription(__('admin.application.submit_description'));
 
+        $this->schema([
+            Textarea::make('notes')
+                ->label(__('admin.application.notes'))
+                ->placeholder(__('admin.application.notes_placeholder'))
+                ->rows(3)
+                ->maxLength(255),
+        ]);
+
         $this->visible(
             fn (?Application $record): bool => $record?->status instanceof Draft
                 && ($record->status->canTransitionTo(Submitted::class) ?? false)
         );
 
-        $this->action(function (Application $record) {
+        $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(Submitted::class);
+                $record->status->transitionTo(Submitted::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.submit_success'))

@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Applications\Schemas;
 
-use App\Enums\ContactType;
 use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -27,21 +27,11 @@ class CreateApplicationForm
                             Select::make('branch_id')
                                 ->label(__('admin.branch.label'))
                                 ->relationship('branch', 'name')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
-                            Select::make('season_id')
-                                ->label(__('admin.season.label'))
-                                ->relationship('season', 'name')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
+                                ->required(),
                             Select::make('program_id')
                                 ->label(__('admin.program.name'))
                                 ->relationship('program', 'name')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
+                                ->required(),
                         ])
                         ->columns(3),
 
@@ -54,23 +44,33 @@ class CreateApplicationForm
                                 ->required(),
                             Select::make('applicationStudent.gender')
                                 ->label(__('admin.student.gender'))
-                                ->options(Gender::class),
+                                ->options(Gender::class)
+                                ->required(),
                             DatePicker::make('applicationStudent.birth_date')
-                                ->label(__('admin.student.birth_date')),
+                                ->label(__('admin.student.birth_date'))
+                                ->required(),
                             TextInput::make('applicationStudent.civil_number')
                                 ->label(__('admin.student.civil_number'))
                                 ->required(),
                             TextInput::make('applicationStudent.state')
-                                ->label(__('admin.student.state')),
+                                ->label(__('admin.student.state'))
+                                ->required(),
                             TextInput::make('applicationStudent.governorate')
-                                ->label(__('admin.student.governorate')),
+                                ->label(__('admin.student.governorate'))
+                                ->required(),
                             TextInput::make('applicationStudent.village')
-                                ->label(__('admin.student.village')),
+                                ->label(__('admin.student.village'))
+                                ->required(),
                             TextInput::make('applicationStudent.house_number')
-                                ->label(__('admin.student.house_number')),
+                                ->label(__('admin.student.house_number'))
+                                ->required(),
                             TextInput::make('applicationStudent.parents_social_status')
                                 ->label(__('admin.student.parents_social_status'))
-                                ->columnSpanFull(),
+                                ->required(),
+                            Select::make('applicationStudent.relationship_with_guardian')
+                                ->label(__('admin.student.relationship_with_guardian'))
+                                ->options(GuardianRelationship::class)
+                                ->required(),
                         ])
                         ->columns(2),
 
@@ -80,18 +80,17 @@ class CreateApplicationForm
                         ->schema([
                             Repeater::make('contacts')
                                 ->schema([
-                                    Select::make('type')
-                                        ->label(__('admin.application_contacts.type_label'))
-                                        ->options(ContactType::class)
-                                        ->required(),
-                                    TextInput::make('relationship')
+                                    Select::make('relationship')
                                         ->label(__('admin.application_contacts.relationship'))
-                                        ->placeholder(__('admin.application_contacts.relationship_placeholder')),
+                                        ->options(GuardianRelationship::class)
+                                        ->required(),
                                     TextInput::make('name')
                                         ->label(__('admin.application_contacts.name'))
                                         ->required(),
                                     TextInput::make('phone')
-                                        ->label(__('admin.application_contacts.phone')),
+                                        ->label(__('admin.application_contacts.phone'))
+                                        ->tel()
+                                        ->required(),
                                     TextInput::make('email')
                                         ->label(__('admin.application_contacts.email'))
                                         ->email(),

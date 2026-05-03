@@ -284,6 +284,7 @@ return [
             'create' => 'إنشاء طلب تسجيل جديد',
             'create_success' => 'تم إنشاء طلب التسجيل بنجاح',
             'edit' => 'تعديل الطلب',
+            'contract_actions' => 'إجراءات العقد',
             'move_to_waiting_contract' => 'إرسال للتوقيع على العقد',
             'move_to_waiting_contract_success' => 'تم إنشاء رابط العقد وإرساله بنجاح',
             'open_contract_link' => 'فتح رابط العقد',

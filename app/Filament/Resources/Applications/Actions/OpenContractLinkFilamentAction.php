@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
+use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\Action;
 
 class OpenContractLinkFilamentAction extends Action
@@ -25,13 +26,10 @@ class OpenContractLinkFilamentAction extends Action
             return route('contract.show', $record->contract->token);
         });
 
+        $this->disabled();
+
         $this->openUrlInNewTab();
 
-        $this->visible(
-            fn (?Application $record): bool => $record !== null
-                && $record->contract !== null
-                && filled($record->contract->token)
-                && ! $record->contract->isTokenExpired()
-        );
+        $this->visible(fn(?Application $record): bool => $record?->status instanceof WaitingContractSignature);
     }
 }

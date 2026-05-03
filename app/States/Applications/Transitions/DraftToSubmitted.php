@@ -20,7 +20,7 @@ class DraftToSubmitted extends Transition
     {
         app(ValidateApplicationCompletionAction::class)->handle($this->application);
 
-        $fromState = $this->application->status::class;
+        $fromState = Draft::$name;
 
         $this->application->status = Submitted::class;
         $this->application->save();
@@ -28,7 +28,7 @@ class DraftToSubmitted extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            Submitted::class,
+            Submitted::$name,
             $this->notes,
         );
 

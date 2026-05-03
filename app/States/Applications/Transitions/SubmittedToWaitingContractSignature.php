@@ -20,7 +20,7 @@ class SubmittedToWaitingContractSignature extends Transition
     {
         app(GenerateApplicationContractAction::class)->handle($this->application);
 
-        $fromState = Submitted::getMorphClass();
+        $fromState = Submitted::$name;
 
         $this->application->status = WaitingContractSignature::class;
         $this->application->save();
@@ -28,7 +28,7 @@ class SubmittedToWaitingContractSignature extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            WaitingContractSignature::class,
+            WaitingContractSignature::$name,
             $this->notes,
         );
 

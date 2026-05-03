@@ -38,9 +38,9 @@ class ReturnToSubmittedFilamentAction extends Action
                 && ($record->status->canTransitionTo(Submitted::class) ?? false)
         );
 
-        $this->action(function (Application $record) {
+        $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(Submitted::class);
+                $record->status->transitionTo(Submitted::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.return_to_submitted_success'))

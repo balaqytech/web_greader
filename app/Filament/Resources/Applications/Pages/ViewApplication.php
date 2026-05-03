@@ -14,6 +14,8 @@ use App\Filament\Resources\Applications\Actions\UploadContractFilamentAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
 use App\States\Applications\Draft;
+use App\States\Applications\Submitted;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -25,12 +27,16 @@ class ViewApplication extends ViewRecord
     {
         return [
             EditAction::make()
-                ->visible(fn (Application $record): bool => $record->status instanceof Draft),
+                ->visible(fn (Application $record): bool => $record->status instanceof Draft || $record->status instanceof Submitted),
             SubmitApplicationFilamentAction::make(),
             MoveToWaitingContractFilamentAction::make(),
-            OpenContractLinkFilamentAction::make(),
-            CopyContractLinkFilamentAction::make(),
-            UploadContractFilamentAction::make(),
+            ActionGroup::make([
+                OpenContractLinkFilamentAction::make(),
+                CopyContractLinkFilamentAction::make(),
+                UploadContractFilamentAction::make(),
+            ])
+                ->label(__('admin.application.actions.contract_actions'))
+                ->button(),
             ReturnToSubmittedFilamentAction::make(),
             AcceptApplicationFilamentAction::make(),
             RejectApplicationFilamentAction::make(),

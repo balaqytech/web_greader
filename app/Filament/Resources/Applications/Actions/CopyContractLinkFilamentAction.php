@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
+use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -27,7 +28,7 @@ class CopyContractLinkFilamentAction extends Action
         $this->modalSubmitActionLabel(__('admin.application.actions.close'));
         $this->modalCancelActionLabel('');
 
-        $this->infolist(function (Schema $schema, Application $record): Schema {
+        $this->schema(function (Schema $schema, Application $record): Schema {
             $link = route('contract.show', $record->contract->token);
 
             return $schema->components([
@@ -46,12 +47,8 @@ class CopyContractLinkFilamentAction extends Action
             ]);
         });
 
-        $this->action(fn () => null);
+        $this->action(fn() => null);
 
-        $this->visible(
-            fn (?Application $record): bool => $record !== null
-                && $record->contract !== null
-                && filled($record->contract->token)
-        );
+        $this->visible(fn(?Application $record): bool => $record?->status instanceof WaitingContractSignature);
     }
 }
