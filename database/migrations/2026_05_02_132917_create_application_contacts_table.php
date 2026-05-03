@@ -34,7 +34,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['application_id', 'type']);
+            $table->index(['application_id']);
             $table->index(['application_id', 'is_guardian']);
         });
     }

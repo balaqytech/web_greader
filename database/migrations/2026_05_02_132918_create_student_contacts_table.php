@@ -33,7 +33,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['student_id', 'type']);
+            $table->index(['student_id']);
             $table->index(['student_id', 'is_guardian']);
         });
     }
