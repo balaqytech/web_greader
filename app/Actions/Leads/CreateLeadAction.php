@@ -31,19 +31,32 @@ final class CreateLeadAction
 
         $affiliate = $this->resolveAffiliate($affiliate_code);
 
-        $lead = Lead::create([
-            'whatsapp' => $whatsapp,
-            'guardian_name' => $guardian_name,
-            'student_name' => $student_name,
+        // prevent duplicate lead
+        $attributes = [
+            'whatsapp'   => $whatsapp,
             'program_id' => $program->id,
-            'branch_id' => $branch_id,
-            'source' => $source,
-            'program_type' => $program->type,
-            'season_id' => $season->id,
-            'data' => $data,
-            'affiliate_id' => $affiliate?->id,
+            'season_id'  => $season->id,
+            'branch_id'  => $branch_id,
+            'student_name' => $student_name,
+        ];
+
+        $values = [
+            'guardian_name' => $guardian_name,
+            'source'        => $source,
+            'program_type'  => $program->type,
+            'data'          => $data,
+            'affiliate_id'  => $affiliate?->id,
             'affiliate_code_snapshot' => $affiliate?->code,
-        ]);
+        ];
+
+        try {
+            return Lead::updateOrCreate($attributes, $values);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                return Lead::where($attributes)->firstOrFail();
+            }
+            throw $e;
+        }
 
         $this->dispatchWebhookIfNeeded($lead);
 
