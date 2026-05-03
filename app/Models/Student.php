@@ -3,13 +3,16 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\Models\Scopes\BranchScope;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
+#[ScopedBy(BranchScope::class)]
 #[Fillable([
     'guardian_id',
     'branch_id',

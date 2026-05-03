@@ -45,6 +45,15 @@ class ContactsRelationManager extends RelationManager
                 TextColumn::make('email')
                     ->label(__('admin.application_contacts.email'))
                     ->placeholder('-'),
+                TextColumn::make('occupation')
+                    ->label(__('admin.application_contacts.occupation'))
+                    ->placeholder('-'),
+                TextColumn::make('work_address')
+                    ->label(__('admin.application_contacts.work_address'))
+                    ->placeholder('-'),
+                TextColumn::make('work_phone')
+                    ->label(__('admin.application_contacts.work_phone'))
+                    ->placeholder('-'),
                 TextColumn::make('id_number')
                     ->label(__('admin.application_contacts.id_number'))
                     ->placeholder('-'),

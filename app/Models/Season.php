@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 #[Fillable(['name', 'type', 'start_date', 'end_date', 'is_active', 'closed_at'])]
 class Season extends Model
 {
-    /** @use HasFactory<SeasonFactory> */
     use HasFactory;
 
     protected $attributes = [

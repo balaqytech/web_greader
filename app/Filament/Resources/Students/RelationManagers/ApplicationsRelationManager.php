@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Students\RelationManagers;
 
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
+use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -36,7 +37,7 @@ class ApplicationsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('ref_no')
                     ->label(__('admin.application.ref_no'))
-                    ->url(fn (Application $record) => ApplicationResource::getUrl('view', ['record' => $record])),
+                    ->url(fn(Application $record) => ApplicationResource::getUrl('view', ['record' => $record])),
                 TextColumn::make('program.name')
                     ->label(__('admin.program.name'))
                     ->placeholder('-'),
@@ -49,8 +50,8 @@ class ApplicationsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label(__('admin.application.status'))
                     ->badge()
-                    ->color(fn (Application $record) => $record->status->getColor())
-                    ->formatStateUsing(fn (Application $record) => $record->status->getLabel()),
+                    ->color(fn(Application $record) => $record->status->getColor())
+                    ->formatStateUsing(fn(Application $record) => $record->status->getLabel()),
                 TextColumn::make('created_at')
                     ->label(__('admin.lead.created_at'))
                     ->dateTime()
@@ -58,7 +59,10 @@ class ApplicationsRelationManager extends RelationManager
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([])
-            ->recordActions([])
+            ->recordActions([
+                ViewAction::make()
+                    ->url(fn(Application $record) => ApplicationResource::getUrl('view', ['record' => $record]))
+            ])
             ->toolbarActions([]);
     }
 }

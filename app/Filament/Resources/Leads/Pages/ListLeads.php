@@ -2,9 +2,7 @@
 
 namespace App\Filament\Resources\Leads\Pages;
 
-use App\Actions\Leads\CreateLeadAction;
 use App\Filament\Resources\Leads\LeadResource;
-use App\Models\Lead;
 use App\States\Leads\ContactedLead;
 use App\States\Leads\Interested;
 use App\States\Leads\NewLead;
