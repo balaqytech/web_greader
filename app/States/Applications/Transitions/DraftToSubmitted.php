@@ -11,13 +11,16 @@ use Spatie\ModelStates\Transition;
 
 class DraftToSubmitted extends Transition
 {
-    public function __construct(public Application $application) {}
+    public function __construct(
+        public Application $application,
+        public ?string $notes = null,
+    ) {}
 
     public function handle(): Application
     {
         app(ValidateApplicationCompletionAction::class)->handle($this->application);
 
-        $fromState = Draft::getMorphClass();
+        $fromState = $this->application->status::class;
 
         $this->application->status = Submitted::class;
         $this->application->save();
@@ -25,7 +28,8 @@ class DraftToSubmitted extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            Submitted::getMorphClass(),
+            Submitted::class,
+            $this->notes,
         );
 
         return $this->application;

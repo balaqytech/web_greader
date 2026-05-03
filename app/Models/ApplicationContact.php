@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
-use App\Enums\ContactType;
+use App\Enums\GuardianRelationship;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'application_id',
-    'type',
     'relationship',
     'name',
     'phone',
@@ -25,7 +24,7 @@ class ApplicationContact extends Model
     protected function casts(): array
     {
         return [
-            'type' => ContactType::class,
+            'relationship' => GuardianRelationship::class,
             'is_guardian' => 'boolean',
         ];
     }

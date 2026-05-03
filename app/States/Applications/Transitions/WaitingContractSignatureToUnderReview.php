@@ -10,15 +10,18 @@ use Spatie\ModelStates\Transition;
 
 class WaitingContractSignatureToUnderReview extends Transition
 {
-    public function __construct(public Application $application) {}
+    public function __construct(
+        public Application $application,
+        public ?string $notes = null,
+    ) {}
 
     public function handle(): Application
     {
         if (! $this->application->contract || ! $this->application->contract->isSigned()) {
-            throw new \Exception('Application contract must be signed before review.');
+            throw new \Exception(__('alerts.application.application_contract_is_not_signed'));
         }
 
-        $fromState = WaitingContractSignature::getMorphClass();
+        $fromState = WaitingContractSignature::class;
 
         $this->application->status = UnderReview::class;
         $this->application->save();
@@ -26,7 +29,8 @@ class WaitingContractSignatureToUnderReview extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            UnderReview::getMorphClass(),
+            UnderReview::class,
+            $this->notes,
         );
 
         return $this->application;

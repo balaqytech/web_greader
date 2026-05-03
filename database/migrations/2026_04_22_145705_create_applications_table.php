@@ -19,6 +19,8 @@ return new class extends Migration
             $table->foreignId('program_id')->constrained()->restrictOnDelete();
             $table->foreignId('branch_id')->constrained()->restrictOnDelete();
             $table->string('status')->index();
+            $table->foreignId('affiliate_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('source')->default('website');
             $table->text('rejection_reason')->nullable();
             $table->timestamps();
         });

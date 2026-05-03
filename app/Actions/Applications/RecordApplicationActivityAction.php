@@ -4,6 +4,7 @@ namespace App\Actions\Applications;
 
 use App\Models\Application;
 use App\Models\ApplicationActivity;
+use Illuminate\Support\Facades\Auth;
 
 final class RecordApplicationActivityAction
 {
@@ -14,7 +15,7 @@ final class RecordApplicationActivityAction
         ?string $notes = null,
     ): ApplicationActivity {
         return $application->activities()->create([
-            'transitioned_by' => auth()->id(),
+            'transitioned_by' => Auth::id(),
             'from_state' => $fromState,
             'to_state' => $toState,
             'notes' => $notes,

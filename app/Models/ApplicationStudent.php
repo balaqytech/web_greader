@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'governorate',
     'village',
     'house_number',
+    'relationship_with_guardian',
     'parents_social_status',
 ])]
 class ApplicationStudent extends Model
@@ -23,7 +26,9 @@ class ApplicationStudent extends Model
     protected function casts(): array
     {
         return [
+            'gender' => Gender::class,
             'birth_date' => 'date',
+            'relationship_with_guardian' => GuardianRelationship::class,
         ];
     }
 

@@ -18,9 +18,6 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('type')->nullable();
-            // father, mother, relative, emergency, other
-
             $table->string('relationship')->nullable();
 
             $table->string('name');

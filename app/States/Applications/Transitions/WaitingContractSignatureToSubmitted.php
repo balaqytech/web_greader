@@ -10,11 +10,14 @@ use Spatie\ModelStates\Transition;
 
 class WaitingContractSignatureToSubmitted extends Transition
 {
-    public function __construct(public Application $application) {}
+    public function __construct(
+        public Application $application,
+        public ?string $notes = null,
+    ) {}
 
     public function handle(): Application
     {
-        $fromState = WaitingContractSignature::getMorphClass();
+        $fromState = WaitingContractSignature::class;
 
         // Invalidate old contract data via the ApplicationContract model
         if ($this->application->contract) {
@@ -32,7 +35,8 @@ class WaitingContractSignatureToSubmitted extends Transition
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            Submitted::getMorphClass(),
+            Submitted::class,
+            $this->notes,
         );
 
         return $this->application;

@@ -26,10 +26,9 @@ abstract class ApplicationState extends State implements HasColor, HasLabel
             ->allowTransition(Submitted::class, WaitingContractSignature::class, SubmittedToWaitingContractSignature::class)
             ->allowTransition(WaitingContractSignature::class, Submitted::class, WaitingContractSignatureToSubmitted::class)
             ->allowTransition(WaitingContractSignature::class, UnderReview::class, WaitingContractSignatureToUnderReview::class)
-            ->allowTransition(UnderReview::class, Accepted::class, UnderReviewToAccepted::class)
-            ->allowTransition(UnderReview::class, Rejected::class, UnderReviewToRejected::class)
+            // ->allowTransition(UnderReview::class, Accepted::class, UnderReviewToAccepted::class)
+            // ->allowTransition(UnderReview::class, Rejected::class, UnderReviewToRejected::class)
             ->allowTransition(Draft::class, Cancelled::class, DraftToCancelled::class)
-            ->allowTransition(Submitted::class, Cancelled::class, SubmittedToCancelled::class)
-            ->allowTransition(WaitingContractSignature::class, Cancelled::class, WaitingContractSignatureToCancelled::class);
+            ->allowTransition(Submitted::class, Cancelled::class, SubmittedToCancelled::class);
     }
 }

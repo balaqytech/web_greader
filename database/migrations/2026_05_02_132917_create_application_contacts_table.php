@@ -18,10 +18,6 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('type')->nullable();
-            // father, mother, relative, emergency, other
-            // Note: 'guardian' is NOT a valid type. Use is_guardian = true to identify the responsible guardian.
-
             $table->string('relationship')->nullable();
             // father, mother, uncle, aunt, grandfather, etc.
 

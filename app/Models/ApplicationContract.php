@@ -33,11 +33,11 @@ class ApplicationContract extends Model
 
     public function isSigned(): bool
     {
-        return ! is_null($this->signed_at);
+        return $this->signed_at !== null && $this->signed_by_applicant && $this->file_path !== null;
     }
 
     public function isTokenExpired(): bool
     {
-        return $this->token_expires_at && $this->token_expires_at->isPast();
+        return $this->token_expires_at !== null && $this->token_expires_at->isPast();
     }
 }

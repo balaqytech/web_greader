@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Source;
 use App\Models\Scopes\BranchScope;
 use App\States\Applications\Accepted;
 use App\States\Applications\ApplicationState;
@@ -27,6 +28,7 @@ use Spatie\ModelStates\HasStates;
     'program_id',
     'branch_id',
     'status',
+    'source',
     'rejection_reason',
 ])]
 class Application extends Model
@@ -42,6 +44,7 @@ class Application extends Model
     {
         return [
             'status' => ApplicationState::class,
+            'source' => Source::class,
         ];
     }
 

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamp('token_expires_at')->nullable();
 
             $table->timestamp('signed_at')->nullable();
-            $table->boolean('signed_by_applicant')->nullable();
+            $table->boolean('signed_by_applicant')->default(false);
 
             $table->string('file_path')->nullable();
             $table->string('signature_path')->nullable();

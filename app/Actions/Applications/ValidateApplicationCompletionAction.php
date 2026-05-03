@@ -12,19 +12,19 @@ class ValidateApplicationCompletionAction
         $application->loadMissing(['applicationStudent', 'contacts']);
 
         if (! $application->applicationStudent) {
-            throw new ApplicationIncompleteException('Student information is missing.');
+            throw new ApplicationIncompleteException(__('alerts.application.application_student_is_required'));
         }
 
         if (! $application->applicationStudent->name) {
-            throw new ApplicationIncompleteException('Student name is required.');
+            throw new ApplicationIncompleteException(__('alerts.application.application_student_name_is_required'));
         }
 
         if (! $application->applicationStudent->civil_number) {
-            throw new ApplicationIncompleteException('Student civil number is required.');
+            throw new ApplicationIncompleteException(__('alerts.application.application_student_civil_number_is_required'));
         }
 
         if (! $application->program_id || ! $application->branch_id || ! $application->season_id) {
-            throw new ApplicationIncompleteException('Program, branch, and season are required.');
+            throw new ApplicationIncompleteException(__('alerts.application.program_branch_and_season_are_required'));
         }
 
         $guardianContacts = $application->contacts()
@@ -32,13 +32,13 @@ class ValidateApplicationCompletionAction
             ->get();
 
         if ($guardianContacts->count() !== 1) {
-            throw new ApplicationIncompleteException('Exactly one guardian contact is required.');
+            throw new ApplicationIncompleteException(__('alerts.application.exactly_one_guardian_contact_is_required'));
         }
 
         $guardian = $guardianContacts->first();
 
         if (! $guardian->name || ! $guardian->phone || ! $guardian->id_number) {
-            throw new ApplicationIncompleteException('Guardian must have a name, phone, and ID number.');
+            throw new ApplicationIncompleteException(__('alerts.application.guardian_must_have_name_phone_and_id_number'));
         }
 
         $nonGuardianCount = $application->contacts()
@@ -46,7 +46,7 @@ class ValidateApplicationCompletionAction
             ->count();
 
         if ($nonGuardianCount < 2) {
-            throw new ApplicationIncompleteException('At least two non-guardian emergency contacts are required.');
+            throw new ApplicationIncompleteException(__('alerts.application.at_least_two_non_guardian_emergency_contacts_are_required'));
         }
     }
 }
