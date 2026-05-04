@@ -25,6 +25,8 @@ return new class extends Migration
             $table->string('status')->index();
             $table->string('source')->nullable()->index();
             $table->timestamps();
+
+            $table->unique(['whatsapp', 'program_id', 'season_id', 'branch_id', 'student_name'], 'leads_unique');
         });
     }
 
