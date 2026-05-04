@@ -50,10 +50,10 @@ final class CreateLeadAction
         ];
 
         try {
-            return Lead::updateOrCreate($attributes, $values);
+            $lead = Lead::updateOrCreate($attributes, $values);
         } catch (\Illuminate\Database\QueryException $e) {
             if (str_contains($e->getMessage(), 'Duplicate entry')) {
-                return Lead::where($attributes)->firstOrFail();
+                $lead = Lead::where($attributes)->firstOrFail();
             }
             throw $e;
         }
