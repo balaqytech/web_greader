@@ -31,7 +31,7 @@ class SeasonResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('admin.navigation_groups.settings');
+        return __('admin.navigation_groups.school');
     }
 
     public static function getNavigationLabel(): string

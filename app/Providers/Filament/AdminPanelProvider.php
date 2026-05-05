@@ -2,11 +2,13 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Http\Middleware\Authenticate;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationBuilder;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -70,9 +72,12 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->navigationGroups([
+                __('admin.navigation_groups.registration_and_addmission'),
                 __('admin.navigation_groups.school'),
-                __('admin.navigation_groups.forms'),
-                __('admin.navigation_groups.settings'),
+                __('admin.navigation_groups.financial_and_fees'),
+                __('admin.navigation_groups.affiliate_and_contacts'),
+                __('admin.navigation_groups.management_and_operations'),
+                __('admin.navigation_groups.roles_and_permissions'),
             ]);
     }
 }
