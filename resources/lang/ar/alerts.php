@@ -14,5 +14,10 @@ return [
         'guardian_must_have_name_phone_and_id_number' => 'يجب أن يكون لدى ولي الأمر اسم ورقم هاتف ورقم هوية',
         'at_least_two_non_guardian_emergency_contacts_are_required' => 'يجب أن يكون هناك على الأقل جهتي اتصال للطوارئ من غير أولياء الأمور',
         'application_contract_is_not_signed' => 'عقد الطالب غير موقع',
+        'application_not_waiting_for_contract' => 'الطلب ليس بانتظار توقيع العقد',
+        'contract_token_invalid_or_expired' => 'رابط توقيع العقد غير صالح أو منتهي الصلاحية',
+        'invalid_signature_data' => 'بيانات التوقيع غير صحيحة',
+        'invalid_signature_format' => 'تنسيق التوقيع غير صحيح',
+        'application_contract_signed_online_by_applicant' => 'تم توقيع العقد عبر الإنترنت من قبل ولي الأمر',
     ]
 ];

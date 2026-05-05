@@ -26,8 +26,9 @@ class ViewApplication extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            // ── Data-entry stage ──────────────────────────────────
             EditAction::make()
-                ->visible(fn (Application $record): bool => $record->status instanceof Draft || $record->status instanceof Submitted),
+                ->visible(fn(Application $record): bool => $record->status instanceof Draft || $record->status instanceof Submitted),
             SubmitApplicationFilamentAction::make(),
             MoveToWaitingContractFilamentAction::make(),
             ActionGroup::make([
@@ -39,6 +40,9 @@ class ViewApplication extends ViewRecord
                 ->button(),
             ReturnToSubmittedFilamentAction::make(),
             AcceptApplicationFilamentAction::make(),
+
+            // ReturnForCorrectionFilamentAction::make(),
+
             RejectApplicationFilamentAction::make(),
             CancelApplicationFilamentAction::make(),
         ];

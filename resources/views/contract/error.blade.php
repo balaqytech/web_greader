@@ -14,7 +14,7 @@
             </svg>
         </div>
         <h2 class="text-2xl font-bold text-gray-800 mb-2">{{ __('admin.application.contract_error_title') ?? 'خطأ في الرابط' }}</h2>
-        <p class="text-gray-600">{{ $message ?? __('admin.application.contract_invalid_or_expired') }}</p>
+        <p class="text-gray-600">{{ $message ?? __('admin.application.contract_error_message') }}</p>
     </div>
 </body>
 </html>

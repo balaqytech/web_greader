@@ -26,7 +26,7 @@ class OpenContractLinkFilamentAction extends Action
             return route('contract.show', $record->contract->token);
         });
 
-        $this->disabled();
+        // $this->disabled();
 
         $this->openUrlInNewTab();
 

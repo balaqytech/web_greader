@@ -1,26 +1,28 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('admin.application.contract_title') ?? 'توقيع العقد' }}</title>
+    <title>{{ $applicationContract->application->program->name }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 </head>
+
 <body class="bg-gray-50 text-gray-900 font-sans antialiased p-4 md:p-8">
     <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         
         <div class="p-6 md:p-10">
             <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-primary-600 mb-2">{{ $application->program->name }}</h1>
-                <p class="text-gray-500">{{ __('admin.application.ref_no') }}: {{ $application->ref_no }} | {{ __('admin.student.name') }}: {{ $application->student_name }}</p>
+                <h1 class="text-2xl font-bold text-primary-600 mb-2">{{ $applicationContract->application->program->name }}</h1>
+                <p class="text-gray-500">{{ __('admin.application.ref_no') }}: {{ $applicationContract->application->ref_no }} | {{ __('admin.student.name') }}: {{ $applicationContract->application->student_name }}</p>
             </div>
 
             <div class="prose prose-blue max-w-none mb-10 border p-6 rounded-lg bg-gray-50">
-                {!! $application->program->contract !!}
+                {!! $contract !!}
             </div>
 
-            <form id="sign-form" method="POST" action="{{ route('contract.sign', $application->contract_token) }}">
+            <form id="sign-form" method="POST" action="{{ route('contract.sign', $applicationContract->token) }}">
                 @csrf
                 <input type="hidden" name="signature" id="signature-input">
                 

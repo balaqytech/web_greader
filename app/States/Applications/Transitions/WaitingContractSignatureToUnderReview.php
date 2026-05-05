@@ -17,10 +17,6 @@ class WaitingContractSignatureToUnderReview extends Transition
 
     public function handle(): Application
     {
-        if (! $this->application->contract || ! $this->application->contract->isSigned()) {
-            throw new \Exception(__('alerts.application.application_contract_is_not_signed'));
-        }
-
         $fromState = WaitingContractSignature::$name;
 
         $this->application->status = UnderReview::class;
