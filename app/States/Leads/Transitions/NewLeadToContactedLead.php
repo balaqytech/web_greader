@@ -12,8 +12,8 @@ class NewLeadToContactedLead extends Transition
 {
     public function __construct(
         private readonly Lead $lead,
-        private readonly string $contactedBy,
-        private readonly LeadContactMethod $contactMethod,
+        private readonly ?string $contactedBy = null,
+        private readonly ?LeadContactMethod $contactMethod = null,
         private readonly ?string $notes = null,
         private readonly ?string $followUpAt = null,
     ) {}

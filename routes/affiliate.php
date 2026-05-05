@@ -1,11 +1,11 @@
 <?php
 
+use Akira\QrCode\Facades\QrCode;
 use App\Http\Controllers\Affiliate\AffiliateLoginController;
 use App\Http\Controllers\Affiliate\AffiliateLogoutController;
 use App\Http\Controllers\Affiliate\AffiliatePasswordController;
 use App\Http\Controllers\Affiliate\AffiliateProfileController;
 use App\Http\Controllers\Affiliate\AffiliateRegisterController;
-use Akira\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,7 +25,7 @@ Route::middleware('auth:affiliate')->group(function () {
 
     Route::get('/download-qr-code', function () {
         $affiliate = auth('affiliate')->user();
-        $affiliate_url = 'https://g-reader-school.com/?ref=' . ($affiliate->code ?? '#');
+        $affiliate_url = 'https://g-reader-school.com/?ref='.($affiliate->code ?? '#');
         $qr_code = QrCode::format('png')
             ->size(2000)
             ->merge('public/logo.png', 0.2)

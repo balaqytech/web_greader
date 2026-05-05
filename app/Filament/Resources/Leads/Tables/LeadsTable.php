@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Leads\Tables;
 
+use App\Enums\ProgramType;
 use App\Enums\Source;
 use App\Models\Lead;
 use Filament\Actions\ViewAction;
@@ -12,7 +13,9 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use pxlrbt\FilamentExcel\Actions\ExportAction;
 use pxlrbt\FilamentExcel\Columns\Column;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class LeadsTable
 {
@@ -61,6 +64,9 @@ class LeadsTable
                 SelectFilter::make('program_id')
                     ->label(__('admin.lead.program'))
                     ->relationship('program', 'name'),
+                SelectFilter::make('program_type')
+                    ->label(__('admin.lead.program_type'))
+                    ->options(ProgramType::class),
                 SelectFilter::make('branch_id')
                     ->label(__('admin.lead.branch'))
                     ->relationship('branch', 'name'),
@@ -86,14 +92,14 @@ class LeadsTable
                                 $data['created_until'],
                                 fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
-                    })
+                    }),
             ], FiltersLayout::AboveContentCollapsible)
             ->recordActions([
                 ViewAction::make(),
             ])
             ->headerActions([
-                \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
-                    \pxlrbt\FilamentExcel\Exports\ExcelExport::make('table')
+                ExportAction::make()->exports([
+                    ExcelExport::make('table')
                         ->fromTable()
                         ->withColumns([
                             Column::make('created_at')
@@ -102,7 +108,7 @@ class LeadsTable
                         ->withFileName(function ($resource) {
                             return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
                         }),
-                ])
+                ]),
             ])
             ->defaultSort('created_at', 'desc');
     }

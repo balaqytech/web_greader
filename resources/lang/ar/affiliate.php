@@ -56,12 +56,15 @@ return [
     'dashboard' => [
         'title' => 'لوحة التحكم',
         'greeting' => 'مرحباً بك مجدداً، :name!',
-        'your_affiliate_code_is' => 'رمز التسويق الخاص بك هو:',
         'total_leads' => 'إجمالي العملاء المحتملين',
         'all_leads_referred_by_you' => 'جميع العملاء المحتملين الذين أحلتهم',
         'your_affiliate_code_is' => 'رمز التسويق الخاص بك هو:',
         'your_affiliate_link_is' => 'رابط التسويق الخاص بك هو:',
         'download_qr_code' => 'تحميل رمز QR',
+        'approved_applications' => 'الطلبات المقبولة',
+        'approved_applications_description' => 'جميع طلبات التسجيل التي تم قبولها',
+        'in_process_applications' => 'الطلبات قيد المعالجة',
+        'in_process_applications_description' => 'جميع طلبات التسجيل التي لا تزال قيد المعالجة',
     ],
     'settings' => [
         'title' => 'الإعدادات',

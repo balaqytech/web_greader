@@ -2,32 +2,32 @@
 
 namespace App\States\Applications\Transitions;
 
+use App\Actions\Applications\AcceptApplicationAction;
+use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Models\Application;
 use App\States\Applications\Accepted;
+use App\States\Applications\UnderReview;
 use Spatie\ModelStates\Transition;
 
 class UnderReviewToAccepted extends Transition
 {
-    public function __construct(
-        private readonly Application $application,
-        private readonly ?int $transitionedBy = null,
-        private readonly ?string $notes = null,
-    ) {}
+    public function __construct(public Application $application) {}
 
     public function handle(): Application
     {
-        $fromState = $this->application->status::$name;
+        $fromState = UnderReview::getMorphClass();
 
-        $this->application->forceFill(['status' => Accepted::$name])->save();
+        app(AcceptApplicationAction::class)->handle($this->application);
 
-        $this->application->activities()->create([
-            'transitioned_by' => $this->transitionedBy,
-            'from_state' => $fromState,
-            'to_state' => Accepted::$name,
-            'notes' => $this->notes,
-            'transitioned_at' => now(),
-        ]);
+        $this->application->status = Accepted::class;
+        $this->application->save();
 
-        return $this->application->refresh();
+        app(RecordApplicationActivityAction::class)->handle(
+            $this->application,
+            $fromState,
+            Accepted::getMorphClass(),
+        );
+
+        return $this->application;
     }
 }

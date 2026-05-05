@@ -2,6 +2,7 @@
 
 namespace App\States\Leads\Transitions;
 
+use App\Actions\Applications\ConvertLeadToApplicationAction;
 use App\Enums\LeadContactMethod;
 use App\Enums\LeadContactResult;
 use App\Exceptions\ProgramNotAvailableInBranchException;
@@ -13,8 +14,8 @@ class ContactedLeadToInterested extends Transition
 {
     public function __construct(
         private readonly Lead $lead,
-        private readonly string $contactedBy,
-        private readonly LeadContactMethod $contactMethod,
+        private readonly ?string $contactedBy = null,
+        private readonly ?LeadContactMethod $contactMethod = null,
         private readonly ?string $notes = null,
     ) {}
 
@@ -39,6 +40,8 @@ class ContactedLeadToInterested extends Transition
         ]);
 
         $this->lead->forceFill(['status' => Interested::$name])->save();
+
+        app(ConvertLeadToApplicationAction::class)->execute($this->lead);
 
         return $this->lead->refresh();
     }

@@ -47,7 +47,7 @@ class Affiliate extends Authenticatable implements Auditable
     protected function password(): Attribute
     {
         return Attribute::make(
-            set: fn(string $value) => Hash::make($value),
+            set: fn (string $value) => Hash::make($value),
         );
     }
 
@@ -59,7 +59,7 @@ class Affiliate extends Authenticatable implements Auditable
         return Str::of($this->name)
             ->explode(' ')
             ->take(2)
-            ->map(fn($word) => Str::substr($word, 0, 1))
+            ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
     }
 
@@ -76,6 +76,11 @@ class Affiliate extends Authenticatable implements Auditable
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class);
+    }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class);
     }
 
     public function scopeVerified($query)
@@ -98,7 +103,7 @@ class Affiliate extends Authenticatable implements Auditable
         $prefix = strtoupper(Str::substr(Str::slug($name), 0, 3));
 
         do {
-            $code = $prefix . rand(100, 999);
+            $code = $prefix.rand(100, 999);
         } while (self::where('code', $code)->exists());
 
         return $code;

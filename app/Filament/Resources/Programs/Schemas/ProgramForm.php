@@ -13,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 class ProgramForm
 {
@@ -86,11 +87,27 @@ class ProgramForm
                 Section::make(__('admin.program.contract'))
                     ->columnSpanFull()
                     ->schema([
+
                         RichEditor::make('contract')
                             ->label(__('admin.program.contract'))
                             ->default(null)
                             ->columnSpanFull()
-                            ->helperText(__('admin.program.contract_helper_text')),
+                            ->helperText(function ($state) {
+                                $variables = __('admin.program.contract_variables', []);
+
+                                $helpText = __('admin.program.contract_helper_text') . "<br><br>";
+
+                                $helpText .= '<ul style="background-color: #f5f5f5; padding: 10px; border-radius: 5px; font-family: monospace;">';
+                                foreach ($variables as $variable => $description) {
+                                    $helpText .= '<li><code>' . $variable . '</code> - ' . $description . '</li>';
+                                }
+                                $helpText .= '</ul>';
+
+                                return new HtmlString($helpText);
+                            })
+                            ->extraAttributes([
+                                'style' => 'min-height: 300px; height: 100%;',
+                            ])
                     ]),
             ]);
     }

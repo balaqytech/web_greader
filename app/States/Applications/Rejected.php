@@ -6,12 +6,12 @@ class Rejected extends ApplicationState
 {
     public static string $name = 'rejected';
 
-    public static function getLabel(): string
+    public function getLabel(): string
     {
-        return __('admin.application_status.rejected');
+        return __('admin.application.states.rejected');
     }
 
-    public static function color(): string
+    public function getColor(): string
     {
         return 'danger';
     }

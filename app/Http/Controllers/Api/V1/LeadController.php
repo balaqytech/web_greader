@@ -32,13 +32,13 @@ class LeadController extends Controller
 
         $leads->when(
             $request->has('created_from') && $request->has('created_to'),
-            fn($query) => $query->whereBetween('created_at', [$request->created_from, $request->created_to])
+            fn ($query) => $query->whereBetween('created_at', [$request->created_from, $request->created_to])
         )->when(
             $request->has('created_from'),
-            fn($query) => $query->whereDate('created_at', '>=', $request->created_from)
+            fn ($query) => $query->whereDate('created_at', '>=', $request->created_from)
         )->when(
             $request->has('created_to'),
-            fn($query) => $query->whereDate('created_at', '<=', $request->created_to)
+            fn ($query) => $query->whereDate('created_at', '<=', $request->created_to)
         );
 
         $leads = $leads->paginate(15);

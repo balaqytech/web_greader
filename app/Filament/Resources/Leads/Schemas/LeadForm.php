@@ -32,6 +32,11 @@ class LeadForm
                 TextInput::make('student_name')
                     ->label(__('admin.lead.student_name'))
                     ->required(),
+                Select::make('affiliate_id')
+                    ->label(__('admin.affiliate.label'))
+                    ->relationship('affiliate', 'name')
+                    ->helperText('admin.optional')
+                    ->default(null),
                 KeyValue::make('data')
                     ->label(__('admin.lead.data'))
                     ->default(null)

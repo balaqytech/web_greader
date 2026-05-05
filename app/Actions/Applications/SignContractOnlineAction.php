@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Actions\Applications;
+
+use App\Actions\Support\CreatePdfAction;
+use App\Models\Application;
+use App\Models\ApplicationContract;
+use App\States\Applications\UnderReview;
+use App\States\Applications\WaitingContractSignature;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use InvalidArgumentException;
+
+final class SignContractOnlineAction
+{
+    public function execute(ApplicationContract $applicationContract, string $base64Signature, string $contract): Application
+    {
+        if (! $applicationContract->application->status instanceof WaitingContractSignature) {
+            throw new InvalidArgumentException(__('alerts.application.application_not_waiting_for_contract'));
+        }
+
+        if (! $applicationContract->application->hasValidContractToken()) {
+            throw new InvalidArgumentException(__('alerts.application.contract_token_invalid_or_expired'));
+        }
+
+        // Decode base64 signature
+        $imageParts = explode(';base64,', $base64Signature);
+        if (count($imageParts) !== 2) {
+            throw new InvalidArgumentException(__('alerts.application.invalid_signature_data'));
+        }
+
+        $imageTypeAux = explode('image/', $imageParts[0]);
+        if (count($imageTypeAux) !== 2) {
+            throw new InvalidArgumentException(__('alerts.application.invalid_signature_format'));
+        }
+
+        $imageType = $imageTypeAux[1];
+        $imageBase64 = base64_decode($imageParts[1]);
+
+        $filename = 'contract_signature_' . Str::random(10) . '.' . $imageType;
+        $signaturePath = 'contracts/signatures/' . $filename;
+
+        $storage = Storage::disk('public')->put($signaturePath, $imageBase64);
+
+        $file_path = app(CreatePdfAction::class)->execute('pdf.contract', 'pdfs/contracts/' . time() . '.pdf', [
+            'title' => 'test',
+            'contract' => $contract,
+            'signature' => Storage::url($signaturePath),
+        ]);
+
+        $applicationContract->application->status->transitionTo(
+            UnderReview::class,
+            notes: __('alerts.application.application_contract_signed_online_by_applicant')
+        );
+
+        $applicationContract->update([
+            'signed_at' => now(),
+            'signed_by_applicant' => true,
+            'signature_path' => $signaturePath,
+            'file_path' => $file_path,
+        ]);
+
+        return $applicationContract->application->fresh();
+    }
+}

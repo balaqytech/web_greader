@@ -14,11 +14,13 @@ return new class extends Migration
         Schema::create('applications', function (Blueprint $table) {
             $table->id();
             $table->string('ref_no')->unique();
-            $table->foreignId('lead_id')->unique()->constrained()->restrictOnDelete();
+            $table->foreignId('lead_id')->unique()->nullable()->constrained()->nullOnDelete();
             $table->foreignId('season_id')->constrained()->restrictOnDelete();
             $table->foreignId('program_id')->constrained()->restrictOnDelete();
             $table->foreignId('branch_id')->constrained()->restrictOnDelete();
             $table->string('status')->index();
+            $table->foreignId('affiliate_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('source')->default('website');
 
             // Student data
             $table->string('student_name');
@@ -30,6 +32,7 @@ return new class extends Migration
             $table->string('student_village')->nullable();
             $table->string('student_house_number')->nullable();
             $table->string('student_parents_social_status')->nullable();
+            $table->string('relationship_with_guardian')->nullable();
 
             // Father data
             $table->string('father_name')->nullable();
@@ -59,12 +62,7 @@ return new class extends Migration
             $table->string('relative_occupation')->nullable();
             $table->string('relative_work_address')->nullable();
             $table->string('relative_work_phone')->nullable();
-
-            $table->text('rejection_reason')->nullable();
             $table->timestamps();
-
-            // Civil number unique per season
-            $table->unique(['student_civil_number', 'season_id']);
         });
     }
 

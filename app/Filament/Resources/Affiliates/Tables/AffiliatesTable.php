@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Affiliates\Tables;
 
 use App\Enums\AffiliateCategory;
 use App\Enums\Source;
+use App\Filament\Resources\Affiliates\Actions\RejectAffiliateAction;
+use App\Filament\Resources\Affiliates\Actions\VerifyAffiliateAction;
 use App\States\Affiliates\AffiliateState;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -87,6 +89,8 @@ class AffiliatesTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                VerifyAffiliateAction::make(),
+                RejectAffiliateAction::make(),
             ])
             ->headerActions([
                 \pxlrbt\FilamentExcel\Actions\ExportAction::make()->exports([
@@ -96,6 +100,7 @@ class AffiliatesTable
                             return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
                         }),
                 ])
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 }

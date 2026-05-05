@@ -6,12 +6,12 @@ class Accepted extends ApplicationState
 {
     public static string $name = 'accepted';
 
-    public static function getLabel(): string
+    public function getLabel(): string
     {
-        return __('admin.application_status.accepted');
+        return __('admin.application.states.accepted');
     }
 
-    public static function color(): string
+    public function getColor(): string
     {
         return 'success';
     }
