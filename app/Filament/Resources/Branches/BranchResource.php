@@ -28,7 +28,7 @@ class BranchResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('admin.navigation_groups.settings');
+        return __('admin.navigation_groups.management_and_operations');
     }
 
     public static function getNavigationLabel(): string

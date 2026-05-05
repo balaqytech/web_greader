@@ -23,7 +23,7 @@ class AffiliateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('admin.navigation_groups.affiliate_marketing');
+        return __('admin.navigation_groups.affiliate_and_contacts');
     }
 
     public static function getNavigationLabel(): string

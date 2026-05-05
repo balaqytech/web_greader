@@ -24,7 +24,7 @@ class ApplicationResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('admin.navigation_groups.school');
+        return __('admin.navigation_groups.registration_and_addmission');
     }
 
     public static function getNavigationLabel(): string
