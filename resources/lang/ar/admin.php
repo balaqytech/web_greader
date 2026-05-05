@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'optional' => 'اختياري',
     'navigation_groups' => [
         'school' => 'المدرسة',
         'forms' => 'النماذج',
