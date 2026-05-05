@@ -15,7 +15,7 @@ class ContractSigningController extends Controller
     {
         $applicationContract = ApplicationContract::where('token', $token)->first();
 
-        if (! $applicationContract || $applicationContract->isTokenExpired()) {
+        if (! $applicationContract || $applicationContract->isSigned()) {
             return view('contract.error', [
                 'message' => __('admin.application.contract_invalid_or_expired'),
             ]);
@@ -23,10 +23,10 @@ class ContractSigningController extends Controller
 
         $variables = [
             'program_name' => $applicationContract->application->program->name,
-            // 'parent_name' => $applicationContract->application->student->parentAccount->name,
-            'student_name' => $applicationContract->application->applicationStudent->name,
+            'parent_name' => $applicationContract->application->guardian_name,
+            'student_name' => $applicationContract->application->student_name,
             'enrollment_date' => $applicationContract->application->created_at->format('d/m/Y'),
-            'final_price' => $applicationContract->application->program->price,
+            'branch_price' => $applicationContract->application->program->branchPrice($applicationContract->application->branch),
         ];
 
         $contract = $this->parseContract($applicationContract->application->program->contract, $variables);
@@ -49,12 +49,17 @@ class ContractSigningController extends Controller
         }
 
         try {
+            $guardian_name =
+                $applicationContract->application->father_is_guardian
+                ? $applicationContract->application->father_name
+                : $applicationContract->application->mother_name;
+
             $variables = [
                 'program_name' => $applicationContract->application->program->name,
-                // 'parent_name' => $applicationContract->application->student->parentAccount->name,
-                'student_name' => $applicationContract->application->applicationStudent->name,
+                'parent_name' => $guardian_name,
+                'student_name' => $applicationContract->application->student_name,
                 'enrollment_date' => $applicationContract->application->created_at->format('d/m/Y'),
-                'final_price' => $applicationContract->application->program->price,
+                'branch_price' => $applicationContract->application->program->branchPrice($applicationContract->application->branch),
             ];
 
             $contract = $this->parseContract($applicationContract->application->program->contract, $variables);
@@ -74,21 +79,5 @@ class ContractSigningController extends Controller
             $template = str_replace('$' . $key . '$', $value, $template);
         }
         return $template;
-    }
-
-    private function storeSignature($signature)
-    {
-        // Decode the base64 string
-        $image = str_replace('data:image/png;base64,', '', $signature);
-        $image = str_replace(' ', '+', $image);
-        $image = base64_decode($image);
-
-        // Generate a unique filename
-        $filename = 'contracts/signatures/signature_' . time() . '.png';
-
-        // Store the image in the public disk
-        Storage::disk('public')->put($filename, $image);
-
-        return Storage::url($filename);
     }
 }

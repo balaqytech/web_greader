@@ -21,9 +21,7 @@ class ApplicationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with([
-                'applicationStudent',
-                'guardianContact',
+            ->modifyQueryUsing(fn($query) => $query->with([
                 'program',
                 'branch',
                 'season',
@@ -32,15 +30,15 @@ class ApplicationsTable
                 TextColumn::make('ref_no')
                     ->label(__('admin.application.ref_no'))
                     ->searchable(),
-                TextColumn::make('applicationStudent.name')
+                TextColumn::make('student_name')
                     ->label(__('admin.student.name'))
                     ->searchable()
                     ->placeholder('-'),
-                TextColumn::make('guardianContact.name')
+                TextColumn::make('guardian_name')
                     ->label(__('admin.guardian.name'))
                     ->searchable()
                     ->placeholder('-'),
-                TextColumn::make('guardianContact.phone')
+                TextColumn::make('guardian_phone')
                     ->label(__('admin.guardian.phone'))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -57,8 +55,8 @@ class ApplicationsTable
                 TextColumn::make('status')
                     ->label(__('admin.application.status'))
                     ->badge()
-                    ->color(fn (Application $record) => $record->status->getColor())
-                    ->formatStateUsing(fn (Application $record) => $record->status->getLabel()),
+                    ->color(fn(Application $record) => $record->status->getColor())
+                    ->formatStateUsing(fn(Application $record) => $record->status->getLabel()),
                 TextColumn::make('created_at')
                     ->label(__('admin.lead.created_at'))
                     ->dateTime()

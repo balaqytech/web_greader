@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\DTOs\Application\UpdateApplicationDataDTO;
 use App\Models\Application;
 use App\States\Applications\Draft;
 use App\States\Applications\Submitted;
@@ -36,13 +37,17 @@ class SubmitApplicationFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof Draft
+            fn(?Application $record): bool => $record?->status instanceof Draft
                 && ($record->status->canTransitionTo(Submitted::class) ?? false)
         );
 
         $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(Submitted::class, $data['notes']);
+                $record->status->transitionTo(
+                    Submitted::class,
+                    UpdateApplicationDataDTO::fromValidated($record->fresh()->toArray()),
+                    $data['notes']
+                );
 
                 Notification::make()
                     ->title(__('admin.application.actions.submit_success'))

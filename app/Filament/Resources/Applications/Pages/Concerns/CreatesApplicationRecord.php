@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Applications\Pages\Concerns;
 
 use App\Actions\Applications\CreateApplicationAction;
 use App\DTOs\Application\CreateApplicationDTO;
+use App\Enums\Source;
 use App\Models\Program;
 use App\Models\Season;
 use App\States\Applications\Submitted;
@@ -34,6 +35,7 @@ trait CreatesApplicationRecord
         $program = Program::findOrFail($data['program_id']);
 
         $data['season_id'] = Season::current($program->type)->id;
+        $data['source'] = Source::DASHBOARD;
 
         $dto = CreateApplicationDTO::fromFormData($data);
         $application = app(CreateApplicationAction::class)->execute($dto);
@@ -90,8 +92,8 @@ trait CreatesApplicationRecord
             ->label(__('filament-panels::resources/pages/create-record.form.actions.cancel.label'))
             ->alpineClickHandler(
                 FilamentView::hasSpaMode($url)
-                    ? 'document.referrer ? window.history.back() : Livewire.navigate('.Js::from($url).')'
-                    : 'document.referrer ? window.history.back() : (window.location.href = '.Js::from($url).')',
+                    ? 'document.referrer ? window.history.back() : Livewire.navigate(' . Js::from($url) . ')'
+                    : 'document.referrer ? window.history.back() : (window.location.href = ' . Js::from($url) . ')',
             )
             ->color('gray');
     }

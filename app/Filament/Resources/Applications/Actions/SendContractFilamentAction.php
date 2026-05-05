@@ -27,30 +27,13 @@ class SendContractFilamentAction extends Action
         $this->modalDescription(__('admin.application.send_contract_description'));
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof WaitingContractSignature
+            fn(?Application $record): bool => $record?->status instanceof WaitingContractSignature
                 && $record->contract !== null
                 && filled($record->contract->token)
         );
 
         $this->disabled();
 
-        $this->action(function (Application $record) {
-            try {
-                // TODO: Implement actual sending logic (WhatsApp, email, etc.)
-                $link = route('contract.show', $record->contract->token);
-
-                Notification::make()
-                    ->title(__('admin.application.actions.send_contract_success'))
-                    ->body(__('admin.application.contract_link').': '.$link)
-                    ->success()
-                    ->send();
-            } catch (\Exception $e) {
-                Notification::make()
-                    ->title(__('admin.application.actions.send_contract_failed'))
-                    ->body($e->getMessage())
-                    ->danger()
-                    ->send();
-            }
-        });
+        $this->action(function (Application $record) {});
     }
 }

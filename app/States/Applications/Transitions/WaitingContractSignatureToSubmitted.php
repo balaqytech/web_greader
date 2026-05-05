@@ -25,7 +25,7 @@ class WaitingContractSignatureToSubmitted extends Transition
                 'token' => null,
                 'token_expires_at' => null,
                 'signed_at' => null,
-                'signed_by_applicant' => null,
+                'signed_by_applicant' => false,
             ]);
         }
 

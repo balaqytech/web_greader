@@ -4,148 +4,166 @@ namespace App\DTOs\Application;
 
 use App\Enums\Gender;
 use App\Enums\GuardianRelationship;
+use App\Enums\Source;
 use App\Models\Lead;
 
 class CreateApplicationDTO
 {
+    /**
+     * Create a new class instance.
+     */
     public function __construct(
-        public int $programId,
-        public int $branchId,
-        public int $seasonId,
-        public ?int $leadId = null,
-        public ?int $affiliateId = null,
+        public int $program_id,
+        public ?int $lead_id,
+        public int $branch_id,
+        public int $season_id,
+        public Source $source,
+        public ?int $affiliate_id,
 
         // Student data
-        public ?string $studentName = null,
-        public ?Gender $studentGender = null,
-        public ?string $studentBirthDate = null,
-        public ?string $studentCivilNumber = null,
-        public ?string $studentState = null,
-        public ?string $studentGovernorate = null,
-        public ?string $studentVillage = null,
-        public ?string $studentHouseNumber = null,
-        public ?string $studentParentsSocialStatus = null,
+        public string $student_name,
+        public ?Gender $student_gender = null,
+        public ?string $student_birth_date = null,
+        public ?string $student_civil_number = null,
+        public ?string $student_state = null,
+        public ?string $student_governorate = null,
+        public ?string $student_village = null,
+        public ?string $student_house_number = null,
+        public ?string $student_parents_social_status = null,
+        public ?GuardianRelationship $relationship_with_guardian = null,
 
-        // Contacts (replaces the old flat father/mother/relative fields)
-        public array $contacts = [],
+        // Father data
+        public ?string $father_name = null,
+        public ?string $father_phone = null,
+        public ?string $father_email = null,
+        public ?string $father_id_number = null,
+        public ?string $father_occupation = null,
+        public ?string $father_work_address = null,
+        public ?string $father_work_phone = null,
+        public bool $father_is_guardian = false,
+
+        // Mother data
+        public ?string $mother_name = null,
+        public ?string $mother_phone = null,
+        public ?string $mother_email = null,
+        public ?string $mother_id_number = null,
+        public ?string $mother_occupation = null,
+        public ?string $mother_work_address = null,
+        public ?string $mother_work_phone = null,
+        public bool $mother_is_guardian = false,
+
+        // Relative data
+        public ?string $relative_name = null,
+        public ?string $relative_phone = null,
+        public ?string $relative_email = null,
+        public ?string $relative_id_number = null,
+        public ?string $relative_occupation = null,
+        public ?string $relative_work_address = null,
+        public ?string $relative_work_phone = null,
     ) {}
 
-    /**
-     * Get only the Application table fields.
-     *
-     * @return array<string, mixed>
-     */
-    public function toApplicationArray(): array
+    public function toArray(): array
     {
         return [
-            'program_id' => $this->programId,
-            'lead_id' => $this->leadId,
-            'branch_id' => $this->branchId,
-            'season_id' => $this->seasonId,
-            'affiliate_id' => $this->affiliateId,
+            'program_id' => $this->program_id,
+            'lead_id' => $this->lead_id,
+            'branch_id' => $this->branch_id,
+            'season_id' => $this->season_id,
+            'source' => $this->source,
+            'affiliate_id' => $this->affiliate_id,
+            'student_name' => $this->student_name,
+            'student_gender' => $this->student_gender,
+            'student_birth_date' => $this->student_birth_date,
+            'student_civil_number' => $this->student_civil_number,
+            'student_state' => $this->student_state,
+            'student_governorate' => $this->student_governorate,
+            'student_village' => $this->student_village,
+            'student_house_number' => $this->student_house_number,
+            'student_parents_social_status' => $this->student_parents_social_status,
+            'relationship_with_guardian' => $this->relationship_with_guardian,
+            'father_name' => $this->father_name,
+            'father_phone' => $this->father_phone,
+            'father_email' => $this->father_email,
+            'father_id_number' => $this->father_id_number,
+            'father_occupation' => $this->father_occupation,
+            'father_work_address' => $this->father_work_address,
+            'father_work_phone' => $this->father_work_phone,
+            'father_is_guardian' => $this->father_is_guardian,
+            'mother_name' => $this->mother_name,
+            'mother_phone' => $this->mother_phone,
+            'mother_email' => $this->mother_email,
+            'mother_id_number' => $this->mother_id_number,
+            'mother_occupation' => $this->mother_occupation,
+            'mother_work_address' => $this->mother_work_address,
+            'mother_work_phone' => $this->mother_work_phone,
+            'mother_is_guardian' => $this->mother_is_guardian,
+            'relative_name' => $this->relative_name,
+            'relative_phone' => $this->relative_phone,
+            'relative_email' => $this->relative_email,
+            'relative_id_number' => $this->relative_id_number,
+            'relative_occupation' => $this->relative_occupation,
+            'relative_work_address' => $this->relative_work_address,
+            'relative_work_phone' => $this->relative_work_phone,
         ];
-    }
-
-    /**
-     * Get the student data for ApplicationStudent.
-     *
-     * @return array<string, mixed>
-     */
-    public function toStudentArray(): array
-    {
-        return array_filter([
-            'name' => $this->studentName,
-            'gender' => $this->studentGender,
-            'birth_date' => $this->studentBirthDate,
-            'civil_number' => $this->studentCivilNumber,
-            'state' => $this->studentState,
-            'governorate' => $this->studentGovernorate,
-            'village' => $this->studentVillage,
-            'house_number' => $this->studentHouseNumber,
-            'parents_social_status' => $this->studentParentsSocialStatus,
-        ], fn ($value) => filled($value));
-    }
-
-    /**
-     * Get the contacts data for ApplicationContact records.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function toContactsArray(): array
-    {
-        return $this->contacts;
     }
 
     public static function fromLead(Lead $lead): self
     {
-        // Build a father contact from the lead's guardian data
-        $contacts = [];
-        if (filled($lead->guardian_name)) {
-            $contacts[] = [
-                'name' => $lead->guardian_name,
-                'phone' => $lead->whatsapp,
-                'is_guardian' => true,
-            ];
-        }
-
         return new self(
-            programId: $lead->program_id,
-            branchId: $lead->branch_id,
-            seasonId: $lead->season_id,
-            leadId: $lead->id,
-            affiliateId: $lead->affiliate_id,
-            studentName: $lead->student_name,
-            contacts: $contacts,
+            program_id: $lead->program_id,
+            lead_id: $lead->id,
+            branch_id: $lead->branch_id,
+            season_id: $lead->season_id,
+            source: $lead->source,
+            affiliate_id: $lead->affiliate_id,
+            student_name: $lead->student_name,
+            father_name: $lead->guardian_name,
+            father_phone: $lead->whatsapp,
         );
     }
 
-    /**
-     * Build a DTO from Filament form data (wizard submit).
-     *
-     * @param  array<string, mixed>  $data
-     */
     public static function fromFormData(array $data): self
     {
-        $studentData = $data['applicationStudent'] ?? [];
-        $contactData = $data['contacts'] ?? [];
-
-        // Convert each contact to a clean array with proper keys
-        $contacts = array_map(function ($contact) {
-            $relationshipWithGuardian = $contact['relationship_with_guardian'] ?? null;
-            $isGuardian = $relationshipWithGuardian !== null;
-
-            // Convert enum values from string to enum instance if necessary
-            $relationshipWithGuardianEnum = $relationshipWithGuardian instanceof GuardianRelationship
-                ? $relationshipWithGuardian
-                : GuardianRelationship::tryFrom($relationshipWithGuardian);
-
-            return array_filter([
-                'relationship' => $relationshipWithGuardianEnum,
-                'name' => $contact['name'] ?? null,
-                'phone' => $contact['phone'] ?? null,
-                'email' => $contact['email'] ?? null,
-                'id_number' => $contact['id_number'] ?? null,
-                'occupation' => $contact['occupation'] ?? null,
-                'work_address' => $contact['work_address'] ?? null,
-                'work_phone' => $contact['work_phone'] ?? null,
-                'is_guardian' => $isGuardian,
-            ], fn ($value) => filled($value));
-        }, $contactData);
-
         return new self(
-            programId: $data['program_id'],
-            branchId: $data['branch_id'],
-            seasonId: $data['season_id'],
-            studentName: $studentData['name'] ?? null,
-            studentGender: $studentData['gender'] instanceof Gender ? $studentData['gender'] : Gender::tryFrom($studentData['gender']),
-            studentBirthDate: $studentData['birth_date'] ?? null,
-            studentCivilNumber: $studentData['civil_number'] ?? null,
-            studentState: $studentData['state'] ?? null,
-            studentGovernorate: $studentData['governorate'] ?? null,
-            studentVillage: $studentData['village'] ?? null,
-            studentHouseNumber: $studentData['house_number'] ?? null,
-            studentParentsSocialStatus: $studentData['parents_social_status'] ?? null,
-            contacts: array_values($data['contacts'] ?? []),
+            program_id: $data['program_id'],
+            lead_id: $data['lead_id'] ?? null,
+            branch_id: $data['branch_id'],
+            season_id: $data['season_id'],
+            source: $data['source'],
+            affiliate_id: $data['affiliate_id'] ?? null,
+            student_name: $data['student_name'],
+            student_gender: $data['student_gender'],
+            student_birth_date: $data['student_birth_date'],
+            student_civil_number: $data['student_civil_number'],
+            student_state: $data['student_state'],
+            student_governorate: $data['student_governorate'],
+            student_village: $data['student_village'],
+            student_house_number: $data['student_house_number'],
+            student_parents_social_status: $data['student_parents_social_status'],
+            relationship_with_guardian: $data['relationship_with_guardian'],
+            father_name: $data['father_name'],
+            father_phone: $data['father_phone'],
+            father_email: $data['father_email'] ?? null,
+            father_id_number: $data['father_id_number'],
+            father_occupation: $data['father_occupation'],
+            father_work_address: $data['father_work_address'] ?? null,
+            father_work_phone: $data['father_work_phone'] ?? null,
+            father_is_guardian: $data['father_is_guardian'],
+            mother_name: $data['mother_name'],
+            mother_phone: $data['mother_phone'],
+            mother_email: $data['mother_email'] ?? null,
+            mother_id_number: $data['mother_id_number'],
+            mother_occupation: $data['mother_occupation'],
+            mother_work_address: $data['mother_work_address'] ?? null,
+            mother_work_phone: $data['mother_work_phone'] ?? null,
+            mother_is_guardian: $data['mother_is_guardian'],
+            relative_name: $data['relative_name'],
+            relative_phone: $data['relative_phone'],
+            relative_email: $data['relative_email'] ?? null,
+            relative_id_number: $data['relative_id_number'],
+            relative_occupation: $data['relative_occupation'],
+            relative_work_address: $data['relative_work_address'] ?? null,
+            relative_work_phone: $data['relative_work_phone'] ?? null,
         );
     }
 }

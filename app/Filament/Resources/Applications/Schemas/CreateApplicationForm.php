@@ -9,6 +9,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
@@ -20,9 +22,8 @@ class CreateApplicationForm
         return $schema
             ->components([
                 Wizard::make([
-                    Step::make(__('admin.application.enrollment_info'))
+                    Step::make(__('admin.application.student_info'))
                         ->icon('heroicon-o-academic-cap')
-                        ->description(__('admin.application.wizard_enrollment_description'))
                         ->schema([
                             Select::make('branch_id')
                                 ->label(__('admin.branch.label'))
@@ -32,88 +33,131 @@ class CreateApplicationForm
                                 ->label(__('admin.program.name'))
                                 ->relationship('program', 'name')
                                 ->required(),
-                        ])
-                        ->columns(3),
 
-                    Step::make(__('admin.student.student_information'))
-                        ->icon('heroicon-o-user')
-                        ->description(__('admin.application.wizard_student_description'))
-                        ->schema([
-                            TextInput::make('applicationStudent.name')
-                                ->label(__('admin.student.name'))
+                            TextInput::make('student_name')
+                                ->label(__('admin.application.student_name'))
                                 ->required(),
-                            Select::make('applicationStudent.gender')
-                                ->label(__('admin.student.gender'))
+                            Select::make('student_gender')
+                                ->label(__('admin.application.student_gender'))
                                 ->options(Gender::class)
                                 ->required(),
-                            DatePicker::make('applicationStudent.birth_date')
-                                ->label(__('admin.student.birth_date'))
+                            DatePicker::make('student_birth_date')
+                                ->label(__('admin.application.student_birth_date'))
                                 ->required(),
-                            TextInput::make('applicationStudent.civil_number')
-                                ->label(__('admin.student.civil_number'))
+                            TextInput::make('student_civil_number')
+                                ->label(__('admin.application.student_civil_number'))
                                 ->required(),
-                            TextInput::make('applicationStudent.state')
-                                ->label(__('admin.student.state'))
+                            TextInput::make('student_state')
+                                ->label(__('admin.application.student_state'))
                                 ->required(),
-                            TextInput::make('applicationStudent.governorate')
-                                ->label(__('admin.student.governorate'))
+                            TextInput::make('student_governorate')
+                                ->label(__('admin.application.student_governorate'))
                                 ->required(),
-                            TextInput::make('applicationStudent.village')
-                                ->label(__('admin.student.village'))
+                            TextInput::make('student_village')
+                                ->label(__('admin.application.student_village'))
                                 ->required(),
-                            TextInput::make('applicationStudent.house_number')
-                                ->label(__('admin.student.house_number'))
+                            TextInput::make('student_house_number')
+                                ->label(__('admin.application.student_house_number'))
                                 ->required(),
-                            TextInput::make('applicationStudent.parents_social_status')
-                                ->label(__('admin.student.parents_social_status'))
+                            TextInput::make('student_parents_social_status')
+                                ->label(__('admin.application.student_parents_social_status'))
                                 ->required(),
-                            Select::make('applicationStudent.relationship_with_guardian')
-                                ->label(__('admin.student.relationship_with_guardian'))
+                            Select::make('relationship_with_guardian')
+                                ->label(__('admin.application.student_relationship_with_guardian'))
                                 ->options(GuardianRelationship::class)
                                 ->required(),
                         ])
+                        ->columns(3),
+
+                    Step::make(__('admin.application.father_data'))
+                        ->icon('heroicon-o-user')
+                        ->schema([
+                            TextInput::make('father_name')
+                                ->label(__('admin.application.father_name'))
+                                ->required(),
+                            TextInput::make('father_phone')
+                                ->label(__('admin.application.father_phone'))
+                                ->tel()
+                                ->required(),
+                            TextInput::make('father_email')
+                                ->label(__('admin.application.father_email'))
+                                ->email(),
+                            TextInput::make('father_id_number')
+                                ->label(__('admin.application.father_id_number'))
+                                ->required(),
+                            TextInput::make('father_occupation')
+                                ->label(__('admin.application.father_occupation'))
+                                ->required(),
+                            TextInput::make('father_work_address')
+                                ->label(__('admin.application.father_work_address')),
+                            TextInput::make('father_work_phone')
+                                ->label(__('admin.application.father_work_phone')),
+                            Toggle::make('father_is_guardian')
+                                ->label(__('admin.application.father_is_guardian'))
+                                ->live()
+                                ->afterStateHydrated(function ($component, Get $get) {
+                                    $component->state(!$get('mother_is_guardian'));
+                                }),
+                        ])
                         ->columns(2),
 
-                    Step::make(__('admin.application.contacts_section'))
-                        ->icon('heroicon-o-users')
-                        ->description(__('admin.application.wizard_contacts_description'))
+                    Step::make(__('admin.application.mother_data'))
+                        ->icon('heroicon-o-user')
                         ->schema([
-                            Repeater::make('contacts')
-                                ->schema([
-                                    Select::make('relationship')
-                                        ->label(__('admin.application_contacts.relationship'))
-                                        ->options(GuardianRelationship::class)
-                                        ->required(),
-                                    TextInput::make('name')
-                                        ->label(__('admin.application_contacts.name'))
-                                        ->required(),
-                                    TextInput::make('phone')
-                                        ->label(__('admin.application_contacts.phone'))
-                                        ->tel()
-                                        ->required(),
-                                    TextInput::make('email')
-                                        ->label(__('admin.application_contacts.email'))
-                                        ->email(),
-                                    TextInput::make('id_number')
-                                        ->label(__('admin.application_contacts.id_number')),
-                                    TextInput::make('occupation')
-                                        ->label(__('admin.application_contacts.occupation')),
-                                    TextInput::make('work_address')
-                                        ->label(__('admin.application_contacts.work_address')),
-                                    TextInput::make('work_phone')
-                                        ->label(__('admin.application_contacts.work_phone')),
-                                    Toggle::make('is_guardian')
-                                        ->label(__('admin.application_contacts.is_guardian'))
-                                        ->live(),
-                                ])
-                                ->columns(2)
-                                ->minItems(3)
-                                ->defaultItems(3)
-                                ->collapsible()
-                                ->cloneable()
-                                ->itemLabel(fn (array $state): ?string => ($state['name'] ?? __('admin.application_contacts.new_contact'))
-                                    .($state['is_guardian'] ?? false ? ' — '.__('admin.application_contacts.guardian') : '')),
-                        ]),
+                            TextInput::make('mother_name')
+                                ->label(__('admin.application.mother_name'))
+                                ->required(),
+                            TextInput::make('mother_phone')
+                                ->label(__('admin.application.mother_phone'))
+                                ->tel()
+                                ->required(),
+                            TextInput::make('mother_email')
+                                ->label(__('admin.application.mother_email'))
+                                ->email(),
+                            TextInput::make('mother_id_number')
+                                ->label(__('admin.application.mother_id_number'))
+                                ->required(),
+                            TextInput::make('mother_occupation')
+                                ->label(__('admin.application.mother_occupation'))
+                                ->required(),
+                            TextInput::make('mother_work_address')
+                                ->label(__('admin.application.mother_work_address')),
+                            TextInput::make('mother_work_phone')
+                                ->label(__('admin.application.mother_work_phone')),
+                            Toggle::make('mother_is_guardian')
+                                ->label(__('admin.application.mother_is_guardian'))
+                                ->live()
+                                ->afterStateHydrated(function ($component, Get $get) {
+                                    $component->state(! $get('father_is_guardian'));
+                                }),
+                        ])
+                        ->columns(2),
+
+                    Step::make(__('admin.application.relative_data'))
+                        ->icon('heroicon-o-user-group')
+                        ->schema([
+                            TextInput::make('relative_name')
+                                ->label(__('admin.application.relative_name'))
+                                ->required(),
+                            TextInput::make('relative_phone')
+                                ->label(__('admin.application.relative_phone'))
+                                ->tel()
+                                ->required(),
+                            TextInput::make('relative_email')
+                                ->label(__('admin.application.relative_email'))
+                                ->email(),
+                            TextInput::make('relative_id_number')
+                                ->label(__('admin.application.relative_id_number'))
+                                ->required(),
+                            TextInput::make('relative_occupation')
+                                ->label(__('admin.application.relative_occupation'))
+                                ->required(),
+                            TextInput::make('relative_work_address')
+                                ->label(__('admin.application.relative_work_address')),
+                            TextInput::make('relative_work_phone')
+                                ->label(__('admin.application.relative_work_phone')),
+                        ])
+                        ->columns(3),
                 ])
                     ->columnSpanFull(),
             ]);

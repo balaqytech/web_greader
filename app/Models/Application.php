@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use App\Enums\Source;
 use App\Models\Scopes\BranchScope;
 use App\States\Applications\Accepted;
@@ -29,7 +31,39 @@ use Spatie\ModelStates\HasStates;
     'branch_id',
     'status',
     'source',
-    'rejection_reason',
+    'student_name',
+    'student_gender',
+    'student_birth_date',
+    'student_civil_number',
+    'student_state',
+    'student_governorate',
+    'student_village',
+    'student_house_number',
+    'student_parents_social_status',
+    'relationship_with_guardian',
+    'father_name',
+    'father_phone',
+    'father_email',
+    'father_id_number',
+    'father_occupation',
+    'father_work_address',
+    'father_work_phone',
+    'father_is_guardian',
+    'mother_name',
+    'mother_phone',
+    'mother_email',
+    'mother_id_number',
+    'mother_occupation',
+    'mother_work_address',
+    'mother_work_phone',
+    'mother_is_guardian',
+    'relative_name',
+    'relative_phone',
+    'relative_email',
+    'relative_id_number',
+    'relative_occupation',
+    'relative_work_address',
+    'relative_work_phone',
 ])]
 class Application extends Model
 {
@@ -43,9 +77,32 @@ class Application extends Model
     protected function casts(): array
     {
         return [
+            'student_gender' => Gender::class,
             'status' => ApplicationState::class,
             'source' => Source::class,
+            'student_birth_date' => 'date',
+            'father_is_guardian' => 'boolean',
+            'mother_is_guardian' => 'boolean',
+            'relationship_with_guardian' => GuardianRelationship::class,
         ];
+    }
+
+    public function getGuardianNameAttribute(): ?string
+    {
+        return $this->father_is_guardian
+            ? $this->father_name
+            : ($this->mother_is_guardian
+                ? $this->mother_name
+                : $this->relative_name);
+    }
+
+    public function getGuardianPhoneAttribute(): ?string
+    {
+        return $this->father_is_guardian
+            ? $this->father_phone
+            : ($this->mother_is_guardian
+                ? $this->mother_phone
+                : $this->relative_phone);
     }
 
     protected static function booted(): void
@@ -87,23 +144,6 @@ class Application extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
-    }
-
-    public function applicationStudent(): HasOne
-    {
-        return $this->hasOne(ApplicationStudent::class);
-    }
-
-    public function contacts(): HasMany
-    {
-        return $this->hasMany(ApplicationContact::class);
-    }
-
-    public function guardianContact(): HasOne
-    {
-        // Always eager-load this via ->with('guardianContact') to avoid N+1.
-        return $this->hasOne(ApplicationContact::class)
-            ->where('is_guardian', true);
     }
 
     public function contract(): HasOne

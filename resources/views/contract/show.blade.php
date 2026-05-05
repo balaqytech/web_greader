@@ -5,49 +5,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $applicationContract->application->program->name }}</title>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 </head>
 
-<body class="bg-gray-50 text-gray-900 font-sans antialiased p-4 md:p-8">
-    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        
-        <div class="p-6 md:p-10">
+<body class="bg-gray-50">
+
+    <flux:container class="py-8">
+        <flux:card class="max-w-4xl mx-auto">
+
+            {{-- Header --}}
             <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-primary-600 mb-2">{{ $applicationContract->application->program->name }}</h1>
-                <p class="text-gray-500">{{ __('admin.application.ref_no') }}: {{ $applicationContract->application->ref_no }} | {{ __('admin.student.name') }}: {{ $applicationContract->application->student_name }}</p>
+                <h1 class="text-2xl font-bold text-primary-600 mb-2">
+                    {{ $applicationContract->application->program->name }}
+                </h1>
+
+                <p class="text-gray-500">
+                    {{ __('admin.application.ref_no') }}:
+                    {{ $applicationContract->application->ref_no }}
+                    |
+                    {{ __('admin.student.name') }}:
+                    {{ $applicationContract->application->student_name }}
+                </p>
             </div>
 
-            <div class="prose prose-blue max-w-none mb-10 border p-6 rounded-lg bg-gray-50">
+            {{-- Contract --}}
+            <div class="prose max-w-none mb-10">
                 {!! $contract !!}
             </div>
 
-            <form id="sign-form" method="POST" action="{{ route('contract.sign', $applicationContract->token) }}">
+            {{-- Form --}}
+            <form id="sign-form" method="POST"
+                action="{{ route('contract.sign', $applicationContract->token) }}">
                 @csrf
+
                 <input type="hidden" name="signature" id="signature-input">
-                
+
+                {{-- Signature --}}
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('admin.application.draw_signature') ?? 'ارسم توقيعك هنا' }}</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-white">
+                    <flux:label>
+                        {{ __('admin.application.draw_signature') ?? 'ارسم توقيعك هنا' }}
+                    </flux:label>
+
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-white mt-2">
                         <canvas id="signature-pad" class="w-full h-64 touch-none"></canvas>
                     </div>
+
                     <div class="mt-2 flex justify-end">
-                        <button type="button" id="clear-btn" class="text-sm text-red-600 hover:text-red-800">{{ __('admin.application.clear_signature') ?? 'مسح التوقيع' }}</button>
+                        <flux:button variant="ghost" color="danger" id="clear-btn" type="button">
+                            {{ __('admin.application.clear_signature') ?? 'مسح التوقيع' }}
+                        </flux:button>
                     </div>
                 </div>
-                
+
+                {{-- Error --}}
                 @error('signature')
-                    <p class="text-red-500 text-sm mt-1 mb-4">{{ $message }}</p>
+                    <flux:text class="text-red-600 mb-4">
+                        {{ $message }}
+                    </flux:text>
                 @enderror
 
+                {{-- Submit --}}
                 <div class="flex justify-center">
-                    <button type="button" id="submit-btn" class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                    <flux:button id="submit-btn" type="submit" variant="primary">
                         {{ __('admin.application.submit_signature') ?? 'اعتماد التوقيع' }}
-                    </button>
+                    </flux:button>
                 </div>
+
             </form>
-        </div>
-    </div>
+
+        </flux:card>
+    </flux:container>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -72,21 +101,19 @@
                 penColor: 'rgb(0, 0, 0)'
             });
 
-            clearBtn.addEventListener('click', function () {
-                signaturePad.clear();
-            });
+            clearBtn.addEventListener('click', () => signaturePad.clear());
 
             submitBtn.addEventListener('click', function () {
                 if (signaturePad.isEmpty()) {
                     alert("{{ __('admin.application.signature_required') ?? 'الرجاء إدخال التوقيع' }}");
                     return;
                 }
-                
-                const dataURL = signaturePad.toDataURL('image/png');
-                signatureInput.value = dataURL;
+
+                signatureInput.value = signaturePad.toDataURL('image/png');
                 form.submit();
             });
         });
     </script>
+
 </body>
 </html>

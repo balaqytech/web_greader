@@ -61,4 +61,9 @@ class Program extends Model
     {
         return $query->active()->where('is_open', true);
     }
+
+    public function branchPrice(Branch $branch): int
+    {
+        return $this->branches()->where('branch_id', $branch->id)->first()->pivot->price;
+    }
 }
