@@ -18,7 +18,7 @@ class ReadingAssessmentFormSubmissionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('admin.navigation_groups.forms');
+        return __('admin.navigation_groups.registration_and_addmission');
     }
 
     public static function getNavigationLabel(): string

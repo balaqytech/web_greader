@@ -22,7 +22,7 @@ class BotContactsPage extends Page implements HasTable
 
     public static function getNavigationGroup(): ?string
     {
-        return __('admin.navigation_groups.settings');
+        return __('admin.navigation_groups.affiliate_and_contacts');
     }
 
     public static function getNavigationLabel(): string

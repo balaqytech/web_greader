@@ -32,13 +32,13 @@ class LeadController extends Controller
 
         $leads->when(
             $request->has('created_from') && $request->has('created_to'),
-            fn ($query) => $query->whereBetween('created_at', [$request->created_from, $request->created_to])
+            fn($query) => $query->whereBetween('created_at', [$request->created_from, $request->created_to])
         )->when(
             $request->has('created_from'),
-            fn ($query) => $query->whereDate('created_at', '>=', $request->created_from)
+            fn($query) => $query->whereDate('created_at', '>=', $request->created_from)
         )->when(
             $request->has('created_to'),
-            fn ($query) => $query->whereDate('created_at', '<=', $request->created_to)
+            fn($query) => $query->whereDate('created_at', '<=', $request->created_to)
         );
 
         $leads = $leads->paginate(15);
@@ -78,50 +78,6 @@ class LeadController extends Controller
             $data,
             $validated['affiliate_code'] ?? null,
         );
-
-        return new LeadResource($lead);
-    }
-
-    public function transition(Request $request, Lead $lead)
-    {
-        $validated = $request->validate([
-            'target_state' => ['required', new ValidStateRule(LeadState::class)],
-            'contacted_by' => ['required', 'string'],
-            'contact_method' => ['required', Rule::enum(LeadContactMethod::class)],
-            'notes' => 'nullable|string',
-            'follow_up_at' => 'nullable|date',
-        ]);
-
-        $contactMethod = LeadContactMethod::from($validated['contact_method']);
-
-        $lead = match ($validated['target_state']) {
-            'contacted' => $this->transitionLeadStateAction->toContacted(
-                lead: $lead,
-                contactedBy: $validated['contacted_by'],
-                contactMethod: $contactMethod,
-                notes: $validated['notes'] ?? null,
-                followUpAt: $validated['follow_up_at'] ?? null,
-            ),
-            'interested' => $this->transitionLeadStateAction->toInterested(
-                lead: $lead,
-                contactedBy: $validated['contacted_by'],
-                contactMethod: $contactMethod,
-                notes: $validated['notes'] ?? null,
-            ),
-            'not_interested' => $this->transitionLeadStateAction->toNotInterested(
-                lead: $lead,
-                contactedBy: $validated['contacted_by'],
-                contactMethod: $contactMethod,
-                notes: $validated['notes'] ?? null,
-            ),
-            'no_response' => $this->transitionLeadStateAction->toNoResponse(
-                lead: $lead,
-                contactedBy: $validated['contacted_by'],
-                contactMethod: $contactMethod,
-                notes: $validated['notes'] ?? null,
-                followUpAt: $validated['follow_up_at'] ?? null,
-            ),
-        };
 
         return new LeadResource($lead);
     }
