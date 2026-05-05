@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Leads\Schemas;
 
+use App\Filament\Resources\Affiliates\AffiliateResource;
 use App\Models\Lead;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -41,6 +42,11 @@ class LeadInfolist
                         TextEntry::make('source')
                             ->label(__('admin.lead.source'))
                             ->placeholder('-'),
+                        TextEntry::make('affiliate.name')
+                            ->label(__('admin.affiliate.label'))
+                            ->placeholder('-')
+                            ->visible(fn(Lead $record) => $record->affiliate_id !== null)
+                            ->url(fn(Lead $record) => AffiliateResource::getUrl('view', ['record' => $record->affiliate])),
                         TextEntry::make('created_at')
                             ->label(__('admin.lead.created_at'))
                             ->dateTime()
