@@ -76,14 +76,41 @@ class Lead extends Model
         return $this->belongsTo(Season::class);
     }
 
-    public function scopeFilter($query, array $filters)
+    public function scopeFilter($query, array $filters): void
     {
         foreach ($filters as $field => $value) {
-            if (! is_null($value)) {
+            if (is_null($value)) {
+                continue;
+            }
+
+            // Support data->key syntax for JSON column filtering
+            if (str_starts_with($field, 'data.')) {
+                $jsonKey = substr($field, 5);
+                $query->whereJsonContains("data->{$jsonKey}", $value);
+            } else {
                 $query->where($field, $value);
             }
         }
+    }
 
-        return $query;
+    /**
+     * Search across text columns and optionally inside the data JSON column.
+     *
+     * Accepted formats:
+     *   - ?search=foo                 — searches guardian_name, student_name, whatsapp, ref_no
+     *   - ?search=foo&search_fields[]=data.mother_phone  — also searches that JSON key
+     */
+    public function scopeSearch($query, string $term, array $jsonKeys = []): void
+    {
+        $query->where(function ($q) use ($term, $jsonKeys) {
+            $q->where('guardian_name', 'like', "%{$term}%")
+                ->orWhere('student_name', 'like', "%{$term}%")
+                ->orWhere('whatsapp', 'like', "%{$term}%")
+                ->orWhere('ref_no', 'like', "%{$term}%");
+
+            foreach ($jsonKeys as $key) {
+                $q->orWhere("data->{$key}", 'like', "%{$term}%");
+            }
+        });
     }
 }
