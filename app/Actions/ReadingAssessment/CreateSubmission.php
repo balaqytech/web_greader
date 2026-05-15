@@ -4,16 +4,22 @@ namespace App\Actions\ReadingAssessment;
 
 use App\Exceptions\DuplicateSubmissionException;
 use App\Models\ReadingAssessmentFormSubmission;
+use App\Support\LeadIdentityNormalizer;
 use Illuminate\Database\QueryException;
 
 class CreateSubmission
 {
+    public function __construct(
+        private LeadIdentityNormalizer $normalizer,
+    ) {}
+
     /**
      * Create a new submission.
      */
     public function execute(array $data): ReadingAssessmentFormSubmission
     {
         $data['whatsapp'] = $this->formatWhatsapp($data['whatsapp']);
+        $data['student_name'] = $this->normalizer->normalizeName($data['student_name']);
 
         try {
             $submission = ReadingAssessmentFormSubmission::updateOrCreate($data);

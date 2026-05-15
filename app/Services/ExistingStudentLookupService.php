@@ -5,9 +5,14 @@ namespace App\Services;
 use App\Models\Guardian;
 use App\Models\Lead;
 use App\Models\Student;
+use App\Support\LeadIdentityNormalizer;
 
 final class ExistingStudentLookupService
 {
+    public function __construct(
+        private LeadIdentityNormalizer $normalizer,
+    ) {}
+
     /**
      * Find an existing student matching a lead's guardian phone + student name.
      */
@@ -19,9 +24,11 @@ final class ExistingStudentLookupService
             return null;
         }
 
+        $normalizedName = $lead->student_name_normalized
+            ?: $this->normalizer->normalizeName($lead->student_name);
+
         return Student::whereIn('guardian_id', $guardianIds)
-            ->where('name', $lead->student_name)
-            ->latest()
-            ->first();
+            ->get()
+            ->first(fn (Student $student) => $this->normalizer->normalizeName($student->name) === $normalizedName);
     }
 }

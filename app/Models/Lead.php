@@ -8,6 +8,7 @@ use App\Models\Scopes\BranchScope;
 use App\States\Leads\LeadState;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
+use App\Traits\HasNormalizedStudentName;
 use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
@@ -18,11 +19,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\ModelStates\HasStates;
 
 #[ScopedBy(BranchScope::class)]
-#[Fillable(['ref_no', 'guardian_name', 'student_name', 'whatsapp', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
+#[Fillable(['ref_no', 'guardian_name', 'student_name', 'student_name_normalized', 'identity_fingerprint', 'whatsapp', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
 class Lead extends Model
 {
     use HasAffiliate;
     use HasFactory;
+    use HasNormalizedStudentName;
     use HasStates;
     use HasWhatsapp;
 
@@ -76,14 +78,41 @@ class Lead extends Model
         return $this->belongsTo(Season::class);
     }
 
-    public function scopeFilter($query, array $filters)
+    public function scopeFilter($query, array $filters): void
     {
         foreach ($filters as $field => $value) {
-            if (! is_null($value)) {
+            if (is_null($value)) {
+                continue;
+            }
+
+            // Support data->key syntax for JSON column filtering
+            if (str_starts_with($field, 'data.')) {
+                $jsonKey = substr($field, 5);
+                $query->whereJsonContains("data->{$jsonKey}", $value);
+            } else {
                 $query->where($field, $value);
             }
         }
+    }
 
-        return $query;
+    /**
+     * Search across text columns and optionally inside the data JSON column.
+     *
+     * Accepted formats:
+     *   - ?search=foo                 — searches guardian_name, student_name, whatsapp, ref_no
+     *   - ?search=foo&search_fields[]=data.mother_phone  — also searches that JSON key
+     */
+    public function scopeSearch($query, string $term, array $jsonKeys = []): void
+    {
+        $query->where(function ($q) use ($term, $jsonKeys) {
+            $q->where('guardian_name', 'like', "%{$term}%")
+                ->orWhere('student_name', 'like', "%{$term}%")
+                ->orWhere('whatsapp', 'like', "%{$term}%")
+                ->orWhere('ref_no', 'like', "%{$term}%");
+
+            foreach ($jsonKeys as $key) {
+                $q->orWhere("data->{$key}", 'like', "%{$term}%");
+            }
+        });
     }
 }
