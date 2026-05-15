@@ -8,6 +8,7 @@ use App\Models\Scopes\BranchScope;
 use App\States\Leads\LeadState;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
+use App\Traits\HasNormalizedStudentName;
 use App\Traits\HasWhatsapp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
@@ -18,11 +19,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\ModelStates\HasStates;
 
 #[ScopedBy(BranchScope::class)]
-#[Fillable(['ref_no', 'guardian_name', 'student_name', 'whatsapp', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
+#[Fillable(['ref_no', 'guardian_name', 'student_name', 'student_name_normalized', 'identity_fingerprint', 'whatsapp', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
 class Lead extends Model
 {
     use HasAffiliate;
     use HasFactory;
+    use HasNormalizedStudentName;
     use HasStates;
     use HasWhatsapp;
 

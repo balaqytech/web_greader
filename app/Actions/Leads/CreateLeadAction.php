@@ -3,16 +3,23 @@
 namespace App\Actions\Leads;
 
 use App\Enums\LeadContactMethod;
-use App\Exceptions\AffiliateNotVerifiedException;
 use App\Models\Affiliate;
 use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
+use App\Services\LeadDuplicateResolver;
 use App\States\Leads\ContactedLead;
+use App\Support\LeadIdentityNormalizer;
+use Illuminate\Database\QueryException;
 use Spatie\WebhookServer\WebhookCall;
 
 final class CreateLeadAction
 {
+    public function __construct(
+        private LeadDuplicateResolver $duplicateResolver,
+        private LeadIdentityNormalizer $normalizer,
+    ) {}
+
     public function execute(
         string $whatsapp,
         string $guardian_name,
@@ -23,37 +30,79 @@ final class CreateLeadAction
         array $data = [],
         ?string $affiliate_code = null,
     ): Lead {
+        $whatsapp = normalize_phone_number(
+            convert_eastern_arabic_to_arabic($whatsapp),
+        );
+
         $program = Program::findOrFail($program_id);
 
         $season = Season::current($program->type);
 
         $affiliate = $this->resolveAffiliate($affiliate_code);
 
-        // prevent duplicate lead
-        $attributes = [
-            'whatsapp'   => $whatsapp,
-            'program_id' => $program->id,
-            'season_id'  => $season->id,
-            'branch_id'  => $branch_id,
-            'student_name' => $student_name,
-        ];
-
         $values = [
             'guardian_name' => $guardian_name,
-            'source'        => $source,
-            'program_type'  => $program->type,
-            'data'          => $data,
-            'affiliate_id'  => $affiliate?->id,
+            'source' => $source,
+            'program_type' => $program->type,
+            'data' => $data,
+            'affiliate_id' => $affiliate?->id,
             'affiliate_code_snapshot' => $affiliate?->code,
         ];
 
-        try {
-            $lead = Lead::updateOrCreate($attributes, $values);
-        } catch (\Illuminate\Database\QueryException $e) {
-            if (str_contains($e->getMessage(), 'Duplicate entry')) {
-                $lead = Lead::where($attributes)->firstOrFail();
+        $existing = $this->duplicateResolver->findExisting(
+            whatsapp: $whatsapp,
+            studentName: $student_name,
+            programId: $program->id,
+            seasonId: $season->id,
+            branchId: $branch_id,
+        );
+
+        if ($existing !== null) {
+            $values['student_name'] = $this->normalizer->preferLongerDisplayName(
+                $existing->student_name,
+                $student_name,
+            );
+
+            $existing->fill($values);
+            $existing->save();
+
+            $lead = $existing->fresh();
+        } else {
+            try {
+                $lead = Lead::create([
+                    'whatsapp' => $whatsapp,
+                    'student_name' => $student_name,
+                    'program_id' => $program->id,
+                    'season_id' => $season->id,
+                    'branch_id' => $branch_id,
+                    ...$values,
+                ]);
+            } catch (QueryException $e) {
+                if (! $this->isUniqueConstraintViolation($e)) {
+                    throw $e;
+                }
+
+                $lead = $this->duplicateResolver->findExisting(
+                    whatsapp: $whatsapp,
+                    studentName: $student_name,
+                    programId: $program->id,
+                    seasonId: $season->id,
+                    branchId: $branch_id,
+                );
+
+                if ($lead === null) {
+                    throw $e;
+                }
+
+                $values['student_name'] = $this->normalizer->preferLongerDisplayName(
+                    $lead->student_name,
+                    $student_name,
+                );
+
+                $lead->fill($values);
+                $lead->save();
+                $lead = $lead->fresh();
             }
-            throw $e;
         }
 
         $this->dispatchWebhookIfNeeded($lead);
@@ -72,10 +121,6 @@ final class CreateLeadAction
         if (! $affiliate) {
             return null;
         }
-
-        // if (! $affiliate->isVerified()) {
-        //     throw new AffiliateNotVerifiedException($affiliateCode);
-        // }
 
         return $affiliate;
     }
@@ -103,5 +148,17 @@ final class CreateLeadAction
     {
         return config('services.webhooks.lead.enabled')
             && app()->environment('production');
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        if ((string) $exception->getCode() === '23000') {
+            return true;
+        }
+
+        $message = $exception->getMessage();
+
+        return str_contains($message, 'Duplicate entry')
+            || str_contains($message, 'UNIQUE constraint failed');
     }
 }
