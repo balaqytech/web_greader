@@ -6,6 +6,7 @@ use App\Enums\ProgramType;
 use App\Enums\Source;
 use App\Models\Scopes\BranchScope;
 use App\States\Leads\LeadState;
+use App\Support\LeadRefNoGenerator;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
 use App\Traits\HasNormalizedStudentName;
@@ -43,13 +44,12 @@ class Lead extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (self $lead) {
-            $lead->ref_no = now()->format('Ymd').str_pad(
-                (string) (Lead::count() + 1),
-                6,
-                '0',
-                STR_PAD_LEFT
-            );
+        static::creating(function (self $lead): void {
+            if (filled($lead->ref_no)) {
+                return;
+            }
+
+            $lead->ref_no = app(LeadRefNoGenerator::class)->generate();
         });
     }
 
