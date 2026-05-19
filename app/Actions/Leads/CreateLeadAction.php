@@ -131,11 +131,13 @@ final class CreateLeadAction
             return;
         }
 
-        $lead->status->transitionTo(
-            ContactedLead::class,
-            contactedBy: 'whatsapp_bot',
-            contactMethod: LeadContactMethod::Whatsapp,
-        );
+        if ($lead->status->canTransitionTo(ContactedLead::class)) {
+            $lead->status->transitionTo(
+                ContactedLead::class,
+                contactedBy: 'whatsapp_bot',
+                contactMethod: LeadContactMethod::Whatsapp,
+            );
+        }
 
         WebhookCall::create()
             ->url(config('services.webhooks.lead.created_url'))
