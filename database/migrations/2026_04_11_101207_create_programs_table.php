@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('programs', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('description')->nullable();
+            $table->text('description')->nullable();
             $table->string('type')->index();
             $table->boolean('accept_installments')->default(false);
             $table->date('min_birth_date')->nullable();
