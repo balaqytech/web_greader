@@ -20,7 +20,6 @@ class LeadController extends Controller
 
         $filters = $request->only($allowedFilters);
 
-        // Merge data.* JSON filters from request: ?data[mother_phone]=123
         $dataFilters = $request->input('data', []);
         foreach ($dataFilters as $key => $value) {
             $filters["data.{$key}"] = $value;
@@ -30,13 +29,12 @@ class LeadController extends Controller
             ->with(['branch', 'program', 'season', 'affiliate'])
             ->filter($filters);
 
-        // Full-text-style search: ?search=term&search_fields[]=data.mother_phone
         $leads->when(
             $request->filled('search'),
             function ($query) use ($request) {
                 $jsonKeys = collect($request->input('search_fields', []))
-                    ->filter(fn ($f) => str_starts_with($f, 'data.'))
-                    ->map(fn ($f) => substr($f, 5))
+                    ->filter(fn($f) => str_starts_with($f, 'data.'))
+                    ->map(fn($f) => substr($f, 5))
                     ->values()
                     ->all();
 
@@ -44,18 +42,18 @@ class LeadController extends Controller
             }
         );
 
-        $leads->when(
-            $request->has('created_from') && $request->has('created_to'),
-            fn ($query) => $query->whereBetween('created_at', [$request->created_from, $request->created_to])
-        )->when(
-            $request->has('created_from'),
-            fn ($query) => $query->whereDate('created_at', '>=', $request->created_from)
-        )->when(
-            $request->has('created_to'),
-            fn ($query) => $query->whereDate('created_at', '<=', $request->created_to)
-        );
+        if ($request->filled('created_from')) {
+            $leads->where('created_at', '>=', $request->created_from);
+        }
 
-        $leads = $leads->paginate(15);
+        if ($request->filled('created_to')) {
+            $leads->where('created_at', '<=', $request->created_to);
+        }
+
+        $leads = $leads
+            ->orderBy('created_at', 'asc')
+            ->paginate(15)
+            ->appends($request->query());
 
         return LeadResource::collection($leads);
     }
