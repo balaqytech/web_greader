@@ -52,6 +52,14 @@ class BotContactsPage extends Page implements HasTable
                 TextColumn::make('status')
                     ->label(__('admin.bot_contact.status'))
                     ->badge(),
+                TextColumn::make('conversation_summary')
+                    ->label('ملخص المحادثة')
+                    ->wrap()
+                    ->extraAttributes(['style' => 'min-width: 250px;']),
+                TextColumn::make('rejection_reason')
+                    ->label('أسباب عدم التسجيل')
+                    ->wrap()
+                    ->extraAttributes(['style' => 'min-width: 250px;']),
                 TextColumn::make('notes')
                     ->label(__('admin.bot_contact.notes')),
             ])

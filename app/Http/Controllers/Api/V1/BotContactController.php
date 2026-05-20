@@ -30,6 +30,8 @@ class BotContactController extends Controller
             'channel' => 'required|string',
             'sender_name' => 'nullable|string',
             'whatsapp' => 'required|string|unique:bot_contacts,whatsapp',
+            'conversation_summary' => 'nullable|string',
+            'rejection_reason' => 'nullable|string',
             'notes' => 'nullable|string',
             'additional_data' => 'nullable|array',
         ]);
