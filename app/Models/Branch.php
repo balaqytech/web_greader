@@ -6,6 +6,7 @@ use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'address', 'governorate', 'phone', 'mobile', 'is_active', 'additional_info'])]
 class Branch extends Model
@@ -31,6 +32,11 @@ class Branch extends Model
     public function programs(): BelongsToMany
     {
         return $this->belongsToMany(Program::class, 'program_branch');
+    }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class);
     }
 
     public function scopeActive($query)
