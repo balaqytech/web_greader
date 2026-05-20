@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'sender_name',
     'whatsapp',
     'status',
+    'conversation_summary',
+    'rejection_reason',
     'notes',
     'additional_data',
     'metadata',

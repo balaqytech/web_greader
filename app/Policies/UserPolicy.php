@@ -2,14 +2,13 @@
 
 namespace App\Policies;
 
-use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Foundation\Auth\User as AuthUser;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class UserPolicy
 {
     use HandlesAuthorization;
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:User');
@@ -30,8 +29,9 @@ class UserPolicy
         return $authUser->can('Update:User');
     }
 
-    public function delete(AuthUser $authUser, User $user): bool
+    public function delete(AuthUser $authUser): bool
     {
-        return $authUser->can('Delete:User') && $authUser->id !== $user->id;
+        return $authUser->can('Delete:User');
     }
+
 }
