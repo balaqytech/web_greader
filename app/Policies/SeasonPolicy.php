@@ -11,7 +11,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class SeasonPolicy
 {
     use HandlesAuthorization;
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Season');
@@ -32,13 +32,9 @@ class SeasonPolicy
         return $authUser->can('Update:Season');
     }
 
-    public function close(AuthUser $authUser, Season $season): bool
+    public function delete(AuthUser $authUser, Season $season): bool
     {
-        return $authUser->can('Close:Season');
+        return $authUser->can('Delete:Season');
     }
 
-    public function open(AuthUser $authUser, Season $season): bool
-    {
-        return $authUser->can('Open:Season');
-    }
 }
