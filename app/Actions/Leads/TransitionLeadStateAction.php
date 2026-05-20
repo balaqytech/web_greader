@@ -10,14 +10,9 @@ class TransitionLeadStateAction
 {
     /**
      * Transition a lead to its transitionable states.
-     * 
-     * @param LeadState $to_status
-     * @param Lead $lead
-     * @param string $contactedBy
-     * @param LeadContactMethod $contactMethod
-     * @param string|null $notes
-     * @param string|null $followUpAt
-     * @return Lead
+     *
+     * @param  LeadState  $to_status
+     * @param  string|null  $followUpAt
      */
     public function execute(
         string $to_status,
@@ -26,7 +21,10 @@ class TransitionLeadStateAction
         ?LeadContactMethod $contactMethod,
         ?string $notes = null,
     ): Lead {
-        $lead->status->transitionTo(
+        $statusClass = get_class($lead->status);
+        $status = new $statusClass($lead);
+
+        $status->transitionTo(
             $to_status,
             contactedBy: $contactedBy,
             contactMethod: $contactMethod,
