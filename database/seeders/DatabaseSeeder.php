@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
+        $user = User::create([
             'name' => 'as3ad',
             'email' => 'as3ad.moh@gmail.com',
             'password' => '123123123',
@@ -22,5 +22,7 @@ class DatabaseSeeder extends Seeder
             ShieldSeeder::class,
             ProgramSeeder::class,
         ]);
+
+        $user->assignRole('super_admin');
     }
 }

@@ -8,7 +8,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class AffiliatePolicy
 {
     use HandlesAuthorization;
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Affiliate');
@@ -34,13 +34,4 @@ class AffiliatePolicy
         return $authUser->can('Delete:Affiliate');
     }
 
-    public function verify(AuthUser $authUser): bool
-    {
-        return $authUser->can('Verify:Affiliate');
-    }
-
-    public function reject(AuthUser $authUser): bool
-    {
-        return $authUser->can('Reject:Affiliate');
-    }
 }
