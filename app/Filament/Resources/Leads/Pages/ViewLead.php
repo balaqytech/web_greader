@@ -23,19 +23,13 @@ class ViewLead extends ViewRecord
                 ->color('primary')
                 ->icon('heroicon-o-arrow-right')
                 ->visible(function ($record) {
-                    $statusClass = get_class($record->status);
-                    $status = new $statusClass($record);
-
-                    return $status->hasTransitionableStates();
+                    return $record->status->hasTransitionableStates();
                 })
                 ->schema([
                     Select::make('to_status')
                         ->label(__('admin.lead.to_status'))
                         ->options(function () {
-                            $statusClass = get_class($this->record->status);
-                            $status = new $statusClass($this->record);
-
-                            return collect($status->transitionableStateInstances())
+                            return collect($this->record->status->transitionableStateInstances())
                                 ->mapWithKeys(fn ($state) => [$state::class => $state->getLabel()]);
                         })
                         ->required(),
@@ -52,7 +46,7 @@ class ViewLead extends ViewRecord
                         $record,
                         Auth::user()->name,
                         $data['contactMethod'],
-                        $data['notes']
+                        $data['notes'] ?? null
                     );
                 }),
         ];
