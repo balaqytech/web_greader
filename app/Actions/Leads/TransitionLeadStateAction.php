@@ -21,10 +21,7 @@ class TransitionLeadStateAction
         ?LeadContactMethod $contactMethod,
         ?string $notes = null,
     ): Lead {
-        $statusClass = get_class($lead->status);
-        $status = new $statusClass($lead);
-
-        $status->transitionTo(
+        $lead->status->transitionTo(
             $to_status,
             contactedBy: $contactedBy,
             contactMethod: $contactMethod,

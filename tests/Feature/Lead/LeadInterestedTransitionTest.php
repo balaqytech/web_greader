@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Leads\TransitionLeadStateAction;
 use App\Enums\LeadContactMethod;
 use App\Exceptions\ProgramNotAvailableInBranchException;
 use App\Models\Branch;
@@ -8,9 +9,32 @@ use App\Models\Program;
 use App\States\Applications\Draft;
 use App\States\Leads\ContactedLead;
 use App\States\Leads\Interested;
+use App\States\Leads\NewLead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+it('transitions a lead through the Filament transition action', function () {
+    $lead = Lead::factory()->create();
+
+    expect($lead->status)->toBeInstanceOf(NewLead::class);
+
+    app(TransitionLeadStateAction::class)->execute(
+        ContactedLead::class,
+        $lead,
+        'Test User',
+        LeadContactMethod::Call,
+        'Reached the guardian',
+    );
+
+    $lead->refresh();
+
+    expect($lead->status)->toBeInstanceOf(ContactedLead::class)
+        ->and($lead->contacts)->toHaveCount(1)
+        ->and($lead->contacts->first()->contacted_by)->toBe('Test User')
+        ->and($lead->contacts->first()->contact_method)->toBe(LeadContactMethod::Call)
+        ->and($lead->contacts->first()->notes)->toBe('Reached the guardian');
+});
 
 it('allows transitioning to interested when the program is available in the lead branch', function () {
     $branch = Branch::factory()->create();
