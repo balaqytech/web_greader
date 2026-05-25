@@ -33,8 +33,8 @@ class LeadController extends Controller
             $request->filled('search'),
             function ($query) use ($request) {
                 $jsonKeys = collect($request->input('search_fields', []))
-                    ->filter(fn($f) => str_starts_with($f, 'data.'))
-                    ->map(fn($f) => substr($f, 5))
+                    ->filter(fn ($f) => str_starts_with($f, 'data.'))
+                    ->map(fn ($f) => substr($f, 5))
                     ->values()
                     ->all();
 
@@ -68,6 +68,7 @@ class LeadController extends Controller
             'student_name' => 'required',
             'source' => 'required',
             'affiliate_code' => 'nullable|string',
+            'mother_phone' => 'nullable|string',
         ]);
 
         $data = $request->input('data') ?? $request->except([
@@ -78,7 +79,13 @@ class LeadController extends Controller
             'student_name',
             'source',
             'affiliate_code',
+            'mother_phone',
         ]);
+        $data = is_array($data) ? $data : [];
+
+        if ($request->has('mother_phone')) {
+            $data['mother_phone'] = $validated['mother_phone'];
+        }
 
         $lead = $this->createLeadAction->execute(
             $validated['whatsapp'],

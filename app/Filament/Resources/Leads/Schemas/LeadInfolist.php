@@ -30,6 +30,9 @@ class LeadInfolist
                             ->label(__('admin.lead.program')),
                         TextEntry::make('whatsapp')
                             ->label(__('admin.lead.whatsapp')),
+                        TextEntry::make('mother_phone')
+                            ->label(__('admin.lead.mother_phone'))
+                            ->placeholder('-'),
                         TextEntry::make('guardian_name')
                             ->label(__('admin.lead.guardian_name')),
                         TextEntry::make('student_name')
@@ -37,16 +40,16 @@ class LeadInfolist
                         TextEntry::make('status')
                             ->label(__('admin.lead.status'))
                             ->badge()
-                            ->color(fn(Lead $record) => $record->status->color())
-                            ->formatStateUsing(fn(Lead $record) => $record->status->getLabel()),
+                            ->color(fn (Lead $record) => $record->status->color())
+                            ->formatStateUsing(fn (Lead $record) => $record->status->getLabel()),
                         TextEntry::make('source')
                             ->label(__('admin.lead.source'))
                             ->placeholder('-'),
                         TextEntry::make('affiliate.name')
                             ->label(__('admin.affiliate.label'))
                             ->placeholder('-')
-                            ->visible(fn(Lead $record) => $record->affiliate_id !== null)
-                            ->url(fn(Lead $record) => AffiliateResource::getUrl('view', ['record' => $record->affiliate])),
+                            ->visible(fn (Lead $record) => $record->affiliate_id !== null)
+                            ->url(fn (Lead $record) => AffiliateResource::getUrl('view', ['record' => $record->affiliate])),
                         TextEntry::make('created_at')
                             ->label(__('admin.lead.created_at'))
                             ->dateTime()
@@ -56,7 +59,7 @@ class LeadInfolist
                     ->columns(3),
                 Section::make(__('admin.lead.data'))
                     ->schema(
-                        fn(Lead $record) => collect($record->data)->map(function ($value, $key) {
+                        fn (Lead $record) => collect($record->data)->map(function ($value, $key) {
                             return TextEntry::make($key)
                                 ->label($key)
                                 ->state($value);

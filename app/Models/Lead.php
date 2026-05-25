@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\ModelStates\HasStates;
 
 #[ScopedBy(BranchScope::class)]
-#[Fillable(['ref_no', 'guardian_name', 'student_name', 'student_name_normalized', 'identity_fingerprint', 'whatsapp', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
+#[Fillable(['ref_no', 'guardian_name', 'student_name', 'student_name_normalized', 'identity_fingerprint', 'whatsapp', 'mother_phone', 'branch_id', 'season_id', 'program_type', 'program_id', 'data', 'status', 'source', 'affiliate_id', 'affiliate_code_snapshot'])]
 class Lead extends Model
 {
     use HasAffiliate;
@@ -51,6 +51,26 @@ class Lead extends Model
 
             $lead->ref_no = app(LeadRefNoGenerator::class)->generate();
         });
+    }
+
+    public function setDataAttribute(mixed $value): void
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : null;
+        }
+
+        if (is_array($value) && array_key_exists('mother_phone', $value)) {
+            $this->attributes['mother_phone'] = $value['mother_phone'] !== null
+                ? (string) $value['mother_phone']
+                : null;
+
+            unset($value['mother_phone']);
+        }
+
+        $this->attributes['data'] = $value === null || $value === []
+            ? null
+            : json_encode($value, JSON_UNESCAPED_UNICODE);
     }
 
     public function application(): HasOne
@@ -85,10 +105,14 @@ class Lead extends Model
                 continue;
             }
 
-            // Support data->key syntax for JSON column filtering
             if (str_starts_with($field, 'data.')) {
                 $jsonKey = substr($field, 5);
-                $query->whereJsonContains("data->{$jsonKey}", $value);
+
+                if ($jsonKey === 'mother_phone') {
+                    $query->where('mother_phone', $value);
+                } else {
+                    $query->whereJsonContains("data->{$jsonKey}", $value);
+                }
             } else {
                 $query->where($field, $value);
             }
@@ -100,7 +124,7 @@ class Lead extends Model
      *
      * Accepted formats:
      *   - ?search=foo                 — searches guardian_name, student_name, whatsapp, ref_no
-     *   - ?search=foo&search_fields[]=data.mother_phone  — also searches that JSON key
+     *   - ?search=foo&search_fields[]=data.mother_phone  — also searches mother_phone
      */
     public function scopeSearch($query, string $term, array $jsonKeys = []): void
     {
@@ -111,7 +135,11 @@ class Lead extends Model
                 ->orWhere('ref_no', 'like', "%{$term}%");
 
             foreach ($jsonKeys as $key) {
-                $q->orWhere("data->{$key}", 'like', "%{$term}%");
+                if ($key === 'mother_phone') {
+                    $q->orWhere('mother_phone', 'like', "%{$term}%");
+                } else {
+                    $q->orWhere("data->{$key}", 'like', "%{$term}%");
+                }
             }
         });
     }

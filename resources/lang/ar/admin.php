@@ -8,7 +8,7 @@ return [
         'affiliate_and_contacts' => 'التسويق والإتصال',
         'management_and_operations' => 'الإدارة والتشغيل',
         'roles_and_permissions' => 'الأدوار والصلاحيات',
-        'financial_and_fees' => 'الشؤون المالية والرسوم'
+        'financial_and_fees' => 'الشؤون المالية والرسوم',
     ],
     'navigation' => [
         'leads' => 'طلبات إبداء الإهتمام',
@@ -93,6 +93,7 @@ return [
         'guardian_name' => 'اسم ولي الأمر',
         'student_name' => 'اسم الطالب',
         'whatsapp' => 'رقم الجوال',
+        'mother_phone' => 'رقم جوال الأم',
         'branch' => 'الفرع',
         'season' => 'الموسم',
         'program' => 'البرنامج',

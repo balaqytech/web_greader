@@ -45,12 +45,16 @@ class LeadsTable
                 TextColumn::make('whatsapp')
                     ->label(__('admin.lead.whatsapp'))
                     ->searchable(),
+                TextColumn::make('mother_phone')
+                    ->label(__('admin.lead.mother_phone'))
+                    ->searchable()
+                    ->placeholder('-'),
                 TextColumn::make('status')
                     ->label(__('admin.lead.status'))
                     ->searchable()
                     ->badge()
-                    ->color(fn(Lead $record) => $record->status->color())
-                    ->formatStateUsing(fn(Lead $record) => $record->status->getLabel()),
+                    ->color(fn (Lead $record) => $record->status->color())
+                    ->formatStateUsing(fn (Lead $record) => $record->status->getLabel()),
                 TextColumn::make('source')
                     ->label(__('admin.lead.source'))
                     ->badge()
@@ -86,11 +90,11 @@ class LeadsTable
                         return $query
                             ->when(
                                 $data['created_from'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['created_until'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
             ], FiltersLayout::AboveContentCollapsible)
@@ -106,7 +110,7 @@ class LeadsTable
                                 ->heading(__('admin.lead.created_at')),
                         ])
                         ->withFileName(function ($resource) {
-                            return $resource::getNavigationLabel() . '-' . now()->format('Y-m-d');
+                            return $resource::getNavigationLabel().'-'.now()->format('Y-m-d');
                         }),
                 ]),
             ])

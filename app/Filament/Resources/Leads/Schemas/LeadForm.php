@@ -2,11 +2,9 @@
 
 namespace App\Filament\Resources\Leads\Schemas;
 
-use App\Enums\ProgramType;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
 
 class LeadForm
@@ -26,6 +24,8 @@ class LeadForm
                 TextInput::make('whatsapp')
                     ->label(__('admin.lead.whatsapp'))
                     ->required(),
+                TextInput::make('mother_phone')
+                    ->label(__('admin.lead.mother_phone')),
                 TextInput::make('guardian_name')
                     ->label(__('admin.lead.guardian_name'))
                     ->required(),
