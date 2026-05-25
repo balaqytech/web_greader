@@ -22,7 +22,7 @@ test('affiliate can view profile page', function () {
 
 test('guest cannot view affiliate profile page', function () {
     $this->get(route('affiliate.profile.edit'))
-        ->assertUnauthorized();
+        ->assertRedirect(route('affiliate.login'));
 });
 
 test('affiliate can update profile information', function () {
@@ -30,6 +30,7 @@ test('affiliate can update profile information', function () {
         ->put(route('affiliate.profile.update'), [
             'name' => 'Updated Name',
             'whatsapp' => '+968500000001',
+            'email' => $this->affiliate->email,
         ])
         ->assertRedirect(route('affiliate.profile.edit'))
         ->assertSessionHas('status');
@@ -67,6 +68,22 @@ test('affiliate profile update rejects duplicate whatsapp', function () {
         ->put(route('affiliate.profile.update'), [
             'name' => 'Updated Name',
             'whatsapp' => $other->whatsapp,
+            'email' => $this->affiliate->email,
+        ])
+        ->assertSessionHasErrors('whatsapp');
+});
+
+test('affiliate profile update rejects duplicate whatsapp after normalization', function () {
+    Affiliate::factory()->create([
+        'status' => Verified::$name,
+        'whatsapp' => '+96893918779',
+    ]);
+
+    $this->actingAs($this->affiliate, 'affiliate')
+        ->put(route('affiliate.profile.update'), [
+            'name' => 'Updated Name',
+            'whatsapp' => '93918779',
+            'email' => $this->affiliate->email,
         ])
         ->assertSessionHasErrors('whatsapp');
 });
@@ -76,6 +93,7 @@ test('affiliate can keep their own whatsapp when updating profile', function () 
         ->put(route('affiliate.profile.update'), [
             'name' => 'Updated Name',
             'whatsapp' => $this->affiliate->whatsapp,
+            'email' => $this->affiliate->email,
         ])
         ->assertRedirect(route('affiliate.profile.edit'))
         ->assertSessionHasNoErrors();
