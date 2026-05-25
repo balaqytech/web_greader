@@ -20,6 +20,7 @@ class LeadResource extends JsonResource
             'guardian_name' => $this->guardian_name,
             'student_name' => $this->student_name,
             'whatsapp' => $this->whatsapp,
+            'mother_phone' => $this->mother_phone,
             'branch' => [
                 'id' => $this->branch_id,
                 'name' => $this->branch->name,

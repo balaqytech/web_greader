@@ -39,11 +39,14 @@ final class CreateLeadAction
         $season = Season::current($program->type);
 
         $affiliate = $this->resolveAffiliate($affiliate_code);
+        $motherPhone = $data['mother_phone'] ?? null;
+        unset($data['mother_phone']);
 
         $values = [
             'guardian_name' => $guardian_name,
             'source' => $source,
             'program_type' => $program->type,
+            'mother_phone' => $motherPhone,
             'data' => $data,
             'affiliate_id' => $affiliate?->id,
             'affiliate_code_snapshot' => $affiliate?->code,
