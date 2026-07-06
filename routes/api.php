@@ -16,6 +16,7 @@ Route::apiResource('branches', BranchController::class)->only(['index', 'show'])
 
 Route::apiResource('programs', ProgramController::class)->only(['index', 'show']);
 
+Route::get('leads/counts', [LeadController::class, 'counts']);
 Route::apiResource('leads', LeadController::class)->only(['index', 'store']);
 Route::post('leads/{lead}/transition', [LeadController::class, 'transition']);
 
@@ -24,7 +25,7 @@ Route::apiResource(
     ReadingAssessmentFormSubmissionController::class
 )
     ->parameters([
-        'reading-assessment-form-submissions' => 'submission'
+        'reading-assessment-form-submissions' => 'submission',
     ])
     ->only(['index', 'store', 'show']);
 
