@@ -6,6 +6,8 @@ use App\Actions\Leads\CreateLeadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LeadController extends Controller
@@ -58,6 +60,64 @@ class LeadController extends Controller
         return LeadResource::collection($leads);
     }
 
+    public function counts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'program_id' => ['nullable', 'integer', 'exists:programs,id'],
+            'season_id' => ['nullable', 'integer', 'exists:seasons,id'],
+            'status' => ['nullable', 'string'],
+            'source' => ['nullable', 'string'],
+            'created_from' => ['nullable', 'date'],
+            'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
+        ]);
+
+        $baseQuery = $this->leadCountsQuery($validated);
+
+        $branchCounts = (clone $baseQuery)
+            ->join('branches', 'branches.id', '=', 'leads.branch_id')
+            ->select('leads.branch_id', 'branches.name as branch_name')
+            ->selectRaw('count(*) as leads_count')
+            ->groupBy('leads.branch_id', 'branches.name')
+            ->orderBy('leads.branch_id')
+            ->get()
+            ->map(fn ($row): array => [
+                'branch_id' => (int) $row->branch_id,
+                'branch_name' => $row->branch_name,
+                'leads_count' => (int) $row->leads_count,
+            ]);
+
+        $programCounts = (clone $baseQuery)
+            ->join('branches', 'branches.id', '=', 'leads.branch_id')
+            ->join('programs', 'programs.id', '=', 'leads.program_id')
+            ->select(
+                'leads.branch_id',
+                'branches.name as branch_name',
+                'leads.program_id',
+                'programs.name as program_name',
+            )
+            ->selectRaw('count(*) as leads_count')
+            ->groupBy('leads.branch_id', 'branches.name', 'leads.program_id', 'programs.name')
+            ->orderBy('leads.branch_id')
+            ->orderBy('leads.program_id')
+            ->get()
+            ->map(fn ($row): array => [
+                'branch_id' => (int) $row->branch_id,
+                'branch_name' => $row->branch_name,
+                'program_id' => (int) $row->program_id,
+                'program_name' => $row->program_name,
+                'leads_count' => (int) $row->leads_count,
+            ]);
+
+        return response()->json([
+            'data' => [
+                'total_leads' => (clone $baseQuery)->count(),
+                'branches' => $branchCounts,
+                'programs_by_branch' => $programCounts,
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -99,5 +159,20 @@ class LeadController extends Controller
         );
 
         return new LeadResource($lead);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function leadCountsQuery(array $filters): Builder
+    {
+        return Lead::query()
+            ->when(isset($filters['branch_id']), fn (Builder $query) => $query->where('leads.branch_id', $filters['branch_id']))
+            ->when(isset($filters['program_id']), fn (Builder $query) => $query->where('leads.program_id', $filters['program_id']))
+            ->when(isset($filters['season_id']), fn (Builder $query) => $query->where('leads.season_id', $filters['season_id']))
+            ->when(isset($filters['status']), fn (Builder $query) => $query->where('leads.status', $filters['status']))
+            ->when(isset($filters['source']), fn (Builder $query) => $query->where('leads.source', $filters['source']))
+            ->when(isset($filters['created_from']), fn (Builder $query) => $query->whereDate('leads.created_at', '>=', $filters['created_from']))
+            ->when(isset($filters['created_to']), fn (Builder $query) => $query->whereDate('leads.created_at', '<=', $filters['created_to']));
     }
 }
