@@ -9,14 +9,13 @@ use App\Filament\Resources\Applications\Actions\MoveToWaitingContractFilamentAct
 use App\Filament\Resources\Applications\Actions\OpenContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\RejectApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\ReturnToSubmittedFilamentAction;
-use App\Filament\Resources\Applications\Actions\SendContractFilamentAction;
 use App\Filament\Resources\Applications\Actions\SubmitApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\UploadContractFilamentAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
-use App\States\Applications\Draft;
-use App\States\Applications\Submitted;
-use App\States\Applications\UnderReview;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingBranchReview;
+use App\States\Applications\AwaitingRegistrationFee;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -31,10 +30,9 @@ class ViewApplication extends ViewRecord
             // ── Data-entry stage ──────────────────────────────────
             EditAction::make()
                 ->visible(
-                    fn(Application $record): bool =>
-                    $record->status instanceof Draft
-                        || $record->status instanceof Submitted
-                        || $record->status instanceof UnderReview
+                    fn (Application $record): bool => $record->status instanceof AwaitingRegistrationFee
+                        || $record->status instanceof AwaitingApplicationCompletion
+                        || $record->status instanceof AwaitingBranchReview
                 ),
             SubmitApplicationFilamentAction::make(),
             MoveToWaitingContractFilamentAction::make(),
@@ -42,7 +40,6 @@ class ViewApplication extends ViewRecord
                 OpenContractLinkFilamentAction::make(),
                 CopyContractLinkFilamentAction::make(),
                 UploadContractFilamentAction::make(),
-                SendContractFilamentAction::make(),
             ])
                 ->label(__('admin.application.actions.contract_actions'))
                 ->button(),

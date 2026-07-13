@@ -2,14 +2,19 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
-use App\DTOs\Application\UpdateApplicationDataDTO;
 use App\Models\Application;
-use App\States\Applications\Draft;
-use App\States\Applications\Submitted;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingRegistrationFee;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 
+/**
+ * Advances an application off the registration-fee gate. The driving transition
+ * (AwaitingRegistrationFee -> AwaitingApplicationCompletion) is payment-gated and is
+ * registered in the payments phase (Phase 2); until then this action stays hidden
+ * because `canTransitionTo` is false.
+ */
 class SubmitApplicationFilamentAction extends Action
 {
     public static function getDefaultName(): ?string
@@ -37,15 +42,14 @@ class SubmitApplicationFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn(?Application $record): bool => $record?->status instanceof Draft
-                && ($record->status->canTransitionTo(Submitted::class) ?? false)
+            fn (?Application $record): bool => $record?->status instanceof AwaitingRegistrationFee
+                && ($record->status->canTransitionTo(AwaitingApplicationCompletion::class) ?? false)
         );
 
         $this->action(function (Application $record, array $data) {
             try {
                 $record->status->transitionTo(
-                    Submitted::class,
-                    UpdateApplicationDataDTO::fromValidated($record->fresh()->toArray()),
+                    AwaitingApplicationCompletion::class,
                     $data['notes']
                 );
 

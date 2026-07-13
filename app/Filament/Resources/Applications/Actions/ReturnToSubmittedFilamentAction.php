@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
-use App\States\Applications\Submitted;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -34,13 +34,13 @@ class ReturnToSubmittedFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof WaitingContractSignature
-                && ($record->status->canTransitionTo(Submitted::class) ?? false)
+            fn (?Application $record): bool => $record?->status instanceof AwaitingContractSignature
+                && ($record->status->canTransitionTo(AwaitingApplicationCompletion::class) ?? false)
         );
 
         $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(Submitted::class, $data['notes']);
+                $record->status->transitionTo(AwaitingApplicationCompletion::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.return_to_submitted_success'))

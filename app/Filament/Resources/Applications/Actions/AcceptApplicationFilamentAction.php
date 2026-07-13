@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
 use App\States\Applications\Accepted;
-use App\States\Applications\UnderReview;
+use App\States\Applications\AwaitingBranchReview;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -35,7 +35,7 @@ class AcceptApplicationFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof UnderReview
+            fn (?Application $record): bool => $record?->status instanceof AwaitingBranchReview
                 && ($record->status->canTransitionTo(Accepted::class) ?? false)
         );
 

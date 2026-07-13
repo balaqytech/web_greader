@@ -6,7 +6,7 @@ use App\Exceptions\ProgramNotAvailableInBranchException;
 use App\Models\Branch;
 use App\Models\Lead;
 use App\Models\Program;
-use App\States\Applications\Draft;
+use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Leads\ContactedLead;
 use App\States\Leads\Interested;
 use App\States\Leads\NewLead;
@@ -58,8 +58,8 @@ it('allows transitioning to interested when the program is available in the lead
 
     expect($lead->status)->toBeInstanceOf(Interested::class)
         ->and($lead->application)->not->toBeNull()
-        ->and($lead->application->status)->toBeInstanceOf(Draft::class)
-        ->and($lead->application->applicationStudent->name)->toBe($lead->student_name)
+        ->and($lead->application->status)->toBeInstanceOf(AwaitingRegistrationFee::class)
+        ->and($lead->application->student_name)->toBe($lead->student_name)
         ->and($lead->application->ref_no)->toStartWith('APP-');
 });
 

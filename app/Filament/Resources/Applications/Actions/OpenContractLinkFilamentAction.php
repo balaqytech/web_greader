@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 
 class OpenContractLinkFilamentAction extends Action
@@ -30,6 +30,6 @@ class OpenContractLinkFilamentAction extends Action
 
         $this->openUrlInNewTab();
 
-        $this->visible(fn(?Application $record): bool => $record?->status instanceof WaitingContractSignature);
+        $this->visible(fn (?Application $record): bool => $record?->status instanceof AwaitingContractSignature);
     }
 }

@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
-use App\States\Applications\Submitted;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -38,13 +38,13 @@ class MoveToWaitingContractFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof Submitted
-                && ($record->status->canTransitionTo(WaitingContractSignature::class) ?? false)
+            fn (?Application $record): bool => $record?->status instanceof AwaitingApplicationCompletion
+                && ($record->status->canTransitionTo(AwaitingContractSignature::class) ?? false)
         );
 
         $this->action(function (Application $record, array $data) {
             try {
-                $record->status->transitionTo(WaitingContractSignature::class, $data['notes']);
+                $record->status->transitionTo(AwaitingContractSignature::class, $data['notes']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.move_to_waiting_contract_success'))

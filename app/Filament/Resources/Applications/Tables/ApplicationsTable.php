@@ -4,12 +4,13 @@ namespace App\Filament\Resources\Applications\Tables;
 
 use App\Models\Application;
 use App\States\Applications\Accepted;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingBranchReview;
+use App\States\Applications\AwaitingContractSignature;
+use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
-use App\States\Applications\Draft;
+use App\States\Applications\CorrectionRequested;
 use App\States\Applications\Rejected;
-use App\States\Applications\Submitted;
-use App\States\Applications\UnderReview;
-use App\States\Applications\WaitingContractSignature;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -21,7 +22,7 @@ class ApplicationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->with([
+            ->modifyQueryUsing(fn ($query) => $query->with([
                 'program',
                 'branch',
                 'season',
@@ -55,8 +56,8 @@ class ApplicationsTable
                 TextColumn::make('status')
                     ->label(__('admin.application.status'))
                     ->badge()
-                    ->color(fn(Application $record) => $record->status->getColor())
-                    ->formatStateUsing(fn(Application $record) => $record->status->getLabel()),
+                    ->color(fn (Application $record) => $record->status->getColor())
+                    ->formatStateUsing(fn (Application $record) => $record->status->getLabel()),
                 TextColumn::make('created_at')
                     ->label(__('admin.lead.created_at'))
                     ->dateTime()
@@ -76,10 +77,11 @@ class ApplicationsTable
                 SelectFilter::make('status')
                     ->label(__('admin.application.status'))
                     ->options([
-                        Draft::$name => __('admin.application.states.draft'),
-                        Submitted::$name => __('admin.application.states.submitted'),
-                        WaitingContractSignature::$name => __('admin.application.states.waiting_contract_signature'),
-                        UnderReview::$name => __('admin.application.states.under_review'),
+                        AwaitingRegistrationFee::$name => __('admin.application.states.awaiting_registration_fee'),
+                        AwaitingApplicationCompletion::$name => __('admin.application.states.awaiting_application_completion'),
+                        AwaitingContractSignature::$name => __('admin.application.states.awaiting_contract_signature'),
+                        AwaitingBranchReview::$name => __('admin.application.states.awaiting_branch_review'),
+                        CorrectionRequested::$name => __('admin.application.states.correction_requested'),
                         Accepted::$name => __('admin.application.states.accepted'),
                         Rejected::$name => __('admin.application.states.rejected'),
                         Cancelled::$name => __('admin.application.states.cancelled'),

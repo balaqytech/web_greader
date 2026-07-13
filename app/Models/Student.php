@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 #[ScopedBy(BranchScope::class)]
 #[Fillable([
@@ -44,16 +43,9 @@ class Student extends Model
         ];
     }
 
-    public function applications(): HasManyThrough
+    public function applications(): HasMany
     {
-        return $this->hasManyThrough(
-            Application::class,
-            ApplicationStudent::class,
-            'civil_number', // Foreign key on ApplicationStudent
-            'id',           // Foreign key on Application
-            'civil_number', // Local key on Student
-            'application_id' // Local key on ApplicationStudent
-        );
+        return $this->hasMany(Application::class);
     }
 
     public function guardian(): BelongsTo

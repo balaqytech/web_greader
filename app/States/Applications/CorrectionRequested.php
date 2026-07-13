@@ -2,13 +2,13 @@
 
 namespace App\States\Applications;
 
-class Submitted extends ApplicationState
+class CorrectionRequested extends ApplicationState
 {
-    public static string $name = 'submitted';
+    public static string $name = 'correction_requested';
 
     public function getLabel(): string
     {
-        return __('admin.application.states.submitted');
+        return __('admin.application.states.correction_requested');
     }
 
     public function getColor(): string

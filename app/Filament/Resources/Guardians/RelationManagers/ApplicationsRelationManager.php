@@ -38,13 +38,13 @@ class ApplicationsRelationManager extends RelationManager
         $guardian = $this->getOwnerRecord();
 
         return $table
-            ->query(fn(): Builder => $guardian->getApplicationsQuery()->with(['program', 'branch', 'season', 'applicationStudent']))
+            ->query(fn (): Builder => $guardian->getApplicationsQuery()->with(['program', 'branch', 'season']))
             ->recordTitleAttribute('ref_no')
             ->columns([
                 TextColumn::make('ref_no')
                     ->label(__('admin.application.ref_no'))
-                    ->url(fn(Application $record) => ApplicationResource::getUrl('view', ['record' => $record])),
-                TextColumn::make('applicationStudent.name')
+                    ->url(fn (Application $record) => ApplicationResource::getUrl('view', ['record' => $record])),
+                TextColumn::make('student_name')
                     ->label(__('admin.student.name'))
                     ->placeholder('-'),
                 TextColumn::make('program.name')
@@ -56,8 +56,8 @@ class ApplicationsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label(__('admin.application.status'))
                     ->badge()
-                    ->color(fn(Application $record) => $record->status->getColor())
-                    ->formatStateUsing(fn(Application $record) => $record->status->getLabel()),
+                    ->color(fn (Application $record) => $record->status->getColor())
+                    ->formatStateUsing(fn (Application $record) => $record->status->getLabel()),
                 TextColumn::make('created_at')
                     ->label(__('admin.lead.created_at'))
                     ->dateTime()
@@ -67,7 +67,7 @@ class ApplicationsRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([
                 ViewAction::make()
-                    ->url(fn(Application $record) => ApplicationResource::getUrl('view', ['record' => $record])),
+                    ->url(fn (Application $record) => ApplicationResource::getUrl('view', ['record' => $record])),
             ])
             ->toolbarActions([]);
     }

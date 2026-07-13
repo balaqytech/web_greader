@@ -4,11 +4,11 @@ namespace App\States\Applications\Transitions;
 
 use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Models\Application;
-use App\States\Applications\UnderReview;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\AwaitingContractSignature;
+use App\States\Applications\Cancelled;
 use Spatie\ModelStates\Transition;
 
-class WaitingContractSignatureToUnderReview extends Transition
+class AwaitingContractSignatureToCancelled extends Transition
 {
     public function __construct(
         public Application $application,
@@ -17,15 +17,15 @@ class WaitingContractSignatureToUnderReview extends Transition
 
     public function handle(): Application
     {
-        $fromState = WaitingContractSignature::$name;
+        $fromState = AwaitingContractSignature::$name;
 
-        $this->application->status = UnderReview::class;
+        $this->application->status = Cancelled::class;
         $this->application->save();
 
         app(RecordApplicationActivityAction::class)->handle(
             $this->application,
             $fromState,
-            UnderReview::$name,
+            Cancelled::$name,
             $this->notes,
         );
 

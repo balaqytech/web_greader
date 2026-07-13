@@ -4,11 +4,11 @@ namespace App\States\Applications\Transitions;
 
 use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Models\Application;
+use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
-use App\States\Applications\Draft;
 use Spatie\ModelStates\Transition;
 
-class DraftToCancelled extends Transition
+class AwaitingRegistrationFeeToCancelled extends Transition
 {
     public function __construct(
         public Application $application,
@@ -17,7 +17,7 @@ class DraftToCancelled extends Transition
 
     public function handle(): Application
     {
-        $fromState = Draft::$name;
+        $fromState = AwaitingRegistrationFee::$name;
 
         $this->application->status = Cancelled::class;
         $this->application->save();

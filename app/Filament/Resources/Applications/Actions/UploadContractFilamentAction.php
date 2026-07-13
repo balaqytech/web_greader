@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
-use App\States\Applications\UnderReview;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\AwaitingBranchReview;
+use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
@@ -36,7 +36,7 @@ class UploadContractFilamentAction extends Action
         ]);
 
         $this->visible(
-            fn (?Application $record): bool => $record?->status instanceof WaitingContractSignature
+            fn (?Application $record): bool => $record?->status instanceof AwaitingContractSignature
         );
 
         $this->action(function (Application $record, array $data) {
@@ -50,8 +50,8 @@ class UploadContractFilamentAction extends Action
                     ]);
                 }
 
-                // Transition to UnderReview
-                $record->status->transitionTo(UnderReview::class);
+                // Transition to branch review
+                $record->status->transitionTo(AwaitingBranchReview::class);
 
                 Notification::make()
                     ->title(__('admin.application.actions.upload_signed_contract_success'))

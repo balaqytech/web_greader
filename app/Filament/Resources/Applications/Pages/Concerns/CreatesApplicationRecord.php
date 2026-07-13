@@ -7,7 +7,6 @@ use App\DTOs\Application\CreateApplicationDTO;
 use App\Enums\Source;
 use App\Models\Program;
 use App\Models\Season;
-use App\States\Applications\Submitted;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Facades\FilamentView;
@@ -40,18 +39,9 @@ trait CreatesApplicationRecord
         $dto = CreateApplicationDTO::fromFormData($data);
         $application = app(CreateApplicationAction::class)->execute($dto);
 
-        // If staff chose "Create as Submitted", attempt the transition
-        if (! $this->submitAsDraft) {
-            try {
-                $application->status->transitionTo(Submitted::class);
-            } catch (\Exception) {
-                Notification::make()
-                    ->title(__('admin.application.actions.submit_failed_incomplete'))
-                    ->body(__('admin.application.actions.submit_failed_incomplete_body'))
-                    ->warning()
-                    ->send();
-            }
-        }
+        // Applications always start at the registration-fee gate (the model default).
+        // Advancing past it is payment-gated and handled in the payments phase, so no
+        // forward transition is attempted here regardless of the chosen create button.
 
         return $application->fresh();
     }
@@ -92,8 +82,8 @@ trait CreatesApplicationRecord
             ->label(__('filament-panels::resources/pages/create-record.form.actions.cancel.label'))
             ->alpineClickHandler(
                 FilamentView::hasSpaMode($url)
-                    ? 'document.referrer ? window.history.back() : Livewire.navigate(' . Js::from($url) . ')'
-                    : 'document.referrer ? window.history.back() : (window.location.href = ' . Js::from($url) . ')',
+                    ? 'document.referrer ? window.history.back() : Livewire.navigate('.Js::from($url).')'
+                    : 'document.referrer ? window.history.back() : (window.location.href = '.Js::from($url).')',
             )
             ->color('gray');
     }

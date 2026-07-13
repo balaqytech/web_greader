@@ -2,37 +2,37 @@
 
 namespace App\States\Applications\Transitions;
 
+use App\Actions\Applications\GenerateApplicationContractAction;
 use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Actions\Applications\ValidateApplicationCompletionAction;
-use App\DTOs\Application\UpdateApplicationDataDTO;
 use App\Models\Application;
-use App\States\Applications\Draft;
-use App\States\Applications\Submitted;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingContractSignature;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
-class DraftToSubmitted extends Transition
+class AwaitingApplicationCompletionToAwaitingContractSignature extends Transition
 {
     public function __construct(
         public Application $application,
-        public ?UpdateApplicationDataDTO $data = null,
         public ?string $notes = null,
     ) {}
 
     public function handle(): Application
     {
         return DB::transaction(function () {
-            $this->application->update($this->data->toArray());
+            app(ValidateApplicationCompletionAction::class)->handle($this->application);
+            app(GenerateApplicationContractAction::class)->handle($this->application);
 
-            $fromState = Draft::$name;
+            $fromState = AwaitingApplicationCompletion::$name;
 
-            $this->application->status = Submitted::class;
+            $this->application->status = AwaitingContractSignature::class;
             $this->application->save();
 
             app(RecordApplicationActivityAction::class)->handle(
                 $this->application,
                 $fromState,
-                Submitted::$name,
+                AwaitingContractSignature::$name,
                 $this->notes,
             );
 

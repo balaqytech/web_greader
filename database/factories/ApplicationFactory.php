@@ -2,16 +2,20 @@
 
 namespace Database\Factories;
 
-use App\Enums\ContactType;
 use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
+use App\Enums\Source;
 use App\Models\Application;
 use App\Models\Branch;
 use App\Models\Lead;
-//
 use App\Models\Program;
-use App\States\Applications\Submitted;
-use App\States\Applications\UnderReview;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\Accepted;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingBranchReview;
+use App\States\Applications\AwaitingContractSignature;
+use App\States\Applications\AwaitingRegistrationFee;
+use App\States\Applications\Cancelled;
+use App\States\Applications\Rejected;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -21,6 +25,10 @@ use Illuminate\Support\Str;
 class ApplicationFactory extends Factory
 {
     /**
+     * Real target factory against the flat `applications` schema. State helpers place an
+     * application directly into any baseline state (the payment-gated fee transition is
+     * not wired in Phase 0, so tests seed post-fee states directly).
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -39,80 +47,93 @@ class ApplicationFactory extends Factory
             'season_id' => $lead->season_id,
             'program_id' => $program->id,
             'branch_id' => $branch->id,
+            'source' => Source::DASHBOARD,
+            'status' => AwaitingRegistrationFee::$name,
+
+            'student_name' => fake()->name(),
+            'student_gender' => fake()->randomElement(Gender::cases()),
+            'student_birth_date' => fake()->date(),
+            'student_civil_number' => fake()->unique()->numerify('########'),
+            'student_state' => fake()->city(),
+            'student_governorate' => fake()->city(),
+            'student_village' => fake()->city(),
+            'student_house_number' => fake()->buildingNumber(),
+            'student_parents_social_status' => fake()->word(),
+            'relationship_with_guardian' => GuardianRelationship::Father,
+
+            'father_name' => fake()->name('male'),
+            'father_phone' => fake()->phoneNumber(),
+            'father_email' => fake()->safeEmail(),
+            'father_id_number' => fake()->unique()->numerify('########'),
+            'father_occupation' => fake()->jobTitle(),
+            'father_is_guardian' => true,
+
+            'mother_name' => fake()->name('female'),
+            'mother_phone' => fake()->phoneNumber(),
+            'mother_id_number' => fake()->unique()->numerify('########'),
+            'mother_is_guardian' => false,
         ];
     }
 
-    public function configure()
-    {
-        return $this->afterCreating(function (Application $application) {
-            if (! $application->applicationStudent()->exists()) {
-                $application->applicationStudent()->create([
-                    'name' => fake()->name(),
-                    'gender' => fake()->randomElement(Gender::cases()),
-                    'birth_date' => fake()->date(),
-                    'civil_number' => fake()->unique()->numerify('########'),
-                    'state' => fake()->state(),
-                    'governorate' => fake()->city(),
-                    'village' => fake()->city(),
-                    'house_number' => fake()->buildingNumber(),
-                    'parents_social_status' => fake()->word(),
-                ]);
-            }
-
-            if ($application->contacts()->count() === 0) {
-                $application->contacts()->create([
-                    'type' => ContactType::Father,
-                    'name' => fake()->name('male'),
-                    'phone' => fake()->phoneNumber(),
-                    'id_number' => fake()->unique()->numerify('########'),
-                    'is_guardian' => true,
-                ]);
-
-                $application->contacts()->create([
-                    'type' => ContactType::Mother,
-                    'name' => fake()->name('female'),
-                    'phone' => fake()->phoneNumber(),
-                ]);
-
-                $application->contacts()->create([
-                    'type' => ContactType::Relative,
-                    'name' => fake()->name(),
-                    'phone' => fake()->phoneNumber(),
-                ]);
-            }
-        });
-    }
-
-    public function submitted(): static
+    public function awaitingRegistrationFee(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => Submitted::$name,
+            'status' => AwaitingRegistrationFee::$name,
         ]);
     }
 
-    public function waitingContractSignature(): static
+    public function awaitingApplicationCompletion(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => WaitingContractSignature::$name,
+            'status' => AwaitingApplicationCompletion::$name,
+        ]);
+    }
+
+    public function awaitingContractSignature(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => AwaitingContractSignature::$name,
         ])->afterCreating(function (Application $application) {
             $application->contract()->create([
-                'token' => Str::uuid()->toString(),
+                'token' => Str::random(64),
                 'token_expires_at' => now()->addDays(7),
             ]);
         });
     }
 
-    public function underReview(): static
+    public function awaitingBranchReview(bool $signed = true): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => UnderReview::$name,
-        ])->afterCreating(function (Application $application) {
+            'status' => AwaitingBranchReview::$name,
+        ])->afterCreating(function (Application $application) use ($signed) {
             $application->contract()->create([
-                'token' => Str::uuid()->toString(),
+                'token' => Str::random(64),
                 'token_expires_at' => now()->addDays(7),
-                'signed_at' => now(),
-                'signed_by_applicant' => true,
+                'signed_at' => $signed ? now() : null,
+                'signed_by_applicant' => $signed,
             ]);
         });
+    }
+
+    public function accepted(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => Accepted::$name,
+        ]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => Rejected::$name,
+            'rejection_reason' => fake()->sentence(),
+        ]);
+    }
+
+    public function cancelled(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => Cancelled::$name,
+        ]);
     }
 }

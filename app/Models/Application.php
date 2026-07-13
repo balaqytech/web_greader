@@ -8,10 +8,10 @@ use App\Enums\Source;
 use App\Models\Scopes\BranchScope;
 use App\States\Applications\Accepted;
 use App\States\Applications\ApplicationState;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
-use App\States\Applications\Draft;
 use App\States\Applications\Rejected;
-use App\States\Applications\Submitted;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
 use Carbon\Carbon;
@@ -26,6 +26,7 @@ use Spatie\ModelStates\HasStates;
 #[ScopedBy(BranchScope::class)]
 #[Fillable([
     'lead_id',
+    'student_id',
     'season_id',
     'program_id',
     'branch_id',
@@ -108,7 +109,7 @@ class Application extends Model
     protected static function booted(): void
     {
         static::creating(function (self $application) {
-            $application->ref_no = 'APP-' . now()->format('Y') . str_pad(
+            $application->ref_no = 'APP-'.now()->format('Y').str_pad(
                 (string) (Application::withoutGlobalScopes()->count() + 1),
                 6,
                 '0',
@@ -116,7 +117,7 @@ class Application extends Model
             );
 
             if (empty($application->status)) {
-                $application->status = Draft::$name;
+                $application->status = AwaitingRegistrationFee::$name;
             }
         });
     }
@@ -129,6 +130,11 @@ class Application extends Model
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class);
     }
 
     public function season(): BelongsTo
@@ -178,7 +184,7 @@ class Application extends Model
     public function getSubmittedAtAttribute(): ?Carbon
     {
         return $this->activities()
-            ->where('to_state', Submitted::getMorphClass())
+            ->where('to_state', AwaitingApplicationCompletion::getMorphClass())
             ->oldest('transitioned_at')
             ->value('transitioned_at');
     }

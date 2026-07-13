@@ -3,15 +3,11 @@
 namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\ApplicationResource;
-use App\States\Applications\Accepted;
+use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingBranchReview;
+use App\States\Applications\AwaitingContractSignature;
+use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
-use App\States\Applications\Draft;
-use App\States\Applications\Rejected;
-use App\States\Applications\Submitted;
-use App\States\Applications\UnderReview;
-use App\States\Applications\WaitingContractSignature;
-use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -23,18 +19,8 @@ class ListApplications extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            // ActionGroup::make([
             CreateAction::make()
                 ->label(__('admin.application.actions.create')),
-            // Action::make('create_from_existing')
-            //     ->label(__('admin.application.actions.create_from_existing'))
-            //     ->icon('heroicon-o-user-plus')
-            //     ->color('info')
-            //     ->url(ApplicationResource::getUrl('create-existing')),
-            // ])
-            //     ->label(__('admin.application.actions.create'))
-            //     ->color('primary')
-            //     ->button(),
         ];
     }
 
@@ -43,24 +29,18 @@ class ListApplications extends ListRecords
         return [
             'all' => Tab::make('All')
                 ->label(__('admin.application.states.all')),
-            'draft' => Tab::make('Draft')
-                ->label(__('admin.application.states.draft'))
-                ->modifyQueryUsing(fn ($query) => $query->where('status', Draft::$name)),
-            'submitted' => Tab::make('Submitted')
-                ->label(__('admin.application.states.submitted'))
-                ->modifyQueryUsing(fn ($query) => $query->where('status', Submitted::$name)),
-            'waiting_contract_signature' => Tab::make('Waiting Contract Signature')
-                ->label(__('admin.application.states.waiting_contract_signature'))
-                ->modifyQueryUsing(fn ($query) => $query->where('status', WaitingContractSignature::$name)),
-            'under_review' => Tab::make('Under Review')
-                ->label(__('admin.application.states.under_review'))
-                ->modifyQueryUsing(fn ($query) => $query->where('status', UnderReview::$name)),
-            // 'accepted' => Tab::make('Accepted')
-            //     ->label(__('admin.application.states.accepted'))
-            //     ->modifyQueryUsing(fn ($query) => $query->where('status', Accepted::$name)),
-            // 'rejected' => Tab::make('Rejected')
-            //     ->label(__('admin.application.states.rejected'))
-            //     ->modifyQueryUsing(fn ($query) => $query->where('status', Rejected::$name)),
+            'awaiting_registration_fee' => Tab::make('Awaiting Registration Fee')
+                ->label(__('admin.application.states.awaiting_registration_fee'))
+                ->modifyQueryUsing(fn ($query) => $query->where('status', AwaitingRegistrationFee::$name)),
+            'awaiting_application_completion' => Tab::make('Awaiting Application Completion')
+                ->label(__('admin.application.states.awaiting_application_completion'))
+                ->modifyQueryUsing(fn ($query) => $query->where('status', AwaitingApplicationCompletion::$name)),
+            'awaiting_contract_signature' => Tab::make('Awaiting Contract Signature')
+                ->label(__('admin.application.states.awaiting_contract_signature'))
+                ->modifyQueryUsing(fn ($query) => $query->where('status', AwaitingContractSignature::$name)),
+            'awaiting_branch_review' => Tab::make('Awaiting Branch Review')
+                ->label(__('admin.application.states.awaiting_branch_review'))
+                ->modifyQueryUsing(fn ($query) => $query->where('status', AwaitingBranchReview::$name)),
             'cancelled' => Tab::make('Cancelled')
                 ->label(__('admin.application.states.cancelled'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', Cancelled::$name)),

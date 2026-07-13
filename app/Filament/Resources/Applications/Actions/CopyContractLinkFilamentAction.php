@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
-use App\States\Applications\WaitingContractSignature;
+use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -47,8 +47,8 @@ class CopyContractLinkFilamentAction extends Action
             ]);
         });
 
-        $this->action(fn() => null);
+        $this->action(fn () => null);
 
-        $this->visible(fn(?Application $record): bool => $record?->status instanceof WaitingContractSignature);
+        $this->visible(fn (?Application $record): bool => $record?->status instanceof AwaitingContractSignature);
     }
 }
