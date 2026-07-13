@@ -7,7 +7,14 @@ Legend used throughout:
 - **[Confirmed]** — approved business requirement from the architecture brief. Do not change without stakeholder sign-off.
 - **[Recommendation]** — technical proposal chosen by engineering; may be revisited during implementation review.
 
-Environment note for this cycle: the Laravel Boost MCP tools were not available in the authoring session, and the local PHP CLI is 8.3.32 while `composer.json` requires PHP >= 8.4, so `php artisan` and the test suite cannot run on this machine. Package versions below were confirmed from `composer.lock`: `spatie/laravel-model-states 2.13.1`, `spatie/laravel-permission 7.3.0`, `bezhansalleh/filament-shield 4.2.0`, `laravel/sanctum v4.3.1`, `laravel/framework v13.4.0`, `owen-it/laravel-auditing v14.0.3`, `spatie/laravel-webhook-server 3.10.0`, `carlos-meneses/laravel-mpdf 2.1.13`.
+Environment note for this cycle (verified on this machine):
+
+- **PHP 8.4 is installed and runs Laravel successfully.** `php artisan migrate` and `php artisan db:table ...` were executed against a freshly created `greader` database with no errors. The earlier claim that the runtime was PHP 8.3.32 and blocked was **inaccurate** and is retracted.
+- **Two PHP runtimes are present**: `C:\php83\` (PHP 8.3) and `C:\php84\` (PHP 8.4.23). The default PATH `php` on this machine resolves to `C:\php84\php.exe` (PHP 8.4.23), so plain `php artisan ...` already runs on 8.4. (The `E:\laragon\bin\php\php-8.4.16-...\php.exe` path referenced in the task instruction does not exist here; use the path below instead.)
+- **Explicit PHP 8.4 path for future verification commands**: `C:\php84\php.exe` — e.g. `C:\php84\php.exe artisan db:table applications --no-interaction`. Plain `php` is equivalent on this machine because it already points at 8.4.
+- **Database server**: MySQL **8.4.3** (verified) — supports stored/virtual generated columns, which resolves the generated-column concern previously listed as a blocker (see §12).
+
+Package versions confirmed from `composer.lock`: `spatie/laravel-model-states 2.13.1`, `spatie/laravel-permission 7.3.0`, `bezhansalleh/filament-shield 4.2.0`, `laravel/sanctum v4.3.1`, `laravel/framework v13.4.0`, `owen-it/laravel-auditing v14.0.3`, `spatie/laravel-webhook-server 3.10.0`, `carlos-meneses/laravel-mpdf 2.1.13`. The Laravel Boost MCP tools were not available in the authoring session; facts here were gathered via direct Artisan/schema inspection instead.
 
 ---
 
@@ -43,6 +50,25 @@ Grounded in exact file paths on `develop` at commit `3bc0659`.
 - `app/Models/Scopes/BranchScope.php` keys the bypass on the `super_admin` role name only, and silently disables scoping for any staff user whose `branch_id` is null.
 - Several Filament actions rely only on `visible()` state checks (e.g. `app/Filament/Resources/Applications/Actions/UploadContractFilamentAction.php`) without a permission/policy check — exactly the "hidden actions as authorization" pattern the approved architecture forbids.
 
+### 1.4 Live schema vs. migrations (verified)
+
+The schema below was materialized by running `php artisan migrate` into a fresh `greader` database and inspected with `php artisan db:table ...`. **Because the live database on this machine was built directly from the migration files, the live schema and the migrations match exactly — there is no drift on this machine.** "Drift" in the task's sense (a production database that diverged from the migrations over time) cannot be observed here and must be re-checked against the real production/staging database before feature migrations. Verified facts:
+
+- **`applications` (44 columns).**
+  - `lead_id` — `bigint unsigned`, **nullable**, **unique** (`applications_lead_id_unique`), FK → `leads.id` with **`ON DELETE SET NULL`**, `ON UPDATE NO ACTION`. Note the conflict with the "make `lead_id` NOT NULL" target (§5.1): a column cannot be both `NOT NULL` and `ON DELETE SET NULL`, so tightening to `NOT NULL` requires simultaneously changing the FK to `restrictOnDelete`/`cascadeOnDelete`.
+  - `student_civil_number` — `varchar(255)`, **nullable**.
+  - **No `(student_civil_number, season_id)` composite unique index exists.** The only indexes are: `primary(id)`, unique `ref_no`, unique `lead_id`, and non-unique single-column indexes on `affiliate_id`, `branch_id`, `program_id`, `season_id`, `status`, `student_gender`. This directly contradicts the claim in `docs/data-model.md` (see C12) — the index is absent from both the migrations **and** the live schema. There is therefore **no existing civil-number/season constraint to preserve**; §5.1's proposal to add one is a *new* additive constraint, gated on a duplicate check.
+  - FKs `season_id`, `program_id`, `branch_id` are `ON DELETE RESTRICT`; `affiliate_id` is `ON DELETE SET NULL`.
+  - No `student_id` column exists (linkage to accepted students is added in §5.1 per correction 5).
+- **`application_contracts` (10 columns).** `application_id` — unique (`application_contracts_application_id_unique`) + FK **`ON DELETE CASCADE`**; `token` unique; no `version`/`status`/`data_snapshot` columns yet (added in §5.5).
+- **`students` (15 columns).** `civil_number` — `varchar(255)`, **nullable**, **single-column unique** (`students_civil_number_unique`). `guardian_id`/`branch_id` FKs are `ON DELETE RESTRICT`. No `season_id`/`program_id`/`application_id` columns — accepted students do not currently record the season/program/branch of the application that produced them except via `branch_id` (see correction 5 / §5.1).
+
+**Schema-reconciliation step (precedes all feature migrations).** Before any target-schema migration runs, an initial reconciliation migration/command brings *both* fresh installs and any existing database to one canonical baseline:
+
+1. On staging/production, run the pre-migration data checks in §9.4 and diff the real schema (`php artisan db:table ...` / `schema:dump`) against the migration-built schema to detect any true drift (columns, indexes, FK on-delete rules) that this machine cannot show.
+2. Reconcile only through **additive corrective migrations** — new `add_*`/`change_*` migrations that use guarded operations (`Schema::hasColumn`, `hasIndex`, `Doctrine`-free `change()` where available) so they are safe to run whether or not the target already matches. No editing of historical migration files (they must keep producing the same baseline for fresh installs).
+3. Fresh installs reach the canonical schema by running the full ordered migration set (historical + additive corrective). Existing databases reach the same canonical schema by running only the not-yet-applied additive corrective migrations. Both paths converge on an identical final schema, verified by comparing `schema:dump` output between a fresh install and a migrated existing copy in CI.
+
 ---
 
 ## 2. Conflicts: schema vs. code, missing and stale classes
@@ -62,7 +88,7 @@ These are current defects, verified in the working tree. They must be fixed or d
 | C9 | `tests/Feature/ApplicationWorkflowTest.php` | Asserts behavior that does not exist: completion validation on submit, signed-contract validation before review (`WaitingContractSignatureToUnderReview` performs no such check), `applicationStudent` access, accept/reject transitions (disabled per C2). |
 | C10 | `app/Models/Student.php` | `applications()` is a `HasManyThrough` via nonexistent `ApplicationStudent`. Fatal when called. |
 | C11 | `routes/api.php` | Registers `POST /api/v1/leads/{lead}/transition`, but `app/Http/Controllers/Api/V1/LeadController.php` defines no `transition` method → 500 on call. |
-| C12 | `docs/data-model.md` | Claims a unique constraint on `student_civil_number + season_id`; no migration creates it (only `students.civil_number` is unique). Stale documentation. |
+| C12 | `docs/data-model.md` | Claims a unique constraint on `student_civil_number + season_id`; **verified absent** from both the migrations and the live schema (§1.4) — only single-column `students.civil_number` is unique. Stale documentation; the constraint would be *new* if added (§5.1), not preserved. |
 | C13 | `app/Models/Application.php:110-121` | `ref_no` is generated as `count()+1`, not concurrency-safe; two simultaneous creates can collide on the unique index. |
 | C14 | `app/Http/Controllers/ContractSigningController.php` | `show()` checks `isSigned()` but not token expiry, so an expired unsigned contract still renders; `sign()` checks expiry but not `isSigned()`, relying on the action's state check. Also duplicates guardian-name logic inconsistently between `show()` and `sign()` (sign ignores `relative_*` guardians). |
 | C15 | `app/Actions/Support/CreatePdfAction.php` usage in `SignContractOnlineAction` | Contract PDFs are written to `pdfs/contracts/{time()}.pdf` — same-second signings overwrite each other. |
@@ -157,28 +183,28 @@ Notes:
 
 Methods in first release: `Thawani`, `BankTransfer` only — no cash **[Confirmed]**.
 
-States **[Recommendation, satisfying confirmed rules]**: `pending`, `awaiting_verification`, `paid`, `failed`, `expired`, `refunded`.
+States **[Recommendation, satisfying confirmed rules]**: `pending`, `awaiting_verification`, `paid`, `failed`, `rejected`, `expired`, `refunded`. **`failed`** and **`rejected`** are distinct **[correction 7]**: `failed` = Thawani/provider decline or a technical/verification error (no human decision); `rejected` = central finance deliberately rejecting a bank-transfer receipt (a human decision, reason required).
 
 ```mermaid
 stateDiagram-v2
     [*] --> Pending : attempt created
     Pending --> Paid : Thawani server-side verified / verified webhook
-    Pending --> Failed : Thawani declined / verification failed
+    Pending --> Failed : Thawani declined / technical failure
     Pending --> Expired : checkout session expired
     Pending --> AwaitingVerification : bank receipt uploaded
     AwaitingVerification --> Paid : central finance verifies
-    AwaitingVerification --> Failed : central finance rejects
+    AwaitingVerification --> Rejected : central finance rejects receipt (reason)
     Paid --> Refunded : authorized finance action + reason + audit
 ```
 
 Transition matrix:
 
-| From \ To | AwaitingVerification | Paid | Failed | Expired | Refunded |
-|---|---|---|---|---|---|
-| Pending | ✔ (bank transfer only) | ✔ (Thawani only) | ✔ | ✔ (Thawani only) | |
-| AwaitingVerification | — | ✔ | ✔ | | |
-| Paid | | — | | | ✔ |
-| Failed / Expired / Refunded | terminal | | | | |
+| From \ To | AwaitingVerification | Paid | Failed | Rejected | Expired | Refunded |
+|---|---|---|---|---|---|---|
+| Pending | ✔ (bank transfer only) | ✔ (Thawani only) | ✔ (Thawani/technical) | | ✔ (Thawani only) | |
+| AwaitingVerification | — | ✔ | | ✔ (finance decision) | | |
+| Paid | | — | | | | ✔ |
+| Failed / Rejected / Expired / Refunded | terminal | | | | | |
 
 Rules baked into guards:
 
@@ -214,7 +240,8 @@ Transition matrix:
 Rules:
 
 - Branches review documents **[Confirmed]** — approval/rejection requires `Review:ApplicationDocument` and branch match.
-- Missing documents **warn but do not block** contract generation in the first release **[Confirmed]**. The gate on `AwaitingApplicationCompletion -> AwaitingContractSignature` checks required application **data** (including `student_civil_number`) **[Confirmed]**, not document states.
+- **Confirmed required types [correction 6]**: birth certificate, student civil ID **or** passport (alternative pair, §5.4), personal photo, transfer file (conditional), vaccination card, mother ID, father ID, and medical examination card.
+- Missing documents **warn but do not block** contract generation in the first release **[Confirmed]**. The gate on `AwaitingApplicationCompletion -> AwaitingContractSignature` checks required application **data** (including `student_civil_number`) **[Confirmed]**, not document states — so an application with missing/unapproved documents can still generate and sign a contract in v1.
 - The transfer file is required only when the student transfers from another school **[Confirmed]** — modeled as a conditional requirement keyed on a new `applications.is_transfer_student` boolean (§5.4). How this flag is captured in the form is an open input (§12).
 - Replacement retains history **[Confirmed]**: every upload creates an `application_document_files` row; the document points at the current file, prior rows are never deleted.
 
@@ -244,7 +271,8 @@ Rules:
 
 - Both electronic signatures (existing `/contract/{token}` flow) and staff upload of signed copies are supported **[Confirmed]**; both drive `Generated -> Signed` on the **active** (highest-version, non-superseded) contract.
 - Generation is gated by required application data including `student_civil_number` **[Confirmed]** — a `ValidateApplicationCompletionAction` (real this time; see C7) runs before generation.
-- Each version stores a `data_snapshot` (every value printed into the contract) **[Recommendation]** — this snapshot both renders the contract deterministically and defines "contract-relevant" for correction classification (§6).
+- Each version stores, immutably: (a) `data_snapshot` — the resolved variable set; (b) `rendered_body` — the **fully resolved contract text as the signer saw it**; and (c) `template_hash` — a hash of the source `programs.contract` template at generation time. **[Confirmed minimum + Recommendation]** Together these define "contract-relevant" for correction classification (§6) and guarantee that later global template edits never silently alter an already-signed contract.
+- **Confirmed minimum contract-relevant set** (always compared, independent of the current template's placeholders): student legal name, student civil number, guardian legal name and guardian identity (ID number), branch, program, and the contract terms/body — plus every other value printed into the contract **[Confirmed, correction 3]**.
 - Acceptance (`AwaitingBranchReview -> Accepted`) requires the active contract to be `signed`, then atomically creates/updates guardian and student records and records the approver in `application_activities` **[Confirmed]** — single `DB::transaction` in the transition class, replacing the broken `AcceptApplicationAction` (C1).
 
 ---
@@ -265,7 +293,7 @@ Shield permission names use the project's configured format (`config/filament-sh
 | AwaitingBranchReview → CorrectionRequested | Branch staff | `RequestCorrection:Application` | Reason + checklist provided | `application_corrections` row created (open) | Activity row + correction row **[Confirmed: reason, checklist, requesting user, timestamp, activity entry]** |
 | CorrectionRequested → AwaitingBranchReview | Branch staff | `Update:Application` | Open correction is non-contract-relevant and marked completed | Correction closed (`completed_by`, `completed_at`) | Activity row |
 | CorrectionRequested → AwaitingContractSignature | Branch staff | `GenerateContract:Application` | Open correction is contract-relevant and completed; completion re-validated | Signed contract → `superseded`; new version `generated`; new token | Activity row; both contract versions retained |
-| AwaitingBranchReview → Accepted | Branch staff/manager | `Accept:Application` | Active contract `signed`; branch match; completion valid | Guardian + student created/updated atomically; contact rows synced; outbox event `application.accepted` | Activity row with approver (`transitioned_by`) **[Confirmed]** |
+| AwaitingBranchReview → Accepted | Branch staff/manager | `Accept:Application` | Active contract `signed`; branch match; completion valid | Guardian + student created/updated atomically; `applications.student_id` back-linked in same transaction; contact rows synced; outbox event `application.accepted` | Activity row with approver (`transitioned_by`) **[Confirmed]** |
 | AwaitingBranchReview → Rejected | Branch staff/manager | `Reject:Application` | Rejection reason required | `rejection_reason` stored; outbox event | Activity row with reason |
 | any non-terminal → Cancelled | Branch staff (own branch) / super admin | `Cancel:Application` | Not `accepted`/`rejected`; note required | Active contract (if any) → `cancelled`; pending payments → no change (attempts remain) | Activity row |
 
@@ -276,9 +304,9 @@ Shield permission names use the project's configured format (`config/filament-sh
 | (create attempt) | Guardian via API/portal, or branch staff | `Create:Payment` (staff) / Sanctum ability `payments:initiate` (service) | Application in `awaiting_registration_fee`; amount = global registration fee setting; idempotency key unused | Thawani checkout session created via adapter (Thawani method) | Payment row is the record; owen-it audit on Payment |
 | Pending → Paid (Thawani) | System (verification callback/command) | none (server-side only) | Thawani session verified server-side or webhook signature verified **[Confirmed]**; no other `paid` payment exists for application (row lock) | Application → `awaiting_application_completion` in same transaction | Activity row on application; `payments.verified_at`, provider payload snapshot |
 | Pending → AwaitingVerification (bank) | Guardian/staff uploads receipt | `Update:Payment` or ability `payments:upload-receipt` | Receipt file present | — | receipt file row |
-| AwaitingVerification → Paid | Central finance | `VerifyBankTransfer:Payment` (cross-branch; §7) | Receipt exists; no other `paid` payment (row lock) | Application → `awaiting_application_completion` | `verified_by`, `verified_at`, activity row |
-| AwaitingVerification → Failed | Central finance | `VerifyBankTransfer:Payment` | Reason required | — | reason stored |
-| Pending → Failed/Expired | System | none | Provider status/TTL | — | provider payload |
+| AwaitingVerification → Paid | Central finance | `VerifyBankTransfer:Payment` (cross-branch via `ViewAllBranches:Payment`; §7) | Receipt exists; no other `paid` payment (row lock) | Application → `awaiting_application_completion` | `verified_by`, `verified_at`, activity row |
+| AwaitingVerification → Rejected | Central finance | `VerifyBankTransfer:Payment` | Reason required (human decision; distinct from `failed`) | — | `rejected_by`, `rejected_at`, reason stored |
+| Pending → Failed/Expired | System | none | Provider decline / technical error / TTL (no human decision) | — | provider payload |
 | Paid → Refunded | Central finance | `Refund:Payment` | Reason required; refund executed externally (no automation) **[Confirmed]** | Application state unchanged automatically (staff decide follow-up: cancel or new payment) **[Recommendation]** | `refunded_by`, `refund_reason`, `refunded_at`, audit entry **[Confirmed]** |
 
 ### 4.3 Document transitions
@@ -308,9 +336,11 @@ All new tables use `php artisan make:migration`, `foreignId()->constrained()`, a
 ### 5.1 `applications` (alter)
 
 - Add `is_transfer_student` boolean default false (drives transfer-file requirement).
+- Add **`student_id`** nullable FK → `students.id`, `nullOnDelete` **[Confirmed intent, correction 5]**. It is populated **atomically during acceptance** (inside the `AwaitingBranchReview -> Accepted` transaction, §4.1 / §5.9), right after the student is created/updated. This column — not a civil-number join — is the canonical Application↔Student link. `app/Models/Student.php::applications()` becomes a plain `hasMany(Application::class)` on `student_id`, and `Application::student()` a `belongsTo(Student::class)`. This replaces the broken `HasManyThrough`-via-`ApplicationStudent` relation (C10) and removes the fragile civil-number join suggested in an earlier draft.
+- For this release, the accepted application **records the student's branch, program, and season directly on the application row** (existing `branch_id`, `program_id`, `season_id` columns). Students are not given their own season/program columns in this cycle; the application row is the system of record for "which branch/program/season this student was accepted under." **[Confirmed intent, correction 5]**
 - Keep `status` string (state machine handles values); migrate values per §9.
-- Keep `lead_id` unique — one application per lead **[Confirmed: every application originates from a lead]**. Manual entry always creates the lead first, so make `lead_id` **NOT NULL** going forward. Blocker check: verify no existing rows have `lead_id IS NULL` before tightening (§12).
-- **[Recommendation]** Add unique composite `(student_civil_number, season_id)` (nullable-safe: MySQL allows multiple NULLs) to realize the intent documented in `docs/data-model.md` (C12). Requires a data-dedup check first.
+- Keep `lead_id` unique — one application per lead **[Confirmed: every application originates from a lead]**. Manual entry always creates the lead first, so make `lead_id` **NOT NULL** going forward. This requires **also changing the FK on-delete rule**: the live FK is `ON DELETE SET NULL` (§1.4), which is incompatible with a `NOT NULL` column — the corrective migration must switch it to `restrictOnDelete` (a lead with an application cannot be hard-deleted) in the same change. Blocker check: verify no existing rows have `lead_id IS NULL` before tightening (§9.4, §12).
+- **[Recommendation]** Add unique composite `(student_civil_number, season_id)` (nullable-safe: MySQL allows multiple NULLs). This is a **new** constraint — verified absent today (§1.4), not a pre-existing one — so it is only added after a duplicate-pair check (§9.4). Do not add constraints that already exist; this one does not.
 - Fix `ref_no` generation (C13): use a `DB::transaction` + `lockForUpdate()` on a per-year counter row (new `reference_counters` table: `key` unique, `value`) — same pattern should back `LeadRefNoGenerator` eventually.
 
 ### 5.2 `payments` (new)
@@ -329,7 +359,8 @@ All new tables use `php artisan make:migration`, `foreignId()->constrained()`, a
 | `provider_payload` json nullable | verification/webhook snapshot |
 | `receipt_path` string nullable | bank transfer receipt |
 | `verified_by` FK users nullable, `verified_at` | central finance |
-| `failed_reason` text nullable | |
+| `failed_reason` text nullable | provider/technical failure detail (`failed` state) |
+| `rejected_by` FK users nullable, `rejected_reason` text nullable, `rejected_at` | central finance receipt rejection (`rejected` state; distinct from `failed`) **[correction 7]** |
 | `refunded_by` FK users nullable, `refund_reason` text nullable, `refunded_at` | |
 | `paid_uniqueness` (stored generated column) | `= application_id when status='paid' and purpose='registration_fee', else NULL`; **unique index** enforces "one successful registration-fee payment per application" at DB level **[Recommendation — requires MySQL 8 generated columns; verify server version]** |
 
@@ -345,8 +376,11 @@ Model: `App\Models\Payment`, `#[ScopedBy(BranchScope::class)]`, states under `ap
 
 `application_documents`:
 
-- `application_id` FK, `branch_id` FK (denormalized), `type` string (enum `App\Enums\DocumentType`: e.g. `civil_id`, `birth_certificate`, `transfer_file`, … — final list is business input, §12), `status` string index (`missing|uploaded|approved|rejected`), `is_required` boolean, `current_file_id` FK nullable → `application_document_files`, `reviewed_by` FK users nullable, `reviewed_at`, `rejection_reason` text nullable, timestamps.
+- `application_id` FK, `branch_id` FK (denormalized), `type` string (enum `App\Enums\DocumentType`), `status` string index (`missing|uploaded|approved|rejected`), `is_required` boolean, `requirement_group` string nullable, `current_file_id` FK nullable → `application_document_files`, `reviewed_by` FK users nullable, `reviewed_at`, `rejection_reason` text nullable, timestamps.
 - Unique (`application_id`, `type`).
+- **Confirmed document types [correction 6]** for `App\Enums\DocumentType`: `birth_certificate`, `student_civil_id`, `passport`, `personal_photo`, `transfer_file`, `vaccination_card`, `mother_id`, `father_id`, `medical_examination_card`.
+- **Alternative requirement (civil ID OR passport) [Confirmed, correction 6]**: `student_civil_id` and `passport` share `requirement_group = 'student_identity'`. The group is satisfied when **any one** member reaches `approved` (or `uploaded`, per the non-blocking rule). Requirement completeness is evaluated per group, not per row, so a student with an approved passport is not flagged for a missing civil ID and vice-versa.
+- **`transfer_file` remains conditional [Confirmed]** on `applications.is_transfer_student`; it is instantiated as a required `missing` row only for transfer students.
 
 `application_document_files`:
 
@@ -357,7 +391,7 @@ Requirement instantiation: when an application enters `awaiting_application_comp
 ### 5.5 `application_contracts` (alter → versioned)
 
 - Drop unique on `application_id` alone.
-- Add: `version` unsignedInteger, `status` string index (`generated|signed|superseded|cancelled`), `data_snapshot` json (every printed value **[Confirmed: contract-relevant = every value printed]**), `generated_by` FK users nullable, `superseded_at` timestamp nullable, `superseded_by_contract_id` FK nullable self-reference.
+- Add: `version` unsignedInteger, `status` string index (`generated|signed|superseded|cancelled`), `data_snapshot` json (resolved variable set), `rendered_body` longText (**immutable** fully-resolved contract text as signed), `template_hash` string (hash of the source `programs.contract` template at generation), `generated_by` FK users nullable, `superseded_at` timestamp nullable, `superseded_by_contract_id` FK nullable self-reference. **[Confirmed minimum: contract-relevant = every printed value; correction 3]** The `rendered_body`/`template_hash` pair is never updated after generation — a template edited later produces a *new* version only via an explicit regeneration, never by mutating an existing row.
 - Unique (`application_id`, `version`).
 - One-active-version invariant: stored generated column `active_uniqueness = application_id when status in ('generated','signed') else NULL` with unique index **[Recommendation]** (same MySQL 8 caveat as §5.2); plus application-level check in `GenerateApplicationContractAction`.
 - Backfill (§9): existing rows become `version = 1`, status derived from `signed_at`.
@@ -380,12 +414,14 @@ Requirement instantiation: when an application enters `awaiting_application_comp
 
 ```text
 Lead 1—0..1 Application (applications.lead_id unique, NOT NULL target)
+Application *—0..1 Student (applications.student_id nullable FK; set atomically on acceptance)
+Student 1—* Application (Student::applications() = hasMany on student_id)
 Application 1—* Payment
 Application 1—* ApplicationContract (versions; ≤1 active)
 Application 1—* ApplicationDocument 1—* ApplicationDocumentFile
 Application 1—* ApplicationCorrection
 Application 1—* ApplicationActivity
-Application —> Guardian/Student created on acceptance (students.civil_number unique)
+Application —> Guardian/Student created/updated on acceptance (students.civil_number unique); student_id back-linked in same transaction
 ```
 
 ---
@@ -394,21 +430,21 @@ Application —> Guardian/Student created on acceptance (students.civil_number u
 
 ### 6.1 Versioning
 
-- The contract template lives on `programs.contract` (unchanged). Generation resolves the template + variables and stores the resolved variable set in `application_contracts.data_snapshot` at generation time. Rendering (web + PDF) always uses the snapshot, never live application data — this makes old versions reproducible and makes "what the signer saw" auditable.
-- Snapshot keys in v1 (from `ContractSigningController::show()`): `program_name`, `parent_name`, `student_name`, `enrollment_date`, `branch_price` — plus any variable later added to templates. The snapshot key list is derived by scanning the template for `$key$` placeholders, so adding a template variable automatically widens the contract-relevant field set.
+- The contract template lives on `programs.contract` (unchanged). Generation resolves the template + variables and stores, immutably, the resolved variable set (`data_snapshot`), the fully-resolved body (`rendered_body`), and the source template hash (`template_hash`) at generation time. Rendering (web + PDF) always uses the stored `rendered_body`, never live application data or the live template — this makes old versions reproducible and makes "what the signer saw" auditable.
+- **Template edits do not touch already-generated or signed contracts.** Because each version pins its own `rendered_body` + `template_hash`, an admin editing `programs.contract` later has zero effect on existing versions. A changed template only matters the next time a version is *explicitly* generated (new application, or regeneration after a contract-relevant correction). This is the mechanism that prevents "silent" application of global template edits to signed contracts.
 - Only one version may be `generated` or `signed` at a time. Regeneration supersedes the current version and increments `version`.
 
 ### 6.2 Correction classification
 
-**[Confirmed]** Contract-relevant data = every value printed in the contract. Classification is computed, not hand-picked:
+**[Confirmed]** Contract-relevant data = every value printed in the contract, and **at minimum** the confirmed set: student legal name, student civil number, guardian legal name and guardian identity, branch, program, and contract terms/body (correction 3). Relevance is **not** derived only from the current template's placeholders — the confirmed minimum set is always compared even if a template omits a field, and a change to the contract terms/template itself (detected via `template_hash`) is contract-relevant on its own. Classification is computed, not hand-picked:
 
-1. `CorrectionRequested` is entered with reason + checklist. A `pre_correction_snapshot` of the fields feeding the contract variables is captured on the correction row (add `data_before` json column to `application_corrections`) **[Recommendation]**.
-2. When staff mark the correction complete, `ClassifyCorrectionAction` recomputes the contract variable set from current application data and diffs it against the signed contract's `data_snapshot`.
-3. Any difference → contract-relevant: signed contract → `superseded`, new version generated, application → `awaiting_contract_signature` (new signature required) **[Confirmed]**.
+1. `CorrectionRequested` is entered with reason + checklist. A `data_before` snapshot of the confirmed-minimum fields (plus any current template variables) feeding the contract is captured on the correction row (`data_before` json column on `application_corrections`, §5.6) **[Recommendation]**.
+2. When staff mark the correction complete, `ClassifyCorrectionAction` recomputes (a) the confirmed-minimum field set and (b) the resolved contract body from current application + current template, then diffs both against the signed version's `data_snapshot` **and** `rendered_body`/`template_hash`.
+3. Any difference in the confirmed-minimum set, the resolved body, or the template hash → contract-relevant: signed contract → `superseded`, new version generated, application → `awaiting_contract_signature` (new signature required) **[Confirmed]**.
 4. No difference → application returns directly to `awaiting_branch_review` **[Confirmed]**.
 5. `is_contract_relevant` on the correction row records the outcome for reporting.
 
-This removes human judgment about which fields matter and keeps the rule stable as templates evolve.
+This anchors relevance to a confirmed field set (not just whatever placeholders a template happens to contain), keeps already-signed contracts immune to later template edits, and still catches every printed-value change.
 
 ---
 
@@ -416,12 +452,12 @@ This removes human judgment about which fields matter and keeps the rule stable 
 
 **[Confirmed]** Operational branch users are restricted to their own branch; central finance operates across all branches; Shield permissions are the mechanism; roles aggregate permissions; do not rely on hidden Filament actions.
 
-Design:
+Design principle **[Confirmed, correction 4]**: central finance is **not** given a blanket global bypass over every branch-owned model. Cross-branch access is granted **per model**, so finance can see payments everywhere but does not thereby gain all-branch visibility of leads, students, documents, etc. Branch operational users remain strictly limited to their own branch.
 
-1. **Permission-based scope bypass.** Replace the `hasRole('super_admin')` check in `app/Models/Scopes/BranchScope.php` with a permission check: users with `AccessAllBranches:Global` (a Shield custom permission) see all branches. `super_admin` and `central_finance` roles are granted it; branch roles are not. **[Recommendation]** Also close the current hole where `branch_id IS NULL` disables scoping — a user without `AccessAllBranches:Global` and without a `branch_id` should see nothing (`whereRaw('1=0')`), not everything.
+1. **Model-specific cross-branch permissions.** Rework `app/Models/Scopes/BranchScope.php` so the bypass is keyed on the concrete model. For a model `X`, a user sees all branches only if they have `super_admin` (a genuine, intentional global) **or** the model-scoped permission `ViewAllBranches:{X}` (e.g. `ViewAllBranches:Payment`). Implementation: the scope resolves the model's Shield resource name and checks `$user->can("ViewAllBranches:{$resource}")`; no single global flag grants everything except `super_admin`. **[Recommendation]** Also close the current hole where `branch_id IS NULL` disables scoping — a user who is neither `super_admin` nor holder of the relevant `ViewAllBranches:{X}` and who has no `branch_id` should see nothing (`whereRaw('1=0')`), not everything.
 2. **Scope coverage.** Apply `BranchScope` to `Payment` and `ApplicationDocument` (both carry a denormalized `branch_id` for exactly this purpose). `ApplicationContract`, `ApplicationCorrection`, and `ApplicationActivity` are only reachable through their application (relation managers / nested queries), which is already scoped; their policies must still verify `$record->application->branch_id` against the user.
-3. **Policy record checks.** Every policy `view/update/delete/…($user, $record)` must check branch ownership in addition to the Shield permission: `$user->can('Update:Application') && ($user->can('AccessAllBranches:Global') || $user->branch_id === $record->branch_id)`. Current policies (e.g. `app/Policies/ApplicationPolicy.php`) check only the permission — the global scope is the sole tenancy barrier today, and `withoutGlobalScopes()` calls (already present in `Application::booted()`) bypass it.
-4. **Central finance.** Role `central_finance` = `AccessAllBranches:Global` + `ViewAny/View:Payment` + `VerifyBankTransfer:Payment` + `Refund:Payment`, and read-only application permissions. Finance Filament pages (`PaymentPage` placeholder becomes a real `PaymentResource`) authorize via `PaymentPolicy`, not visibility.
+3. **Policy record checks.** Every policy `view/update/delete/…($user, $record)` must check branch ownership in addition to the Shield permission, using the **model-specific** cross-branch permission: e.g. `$user->can('Update:Application') && ($user->hasRole('super_admin') || $user->can('ViewAllBranches:Application') || $user->branch_id === $record->branch_id)`. Current policies (e.g. `app/Policies/ApplicationPolicy.php`) check only the permission — the global scope is the sole tenancy barrier today, and `withoutGlobalScopes()` calls (already present in `Application::booted()`) bypass it.
+4. **Central finance.** Role `central_finance` = `ViewAllBranches:Payment` + `ViewAny/View:Payment` + `VerifyBankTransfer:Payment` + `Refund:Payment`. It does **not** receive `ViewAllBranches:Application` or any other model's cross-branch permission. Finance can read payments across all branches and, for verification only, the **minimal related application data** required to confirm a payment — surfaced through the `PaymentResource` (application ref number, student name, program, branch, amount owed) rather than full cross-branch access to the `Application` model. Finance Filament pages (`PaymentPage` placeholder becomes a real `PaymentResource`) authorize via `PaymentPolicy`, not visibility. If finance needs to open the full application record, that remains branch-scoped and is denied cross-branch — verification is designed to need only the projected fields on the payment view.
 5. **Filament actions.** Every custom action under `app/Filament/Resources/Applications/Actions/` gets an `->authorize()` (policy ability or permission) in addition to `visible()`; transition actions re-check the permission server-side inside the action closure (Filament `visible()` alone is presentation, not authorization).
 6. **Panel access.** `User::canAccessPanel()` returns `$this->hasAnyRole(...)`/`hasPermissionTo('Access:Panel')` instead of `true` **[Recommendation]** — flagging: this will lock out existing users until roles are seeded; sequence it after the Shield seeder commit.
 
@@ -493,7 +529,7 @@ Important semantics: payment guards apply only to the `awaiting_registration_fee
 ### 9.2 Contract rows
 
 - All existing `application_contracts`: set `version = 1`; `status = 'signed'` where `signed_at IS NOT NULL`, else `'generated'` where the parent application is in `awaiting_contract_signature`, else `'superseded'` (defensive default for orphans, expected zero rows).
-- `data_snapshot`: backfill from current application + program data at migration time, flagged with `{"backfilled": true}` so correction classification treats pre-migration signatures conservatively (any diff against a backfilled snapshot is confirmed manually) **[Recommendation]**.
+- `data_snapshot`, `rendered_body`, `template_hash`: backfill from current application + program template at migration time, with `data_snapshot` flagged `{"backfilled": true}` so correction classification treats pre-migration signatures conservatively (any diff against a backfilled snapshot is confirmed manually) **[Recommendation]**. Backfilled `rendered_body` is a best-effort reconstruction and is likewise flagged; it is never treated as an authoritative "what the signer saw" record for pre-migration contracts.
 
 ### 9.3 Lead states
 
@@ -511,60 +547,62 @@ Unchanged — no mapping required.
 
 Each commit compiles, passes Pint, and carries its own tests (project rule). Ordering minimizes broken-window time.
 
-**Phase 0 — repair current defects (must land first)**
+**Phase 0 — minimal fatal-reference cleanup only (must land first)**
 
-1. `fix: remove dead application actions and stale state references`
-   - Delete `app/Actions/Applications/SendContractAction.php`, `ReturnApplicationForCorrectionAction.php`, `UploadSignedContractAction.php`, `SignApplicationContractAction.php` (superseded by inline Filament logic / rewritten later), and `app/Filament/Resources/Applications/Actions/SendContractFilamentAction.php` (permanently disabled stub). Remove `WaitingContractSignatureToCancelled` import from `ApplicationState.php`. (C3, C4, C5, C6)
-2. `fix: rewrite AcceptApplicationAction for the denormalized application schema`
-   - Rewrite `app/Actions/Applications/AcceptApplicationAction.php` to read `applications.*` columns; fix `app/Models/Student.php::applications()` (belongs-to-many via civil number or hasMany on a new `applications.student_id` — simplest: query by `civil_number`). (C1, C10)
-3. `fix: repair ApplicationFactory and re-enable accept/reject transitions`
-   - Rewrite `database/factories/ApplicationFactory.php` states for the flat schema; un-comment `UnderReview -> Accepted/Rejected` in `ApplicationState.php`; add `ValidateApplicationCompletionAction` (real) and wire it into `DraftToSubmitted` with a null-safe DTO. (C2, C7, C8)
-4. `test: rewrite ApplicationWorkflowTest against the real schema`
-   - `tests/Feature/ApplicationWorkflowTest.php` green on the current five-state machine, including signed-contract guard added to `WaitingContractSignatureToUnderReview`. (C9)
-5. `fix: remove dead lead transition route and lock lead index endpoint` — `routes/api.php`, `app/Http/Controllers/Api/V1/LeadController.php`. (C11, part of §8.3)
+The obsolete five-state lifecycle is being **replaced**, not restored — so Phase 0 does the *minimum* to stop fatals and let the app boot and the suite run, and does **not** repair, re-enable, or write tests for the old machine **[correction 8]**. Factories and lifecycle tests are written **once**, against the target states, in Phase 2 and later.
+
+1. `fix: delete dead application actions and stale state references`
+   - Delete `app/Actions/Applications/SendContractAction.php`, `ReturnApplicationForCorrectionAction.php`, `UploadSignedContractAction.php`, `SignApplicationContractAction.php`, and `app/Filament/Resources/Applications/Actions/SendContractFilamentAction.php` (permanently disabled stub). Remove the `WaitingContractSignatureToCancelled` import from `ApplicationState.php`. These reference nonexistent states/columns and are all superseded by the target design. (C3, C4, C5, C6)
+2. `fix: neutralize fatal references in AcceptApplicationAction, Student, and factory`
+   - Make the app boot without the missing `ApplicationStudent`/`ApplicationContact`/`ContactType` classes: remove the dead `Student::applications()` `HasManyThrough` (C10) and reduce `app/Actions/Applications/AcceptApplicationAction.php` and `database/factories/ApplicationFactory.php` to compile-clean stubs (no old-schema logic — the real target factory arrives in commit 6 and the real acceptance logic in commit 18). Do **not** re-enable the commented-out `UnderReview -> Accepted/Rejected` transitions; that lifecycle is being retired. (C1, C7, C8)
+   - Mark the obsolete `tests/Feature/ApplicationWorkflowTest.php` as skipped pending its target rewrite (do not delete tests without approval — flag for the reviewer). It asserts behavior of the retired machine (C9); it is replaced once by `ApplicationLifecycleTest` in Phase 2.
+3. `fix: remove dead lead transition route and lock lead index endpoint` — remove the routeless `POST /leads/{lead}/transition` (C11) and move `GET /leads` behind auth (`routes/api.php`, `app/Http/Controllers/Api/V1/LeadController.php`; part of §8.3).
+
+After Phase 0 the suite is green (obsolete lifecycle test skipped, nothing fatal) and every later phase adds target behavior with its own passing tests — no interim commit reintroduces the old five-state machine.
 
 **Phase 1 — authorization foundation**
 
-6. `feat: permission-based branch scope and policy record checks`
-   - `app/Models/Scopes/BranchScope.php`, all `app/Policies/*.php`, Shield custom permission `AccessAllBranches:Global`, seeder `database/seeders/ShieldPermissionSeeder.php`, roles `branch_staff`, `branch_manager`, `central_finance`.
-7. `feat: restrict panel access and authorize Filament application actions`
+4. `feat: model-specific cross-branch scope and policy record checks`
+   - `app/Models/Scopes/BranchScope.php` (model-keyed `ViewAllBranches:{Model}` bypass + `super_admin`; close the null-`branch_id` hole), all `app/Policies/*.php` record checks, seeder `database/seeders/ShieldPermissionSeeder.php`, roles `branch_staff`, `branch_manager`, `central_finance` (finance gets `ViewAllBranches:Payment` only — §7).
+5. `feat: restrict panel access and authorize Filament application actions`
    - `app/Models/User.php::canAccessPanel()`, `->authorize()` on every action under `app/Filament/Resources/Applications/Actions/`.
 
-**Phase 2 — target application states**
+**Phase 2 — target application states (factory + lifecycle tests written once, here)**
 
-8. `feat: add target application state classes and transitions (no data change)`
-   - New classes under `app/States/Applications/`: `AwaitingRegistrationFee`, `AwaitingApplicationCompletion`, `AwaitingContractSignature`, `AwaitingBranchReview`, `CorrectionRequested`; transition classes per §3.2 matrix; old state classes kept temporarily for migration.
-9. `feat: migrate application status values to target states`
+6. `feat: add target application state classes, transitions, factory, and lifecycle tests`
+   - New classes under `app/States/Applications/`: `AwaitingRegistrationFee`, `AwaitingApplicationCompletion`, `AwaitingContractSignature`, `AwaitingBranchReview`, `CorrectionRequested`; transition classes per §3.2 matrix; old state classes kept temporarily for the data migration.
+   - Rewrite `database/factories/ApplicationFactory.php` **once** against the flat schema + target states (replacing the Phase 0 stub), and add `tests/Feature/Application/ApplicationLifecycleTest.php` covering the §3.2 matrix (replacing the skipped obsolete `ApplicationWorkflowTest`). No second rewrite of factory/tests occurs.
+7. `feat: migrate application status values to target states`
    - Data migration per §9.1; update Filament tables/infolists/labels; remove old state classes (`Draft`, `Submitted`, `WaitingContractSignature`, `UnderReview`) after mapping.
-10. `feat: transactional manual lead+application entry`
-    - `app/Actions/Leads/CreateLeadWithApplicationAction.php`; update `app/Filament/Resources/Applications/Pages/CreateApplication.php` + `CreateApplicationFromExisting.php`; tighten `applications.lead_id` NOT NULL (separate migration, gated on pre-check §9.4).
+8. `feat: transactional manual lead+application entry and student_id linkage`
+    - `app/Actions/Leads/CreateLeadWithApplicationAction.php`; update `app/Filament/Resources/Applications/Pages/CreateApplication.php` + `CreateApplicationFromExisting.php`; add `applications.student_id` nullable FK + `Application::student()`/`Student::applications()` (§5.1); tighten `applications.lead_id` NOT NULL **and** switch its FK to `restrictOnDelete` (separate migration, gated on pre-check §9.4).
 
 **Phase 3 — payments**
 
-11. `feat: settings table and registration fee setting` — migration, `app/Support/Settings.php`, seeder.
-12. `feat: payments table, model, states` — migration (§5.2), `app/Models/Payment.php`, `app/States/Payments/*`, `database/factories/PaymentFactory.php`.
-13. `feat: payment gateway contract with Thawani and fake implementations` — `app/Services/Payments/*`, `config/services.php` additions.
-14. `feat: payment initiation, verification, webhook endpoints` — controller, Form Requests, routes, `Pending -> Paid` transition driving the application fee gate.
-15. `feat: bank transfer receipt upload and central finance verification` — Filament `PaymentResource` (replaces placeholder `app/Filament/Pages/PaymentPage.php`), verify/reject/refund actions with permissions.
+9. `feat: settings table and registration fee setting` — migration, `app/Support/Settings.php`, seeder.
+10. `feat: payments table, model, states` — migration (§5.2, incl. `rejected` state columns), `app/Models/Payment.php`, `app/States/Payments/*`, `database/factories/PaymentFactory.php`.
+11. `feat: payment gateway contract with Thawani and fake implementations` — `app/Services/Payments/*`, `config/services.php` additions.
+12. `feat: payment initiation, verification, webhook endpoints` — controller, Form Requests, routes, `Pending -> Paid` transition driving the application fee gate.
+13. `feat: bank transfer receipt upload and central finance verification` — Filament `PaymentResource` (replaces placeholder `app/Filament/Pages/PaymentPage.php`), verify/**reject** (distinct `rejected` state)/refund actions with permissions.
 
 **Phase 4 — documents**
 
-16. `feat: application document tables, model, states` — migrations (§5.4), models, enum `DocumentType`, factory.
-17. `feat: document upload, review, replacement with history` — `SyncRequiredDocumentsAction`, Filament relation manager on the application, transfer-file conditional requirement, contract-generation warning banner.
+14. `feat: application document tables, model, states` — migrations (§5.4), models, enum `DocumentType` (confirmed nine types), `requirement_group` for the civil-ID-or-passport alternative, factory.
+15. `feat: document upload, review, replacement with history` — `SyncRequiredDocumentsAction`, Filament relation manager on the application, transfer-file conditional requirement, contract-generation warning banner.
 
 **Phase 5 — contract versioning and corrections**
 
-18. `feat: contract versioning schema and states` — migration (§5.5 incl. §9.2 backfill), `app/States/Contracts/*`, model updates, regenerate/supersede actions.
-19. `feat: correction workflow with automatic contract-relevance classification` — migration (§5.6), `RequestCorrectionAction`, `CompleteCorrectionAction`, `ClassifyCorrectionAction`, Filament actions.
-20. `feat: atomic acceptance transition` — final `AwaitingBranchReviewToAccepted` with signed-contract guard, guardian/student upsert, approver audit.
+16. `feat: contract versioning schema and states` — migration (§5.5 incl. `rendered_body`/`template_hash` and §9.2 backfill), `app/States/Contracts/*`, model updates, regenerate/supersede actions.
+17. `feat: correction workflow with automatic contract-relevance classification` — migration (§5.6), `RequestCorrectionAction`, `CompleteCorrectionAction`, `ClassifyCorrectionAction` (confirmed-minimum set + `rendered_body`/`template_hash` diff, §6.2), Filament actions.
+18. `feat: atomic acceptance transition` — final `AwaitingBranchReviewToAccepted` with signed-contract guard, guardian/student upsert, `applications.student_id` back-link, approver audit.
 
 **Phase 6 — API and outbox**
 
-21. `feat: sanctum service account, abilities, rate limiting` — middleware registration in `bootstrap/app.php`, limiters, artisan command to mint the Fasih token.
-22. `feat: api idempotency middleware and key store` — migration (§5.8), middleware, applied to mutating routes.
-23. `feat: application status-check and payment initiation endpoints with phone verification` — controllers, Form Requests, resources.
-24. `feat: domain events and outbox records` — events, listener, migration (§5.7). No delivery worker.
-25. `chore: remove hard-coded webhook defaults and route Fasih calls through adapter` — `config/services.php`, `app/Services/Fasih/*`.
+19. `feat: sanctum service account, abilities, rate limiting` — middleware registration in `bootstrap/app.php`, limiters, artisan command to mint the Fasih token.
+20. `feat: api idempotency middleware and key store` — migration (§5.8), middleware, applied to mutating routes.
+21. `feat: application status-check and payment initiation endpoints with phone verification` — controllers, Form Requests, resources.
+22. `feat: domain events and outbox records` — events, listener, migration (§5.7). No delivery worker.
+23. `chore: remove hard-coded webhook defaults and route Fasih calls through adapter` — `config/services.php`, `app/Services/Fasih/*`.
 
 ---
 
@@ -576,14 +614,14 @@ All feature tests use `RefreshDatabase`, model factories with states, and `php a
 |---|---|---|
 | Application transitions | `Application/ApplicationLifecycleTest.php` | Every ✔ cell in §3.2 matrix succeeds; every blank cell throws `TransitionNotFound/CannotPerformTransition`; activity row written with actor for each transition; fee gate blocked without a `paid` payment. |
 | Authorization / Shield | `Application/ApplicationAuthorizationTest.php` | Each transition action denied without its permission (§4.1) even when state allows it; permission grants via role work; Filament action `authorize()` (not just hidden) verified with `Livewire::test` on the relevant page. |
-| Tenancy | `Tenancy/BranchIsolationTest.php` | Branch user sees only own-branch leads/applications/payments/documents; user with `AccessAllBranches:Global` sees all; user with null branch and no global permission sees none; policy record-check blocks cross-branch update even when scope is bypassed (`withoutGlobalScopes`). |
-| Payments — Thawani | `Payment/ThawaniPaymentTest.php` | Redirect return alone never marks paid; `FakePaymentGateway` verified session → `paid` + application advances in same transaction; failed/expired mapping; webhook with invalid signature rejected and no state change. |
-| Payments — bank transfer | `Payment/BankTransferVerificationTest.php` | Receipt required before `awaiting_verification`; only `central_finance` (permission, any branch) can verify/reject; verification advances application; rejection stores reason. |
-| Payment idempotency & uniqueness | `Payment/PaymentIdempotencyTest.php` | Same `Idempotency-Key` replays stored response, creates one payment; concurrent second `paid` attempt fails on `paid_uniqueness` unique index; multiple failed attempts coexist; refund requires permission + reason and writes audit. |
-| Documents | `Document/ApplicationDocumentTest.php` | Requirement sync incl. `transfer_file` only for transfer students; upload/approve/reject transitions; replacement keeps prior `application_document_files` rows and resets status; missing docs warn but do not block contract generation. |
-| Contracts | `Contract/ContractVersioningTest.php` | Generation gated on completion incl. `student_civil_number`; snapshot stored and used for rendering; one active version enforced; expired token rejected on GET and POST; online sign and staff upload both → `signed` + `awaiting_branch_review`; regeneration supersedes and increments version. |
-| Corrections | `Application/CorrectionWorkflowTest.php` | Request requires reason + checklist + actor + timestamp + activity entry; non-contract diff returns to `awaiting_branch_review`; contract-relevant diff supersedes signed contract, generates v(N+1), requires new signature; classification driven by snapshot diff. |
-| Acceptance atomicity | `Application/AcceptApplicationTest.php` | Acceptance creates/updates guardian + student + contacts and records approver in one transaction; forced failure mid-transaction (e.g. constraint violation) rolls back application state, student, and guardian together; acceptance blocked when active contract unsigned or superseded. |
+| Tenancy | `Tenancy/BranchIsolationTest.php` | Branch user sees only own-branch leads/applications/payments/documents; `central_finance` with `ViewAllBranches:Payment` sees payments across branches **but not** cross-branch applications/leads/documents; `super_admin` sees all; user with null branch and no cross-branch permission sees none; policy record-check blocks cross-branch update even when scope is bypassed (`withoutGlobalScopes`). |
+| Payments — Thawani | `Payment/ThawaniPaymentTest.php` | Redirect return alone never marks paid; `FakePaymentGateway` verified session → `paid` + application advances in same transaction; provider decline/technical error maps to `failed` (not `rejected`); expired mapping; webhook with invalid signature rejected and no state change. |
+| Payments — bank transfer | `Payment/BankTransferVerificationTest.php` | Receipt required before `awaiting_verification`; only `central_finance` (`ViewAllBranches:Payment`, any branch) can verify/reject; verification advances application; finance rejection moves to distinct `rejected` state (not `failed`) and stores `rejected_by`/reason. |
+| Payment idempotency & uniqueness | `Payment/PaymentIdempotencyTest.php` | Same `Idempotency-Key` replays stored response, creates one payment; concurrent second `paid` attempt fails on `paid_uniqueness` unique index; multiple `failed`/`rejected` attempts coexist; refund requires permission + reason and writes audit. |
+| Documents | `Document/ApplicationDocumentTest.php` | Requirement sync creates the confirmed nine types; `transfer_file` only for transfer students; civil-ID-**or**-passport group satisfied by either member; upload/approve/reject transitions; replacement keeps prior `application_document_files` rows and resets status; missing docs warn but do not block contract generation. |
+| Contracts | `Contract/ContractVersioningTest.php` | Generation gated on completion incl. `student_civil_number`; `data_snapshot` + immutable `rendered_body` + `template_hash` stored; rendering uses `rendered_body`; editing `programs.contract` after signing does not alter existing versions; one active version enforced; expired token rejected on GET and POST; online sign and staff upload both → `signed` + `awaiting_branch_review`; regeneration supersedes and increments version. |
+| Corrections | `Application/CorrectionWorkflowTest.php` | Request requires reason + checklist + actor + timestamp + activity entry; non-contract diff returns to `awaiting_branch_review`; a change to any confirmed-minimum field (student legal name, civil number, guardian name/identity, branch, program, terms) or to `template_hash`/`rendered_body` supersedes the signed contract, generates v(N+1), requires new signature; classification not derived from placeholders alone. |
+| Acceptance atomicity | `Application/AcceptApplicationTest.php` | Acceptance creates/updates guardian + student + contacts, back-links `applications.student_id`, and records approver in one transaction; forced failure mid-transaction rolls back application state, student, guardian, and student_id together; acceptance blocked when active contract unsigned or superseded. |
 | API auth & exposure | `Api/FasihServiceAccountTest.php` | Each endpoint 401 without token, 403 without ability; status-check requires ref+phone match (generic 404 otherwise, no enumeration); lead index requires filter; public catalog routes remain public; rate limiter returns 429. |
 | State-value migration | `Migration/ApplicationStateMappingTest.php` (or a seeded-fixture test around the migration) | Each §9.1 mapping applied; contract backfill sets version/status correctly; `down()` restores prior values. |
 | Manual entry | `Application/ManualEntryTest.php` | Staff manual entry creates lead + application transactionally (failure creates neither); application always has a lead. |
@@ -594,21 +632,25 @@ All feature tests use `RefreshDatabase`, model factories with states, and `php a
 
 Technical blockers (must be resolved, not invented around):
 
-1. **Local environment cannot run the suite**: PHP CLI 8.3.32 < required 8.4 (`composer.lock` platform check fails). All implementation cycles need a PHP 8.4 runtime; until then, nothing here can be verified locally. Laravel Boost MCP tools were also unavailable in this session.
-2. **Test suite is currently red by construction**: `ApplicationFactory` fatals (C8), so `ApplicationWorkflowTest` cannot pass today. Phase 0 is mandatory before any feature work; do not conceal this in CI by skipping.
-3. **MySQL version assumption**: the `paid_uniqueness` / `active_uniqueness` generated-column unique indexes (§5.2, §5.5) require MySQL ≥ 5.7/8.0 generated columns. Verify the production server version; fallback is application-level locking only (weaker).
-4. **`applications.lead_id` NOT NULL tightening** depends on zero existing NULL rows (§9.4). If legacy manual applications exist without leads, decide: backfill placeholder leads vs. keep nullable and enforce only in code.
-5. **Unique `(student_civil_number, season_id)`** (C12 realization) depends on production data being duplicate-free.
-6. **Thawani specifics unknown**: API keys, environment (UAT vs production), webhook signature scheme, and currency/baisa handling must be confirmed against Thawani's checkout API docs before commit 13.
-7. **Encoding**: several PHP files contain mojibake in comments (e.g. `AcceptApplicationAction.php` "â€”"), suggesting a historical UTF-8 double-encode; audit repository encoding before mass edits.
+1. **Production schema drift is unverified** (not resolved by this cycle): the live database inspected here was built fresh from migrations, so it matches the migrations exactly (§1.4). Any real drift between the migrations and the actual production/staging database (columns, indexes, FK on-delete rules) can only be found by running `php artisan db:table ...` / `schema:dump` against that database and diffing it, then reconciling via additive corrective migrations (§1.4 reconciliation step). Do this before Phase 3+ migrations.
+2. **Test suite is red by construction until Phase 0**: `ApplicationFactory` fatals (C8), so anything depending on it fails today. Phase 0's minimal cleanup (stub the factory/action, skip the obsolete lifecycle test) makes the app boot and the suite green **without** restoring the retired lifecycle; the obsolete `ApplicationWorkflowTest` is skipped (not silently passed) and replaced once at Phase 2. Do not conceal remaining failures in CI.
+3. **`applications.lead_id` NOT NULL tightening** depends on zero existing NULL rows (§9.4) **and** requires switching the FK from the live `ON DELETE SET NULL` to `restrictOnDelete` in the same migration (§1.4, §5.1). If legacy manual applications exist without leads, decide: backfill placeholder leads vs. keep nullable and enforce only in code.
+4. **Unique `(student_civil_number, season_id)`** is a *new* constraint (verified absent today, §1.4) and depends on production data being duplicate-free (§9.4).
+5. **Thawani specifics unknown**: API keys, environment (UAT vs production), webhook signature scheme, and currency/baisa handling must be confirmed against Thawani's checkout API docs before commit 11.
+6. **Encoding**: several PHP files contain mojibake in comments (e.g. `AcceptApplicationAction.php` "â€”"), suggesting a historical UTF-8 double-encode; audit repository encoding before mass edits.
+
+Resolved during this cycle (previously listed as blockers):
+
+- **PHP runtime**: PHP 8.4 is installed and runs Laravel here; migrations and schema inspection succeeded. No longer a blocker (see the environment note at the top).
+- **MySQL generated columns**: the server is MySQL **8.4.3** (verified), which supports the stored generated columns used for `paid_uniqueness` / `active_uniqueness` (§5.2, §5.5). Confirm the *production* server is also ≥ 8.0 before relying on it; the app-level locking fallback remains available if not.
 
 Business inputs required (not invented here — flagged per instructions):
 
-8. **Registration fee amount** (and whether it varies later) — only the mechanism (global setting) is approved.
-9. **Required document type list** per program/branch, beyond the confirmed transfer-file rule.
-10. **How `is_transfer_student` is captured** (lead intake? application form? staff-only field?).
-11. **Legacy in-flight applications and the fee**: §9.1 maps `submitted+` applications past the fee gate without payment records. Confirm they are not retroactively charged.
-12. **Refund follow-up policy**: after a refund, does the application auto-cancel or await staff decision? (§4.2 assumes staff decision.)
-13. **Whether `Rejected` should ever allow re-entry** to review (assumed terminal).
+7. **Registration fee amount** (and whether it varies later) — only the mechanism (global setting) is approved.
+8. **Per-program/branch document variation**: the nine base document types are confirmed (§3.4, §5.4); whether requirements differ by program or branch is still open.
+9. **How `is_transfer_student` is captured** (lead intake? application form? staff-only field?).
+10. **Legacy in-flight applications and the fee**: §9.1 maps `submitted+` applications past the fee gate without payment records. Confirm they are not retroactively charged.
+11. **Refund follow-up policy**: after a refund, does the application auto-cancel or await staff decision? (§4.2 assumes staff decision.)
+12. **Whether `Rejected` should ever allow re-entry** to review (assumed terminal).
 
 New dependencies: **none proposed**. Thawani and Fasih integrations use Laravel's `Http` client; settings use a plain table (avoiding `spatie/laravel-settings`). If a Thawani official SDK is later preferred, that is a dependency change requiring approval.
