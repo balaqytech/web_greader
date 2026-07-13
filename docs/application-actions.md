@@ -1,138 +1,143 @@
-# Application Actions
+# Application Actions and State Machines
 
-This document covers the action classes that drive the application lifecycle, from data entry through acceptance or rejection.
+This document summarizes the current action classes and state transitions that drive the registration lifecycle.
 
-## State Flow
+## Lead lifecycle
 
-```
-PendingRegistration → DataComplete → UnderReview → Accepted
-                                                  → Rejected
-                                                  → PendingRegistration (returned for correction)
-```
+Primary files:
 
-## Actions
+- `app/Actions/Leads/CreateLeadAction.php`
+- `app/Actions/Leads/TransitionLeadStateAction.php`
+- `app/States/Leads/LeadState.php`
+- `app/Support/LeadIdentityNormalizer.php`
+- `app/Services/LeadDuplicateResolver.php`
 
-### UpdateApplicationDataAction
+Configured lead states:
 
-Updates the registration data on an existing application.
+```text
+NewLead
+  -> ContactedLead
+  -> Interested
+  -> NotInterested
+  -> NoResponse
 
-```php
-use App\Actions\Applications\UpdateApplicationDataAction;
-use App\DTOs\Application\UpdateApplicationDataDTO;
-
-$dto = UpdateApplicationDataDTO::fromValidated($validatedData);
-
-$application = app(UpdateApplicationDataAction::class)->execute($application, $dto);
-```
-
-- Fills the application with the DTO fields and saves.
-- Does **not** change the application state.
-- Use this while the application is in `PendingRegistration` to populate student, parent, and relative fields.
-
----
-
-### SubmitApplicationForReviewAction
-
-Validates required fields and transitions the application from `PendingRegistration` through `DataComplete` to `UnderReview` in a single call.
-
-```php
-use App\Actions\Applications\SubmitApplicationForReviewAction;
-
-$application = app(SubmitApplicationForReviewAction::class)->execute(
-    application: $application,
-    transitionedBy: $user->id, // optional
-    notes: 'Ready for review',  // optional
-);
+ContactedLead
+  -> Interested
+  -> NotInterested
+  -> NoResponse
 ```
 
-**Validation rules enforced (all required for DataComplete):**
+Capabilities:
 
-| Section | Required Fields |
-|---|---|
-| Student | `student_name`, `student_gender`, `student_birth_date`, `student_civil_number`, `student_state`, `student_governorate`, `student_village`, `student_house_number`, `student_parents_social_status` |
-| Father | `father_name`, `father_phone`, `father_id_number` |
-| Mother | `mother_name`, `mother_phone`, `mother_id_number` |
-| Relative | `relative_name`, `relative_phone` |
-| Guardian | `father_is_guardian` or `mother_is_guardian` must be `true` |
+- Creates leads from the public API, Filament, or bot-facing flows.
+- Normalizes WhatsApp numbers and Eastern Arabic numerals before persistence.
+- Generates daily sequential lead reference numbers through `LeadRefNoGenerator`.
+- Computes normalized student-name identity fingerprints to merge likely duplicate leads.
+- Keeps siblings separate when the same WhatsApp number is used with clearly different student names.
+- Stores flexible extra lead data in `leads.data` JSON while promoting `mother_phone` into a first-class column.
+- Links leads to affiliates through an optional affiliate code snapshot.
+- Can dispatch a lead-created webhook in production when `services.webhooks.lead.enabled` is enabled.
+- When a lead becomes `Interested`, the system attempts to create a draft application after checking the program is available in the selected branch.
 
-Throws `Illuminate\Validation\ValidationException` if any required data is missing.
+## Application lifecycle
 
----
+Primary files:
 
-### AcceptApplicationAction
+- `app/Models/Application.php`
+- `app/Actions/Applications/CreateApplicationAction.php`
+- `app/Actions/Applications/ConvertLeadToApplicationAction.php`
+- `app/Actions/Applications/GenerateApplicationContractAction.php`
+- `app/Actions/Applications/SignContractOnlineAction.php`
+- `app/Actions/Applications/UploadSignedContractAction.php`
+- `app/States/Applications/ApplicationState.php`
 
-Accepts an application that is `UnderReview`. This creates a **Guardian** and a **Student** record automatically.
+Configured application states in `ApplicationState`:
 
-```php
-use App\Actions\Applications\AcceptApplicationAction;
+```text
+Draft
+  -> Submitted
+  -> Cancelled
 
-$application = app(AcceptApplicationAction::class)->execute(
-    application: $application,
-    transitionedBy: $user->id, // optional
-    notes: 'Meets all criteria', // optional
-);
+Submitted
+  -> WaitingContractSignature
+  -> Cancelled
 
-// Access the created records
-$student = $application->student;
-$guardian = $application->student->guardian;
+WaitingContractSignature
+  -> Submitted
+  -> UnderReview
+
+UnderReview
+  -> Accepted    (transition classes exist but are currently commented out)
+  -> Rejected    (transition classes exist but are currently commented out)
 ```
 
-**What happens internally:**
+Capabilities:
 
-1. Transitions the application to `Accepted`.
-2. Determines the guardian based on the `father_is_guardian` / `mother_is_guardian` flag.
-3. Creates or reuses a `Guardian` record — **deduplicated by `id_number`** (civil ID). If a guardian with the same `id_number` already exists, that record is reused.
-4. Creates a `Student` record linked to the guardian, application, branch, season, and program.
+- Creates applications with generated `APP-{year}{sequence}` reference numbers.
+- Stores application form data directly on the `applications` table, including student, father, mother, and relative fields.
+- Converts interested leads into draft applications and can prefill data from existing students when found.
+- Generates one contract row per application with a 64-character token and 7-day expiry.
+- Exposes a public contract-signing flow at `/contract/{token}`.
+- Accepts base64 PNG signatures, stores signature files on the public disk, generates a contract PDF, and moves applications to review after online signing.
+- Supports staff upload of signed contract files through Filament actions.
+- Records application transitions in `application_activities`.
 
-All of this runs inside a single database transaction.
+## Affiliate lifecycle
 
----
+Primary files:
 
-### RejectApplicationAction
+- `app/Models/Affiliate.php`
+- `app/States/Affiliates/AffiliateState.php`
+- `app/Http/Controllers/Affiliate/*`
+- `app/Filament/Resources/Affiliates/*`
 
-Rejects an application that is `UnderReview`.
+Configured affiliate states:
 
-```php
-use App\Actions\Applications\RejectApplicationAction;
+```text
+Pending
+  -> Verified
+  -> Rejected
 
-$application = app(RejectApplicationAction::class)->execute(
-    application: $application,
-    rejectionReason: 'Does not meet age criteria.',
-    transitionedBy: $user->id, // optional
-);
+Verified
+  -> Rejected
 
-// $application->rejection_reason contains the reason
+Rejected
+  -> Verified
 ```
 
----
+Capabilities:
 
-### ReturnApplicationForCorrectionAction
+- Public affiliate registration by name, WhatsApp, and password.
+- Affiliate login through a dedicated `affiliate` session guard.
+- Blocks login until the affiliate is verified.
+- Lets verified affiliates access a dashboard, update profile information, update password, and download a referral QR code.
+- Tracks affiliate-linked leads and applications.
+- Generates affiliate codes from a name prefix plus random digits.
+- Audits affiliate records through the configured auditing package.
 
-Returns an application that is `UnderReview` back to `PendingRegistration` so the user can fix missing or incorrect data.
+## Season lifecycle
 
-```php
-use App\Actions\Applications\ReturnApplicationForCorrectionAction;
+Primary files:
 
-$application = app(ReturnApplicationForCorrectionAction::class)->execute(
-    application: $application,
-    notes: 'Missing student civil number.',
-    transitionedBy: $user->id, // optional
-);
-```
+- `app/Actions/Season/CreateSeason.php`
+- `app/Actions/Season/OpenSeason.php`
+- `app/Actions/Season/CloseSeason.php`
+- `app/Actions/Season/UpdateSeason.php`
+- `app/Rules/Season/SeasonRules.php`
 
-After this, the application is back in `PendingRegistration` and can be edited again with `UpdateApplicationDataAction`, then resubmitted with `SubmitApplicationForReviewAction`.
+Capabilities:
 
-## Activity Log
+- Supports academic and summer season types.
+- Keeps at most one active season per program type.
+- Allows one active academic season and one active summer season to coexist.
+- Creates new seasons as active only when the relevant active slot is available.
+- Permanently closes seasons by setting `closed_at` and making them inactive.
 
-Every state transition is recorded in the `application_activities` table. Each entry stores:
+## Current implementation gaps to review
 
-- `from_state` / `to_state` — the transition that occurred
-- `transitioned_by` — the user ID who triggered it (nullable for system transitions)
-- `notes` — optional notes or rejection reason
-- `transitioned_at` — timestamp
-
-Access via:
-
-```php
-$application->activities; // Collection, ordered by most recent first
-```
+- `ApplicationState` imports `WaitingContractSignatureToCancelled`, but that transition file is not present.
+- `SendContractAction` and `UploadSignedContractAction` reference `WaitingContract`, while the current state class is `WaitingContractSignature`.
+- `SendContractAction` references `Application::$contract_token`, but contract tokens currently live on `application_contracts.token`.
+- `AcceptApplicationAction`, `ApplicationFactory`, `Student::applications()`, and some tests reference `ApplicationStudent`, `ApplicationContact`, and `ContactType`, which are not present in the current file tree or database schema.
+- `ApplicationState` currently comments out transitions from `UnderReview` to `Accepted` and `Rejected`, while Filament actions and tests still expect those transitions to be available.
+- `WaitingContractSignatureToUnderReview` does not itself validate that a contract has been signed; the online signing action performs that validation before transitioning.
