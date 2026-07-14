@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\ApplicationContract;
 use App\Models\Student;
 use App\States\Applications\Accepted;
+use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\Cancelled;
@@ -16,7 +17,8 @@ use Illuminate\Support\Facades\Storage;
 
 function signatureData(): string
 {
-    return 'data:image/png;base64,'.base64_encode('fake-png-bytes');
+    // A genuine 1x1 PNG, not merely bytes behind a matching data-URI prefix.
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 }
 
 function fakePdfBinding(): void
@@ -68,6 +70,33 @@ it('cancels once and blocks a stale cancellation replay', function () {
         ->toThrow(StaleApplicationStateException::class);
 
     expect($application->fresh()->activities()->where('to_state', Cancelled::getMorphClass())->count())->toBe(1);
+});
+
+it('generates the contract once and rejects a stale completion-to-signature replay', function () {
+    $application = Application::factory()->awaitingApplicationCompletion()->create();
+    $stale = Application::find($application->id);
+
+    $application->status->transitionTo(AwaitingContractSignature::class);
+    $firstToken = $application->fresh()->contract->token;
+
+    expect(fn () => $stale->status->transitionTo(AwaitingContractSignature::class))
+        ->toThrow(StaleApplicationStateException::class);
+
+    expect($application->fresh()->contract->token)->toBe($firstToken)
+        ->and($application->fresh()->activities()->where('to_state', AwaitingContractSignature::getMorphClass())->count())->toBe(1);
+});
+
+it('reopens once and rejects a stale signature-to-completion replay', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+    $stale = Application::find($application->id);
+
+    $application->status->transitionTo(AwaitingApplicationCompletion::class);
+
+    expect(fn () => $stale->status->transitionTo(AwaitingApplicationCompletion::class))
+        ->toThrow(StaleApplicationStateException::class);
+
+    expect($application->fresh()->contract->token)->toBeNull()
+        ->and($application->fresh()->activities()->where('to_state', AwaitingApplicationCompletion::getMorphClass())->count())->toBe(1);
 });
 
 it('signs online once and rejects a stale online-signing replay without overwriting artifacts', function () {

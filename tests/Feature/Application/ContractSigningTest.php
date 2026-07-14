@@ -27,7 +27,8 @@ beforeEach(function () {
 
 function signature(): string
 {
-    return 'data:image/png;base64,'.base64_encode('fake-png-bytes');
+    // A genuine 1x1 PNG, not merely bytes behind a matching data-URI prefix.
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 }
 
 it('rejects the branch-review transition when the contract is unsigned', function () {
@@ -105,6 +106,41 @@ it('compensates signature artifacts and rolls back when the signing transaction 
 
     expect($application->status)->toBeInstanceOf(AwaitingContractSignature::class)
         ->and($application->contract->signed_at)->toBeNull()
+        ->and(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+it('rejects a signature with invalid base64 characters, leaving no artifacts', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+
+    expect(fn () => app(SignContractOnlineAction::class)->execute(
+        $application->contract,
+        'data:image/png;base64,not!!valid==base64',
+        'contract body',
+    ))->toThrow(InvalidArgumentException::class);
+
+    expect($application->fresh()->contract->signed_at)->toBeNull()
+        ->and(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+it('rejects a signature payload that is not a real PNG image, leaving no artifacts', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+    $notAnImage = 'data:image/png;base64,'.base64_encode('this is definitely not a png file');
+
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $notAnImage, 'contract body'))
+        ->toThrow(InvalidArgumentException::class);
+
+    expect($application->fresh()->contract->signed_at)->toBeNull()
+        ->and(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+it('rejects an oversized signature payload, leaving no artifacts', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+    $oversized = 'data:image/png;base64,'.str_repeat('A', 2_000_001);
+
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $oversized, 'contract body'))
+        ->toThrow(InvalidArgumentException::class);
+
+    expect($application->fresh()->contract->signed_at)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 

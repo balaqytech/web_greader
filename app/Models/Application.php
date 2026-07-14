@@ -9,6 +9,7 @@ use App\Models\Scopes\BranchScope;
 use App\States\Applications\Accepted;
 use App\States\Applications\ApplicationState;
 use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
 use App\States\Applications\Rejected;
@@ -159,23 +160,23 @@ class Application extends Model
     }
 
     /**
-     * Check if a valid (non-expired) contract token exists via the contract relationship.
+     * The single authoritative rule for whether this application's contract may be rendered
+     * or signed: the application must be persisted in AwaitingContractSignature, the contract
+     * must carry a non-null token and a non-null, strictly-future expiry, and the contract
+     * must not already be signed off. Reused by the public controller (GET/POST) and the
+     * signing action so all three agree; callers under a row lock should pass the freshly
+     * locked contract explicitly rather than relying on a possibly-stale loaded relation.
      */
-    public function hasValidContractToken(): bool
+    public function hasSignableContract(?ApplicationContract $contract = null): bool
     {
-        return $this->contract !== null
-            && $this->contract->token !== null
-            && $this->contract->token_expires_at !== null
-            && $this->contract->token_expires_at->isFuture();
-    }
+        $contract ??= $this->contract;
 
-    /**
-     * Check if a signed contract file exists via the contract relationship.
-     */
-    public function hasValidContractFile(): bool
-    {
-        return $this->contract !== null
-            && $this->contract->file_path !== null;
+        return $this->status instanceof AwaitingContractSignature
+            && $contract !== null
+            && $contract->token !== null
+            && $contract->token_expires_at !== null
+            && $contract->token_expires_at->isFuture()
+            && ! $contract->isSignedOff();
     }
 
     /**

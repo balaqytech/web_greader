@@ -45,6 +45,6 @@ class AwaitingContractSignatureToAwaitingBranchReview extends Transition
             );
 
             return $application;
-        });
+        }, attempts: 3);
     }
 }

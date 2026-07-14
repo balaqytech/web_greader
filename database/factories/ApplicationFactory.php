@@ -15,6 +15,7 @@ use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
+use App\States\Applications\CorrectionRequested;
 use App\States\Applications\Rejected;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -135,6 +136,13 @@ class ApplicationFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => Cancelled::$name,
+        ]);
+    }
+
+    public function correctionRequested(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => CorrectionRequested::$name,
         ]);
     }
 }

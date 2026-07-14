@@ -6,11 +6,16 @@ use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingContractSignature;
+use App\Support\Applications\LockApplication;
+use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 /**
- * Staff reopens data entry before signing. Any generated (unsigned) contract token is
- * invalidated so a fresh contract is generated on the next forward transition.
+ * Staff reopens data entry before signing. The row is locked and its persisted state
+ * re-verified before writing, so a stale replay cannot invalidate a token another request has
+ * already used to sign. Any generated (unsigned) contract token is invalidated so a fresh
+ * contract is generated on the next forward transition; contract update, application state,
+ * and activity are written in one transaction.
  */
 class AwaitingContractSignatureToAwaitingApplicationCompletion extends Transition
 {
@@ -21,27 +26,31 @@ class AwaitingContractSignatureToAwaitingApplicationCompletion extends Transitio
 
     public function handle(): Application
     {
-        $fromState = AwaitingContractSignature::$name;
+        return DB::transaction(function () {
+            $application = LockApplication::inState($this->application, AwaitingContractSignature::class);
 
-        if ($this->application->contract) {
-            $this->application->contract->update([
-                'token' => null,
-                'token_expires_at' => null,
-                'signed_at' => null,
-                'signed_by_applicant' => false,
-            ]);
-        }
+            $contract = $application->contract()->lockForUpdate()->first();
 
-        $this->application->status = AwaitingApplicationCompletion::class;
-        $this->application->save();
+            if ($contract !== null) {
+                $contract->update([
+                    'token' => null,
+                    'token_expires_at' => null,
+                    'signed_at' => null,
+                    'signed_by_applicant' => false,
+                ]);
+            }
 
-        app(RecordApplicationActivityAction::class)->handle(
-            $this->application,
-            $fromState,
-            AwaitingApplicationCompletion::$name,
-            $this->notes,
-        );
+            $application->status = AwaitingApplicationCompletion::class;
+            $application->save();
 
-        return $this->application;
+            app(RecordApplicationActivityAction::class)->handle(
+                $application,
+                AwaitingContractSignature::$name,
+                AwaitingApplicationCompletion::$name,
+                $this->notes,
+            );
+
+            return $application;
+        }, attempts: 3);
     }
 }

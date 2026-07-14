@@ -48,9 +48,4 @@ class ApplicationContract extends Model
     {
         return $this->signed_at !== null && $this->file_path !== null;
     }
-
-    public function isTokenExpired(): bool
-    {
-        return $this->token_expires_at !== null && $this->token_expires_at->isPast();
-    }
 }

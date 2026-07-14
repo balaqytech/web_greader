@@ -47,6 +47,6 @@ abstract class CancelApplicationTransition extends Transition
             );
 
             return $application;
-        });
+        }, attempts: 3);
     }
 }

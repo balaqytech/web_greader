@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Applications\SignContractOnlineAction;
+use App\Exceptions\ApplicationIncompleteException;
+use App\Exceptions\StaleApplicationStateException;
 use App\Models\ApplicationContract;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -11,7 +13,7 @@ class ContractSigningController extends Controller
 {
     public function show(string $token)
     {
-        $applicationContract = ApplicationContract::where('token', $token)->first();
+        $applicationContract = ApplicationContract::with('application')->where('token', $token)->first();
 
         if ($this->isNotSignable($applicationContract)) {
             return view('contract.error', [
@@ -31,7 +33,7 @@ class ContractSigningController extends Controller
             'signature' => 'required|string|starts_with:data:image/png;base64,',
         ]);
 
-        $applicationContract = ApplicationContract::where('token', $token)->first();
+        $applicationContract = ApplicationContract::with('application')->where('token', $token)->first();
 
         // Re-validate signed-off status and expiry on submit, not just on render.
         if ($this->isNotSignable($applicationContract)) {
@@ -49,18 +51,25 @@ class ContractSigningController extends Controller
             return view('contract.error', [
                 'message' => $e->getMessage(),
             ]);
+        } catch (StaleApplicationStateException|ApplicationIncompleteException) {
+            // A concurrent request already changed the underlying state (e.g. a second
+            // signer, a staff reopen, or a cancellation) between render and submit. This is
+            // an expected domain outcome, not a server error, so it must not surface as a 500.
+            return view('contract.error', [
+                'message' => __('admin.application.contract_invalid_or_expired'),
+            ]);
         }
     }
 
     /**
-     * A contract may only be rendered/signed when it exists, is not already signed off
-     * (electronically or via an uploaded copy), and its token is unexpired.
+     * A contract may only be rendered/signed per the single authoritative rule on the
+     * application (App\Models\Application::hasSignableContract()).
      */
     private function isNotSignable(?ApplicationContract $applicationContract): bool
     {
         return $applicationContract === null
-            || $applicationContract->isSignedOff()
-            || $applicationContract->isTokenExpired();
+            || $applicationContract->application === null
+            || ! $applicationContract->application->hasSignableContract($applicationContract);
     }
 
     /**

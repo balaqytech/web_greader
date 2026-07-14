@@ -18,6 +18,8 @@ return [
         'contract_token_invalid_or_expired' => 'رابط توقيع العقد غير صالح أو منتهي الصلاحية',
         'invalid_signature_data' => 'بيانات التوقيع غير صحيحة',
         'invalid_signature_format' => 'تنسيق التوقيع غير صحيح',
+        'invalid_signature_image' => 'ملف التوقيع ليس صورة PNG صالحة',
+        'signature_too_large' => 'حجم التوقيع أكبر من الحد المسموح',
         'application_contract_signed_online_by_applicant' => 'تم توقيع العقد عبر الإنترنت من قبل ولي الأمر',
 
         // Baseline hardening (Phase 0)

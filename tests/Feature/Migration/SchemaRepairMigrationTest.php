@@ -37,10 +37,14 @@ it('is a no-op on a fresh database that already has the genuine unique index', f
     expect(uniqueCivilSeasonIndexCount())->toBe(1);
 });
 
-it('is idempotent when run repeatedly', function () {
-    repairMigration()->up();
-    repairMigration()->up();
+it('is idempotent when run repeatedly, including through the repair path', function () {
+    dropConventionalUniqueIndex();
+    expect(uniqueCivilSeasonIndexCount())->toBe(0);
 
+    repairMigration()->up();
+    expect(uniqueCivilSeasonIndexCount())->toBe(1);
+
+    repairMigration()->up();
     expect(uniqueCivilSeasonIndexCount())->toBe(1);
 });
 

@@ -11,6 +11,7 @@ use App\Models\Scopes\BranchScope;
 use App\Models\Student;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Baseline acceptance against the flat `applications` schema (§3.5, §4.1): re-validates
@@ -76,16 +77,25 @@ class AcceptApplicationAction
         }
 
         // lockForUpdate does not lock a row that does not exist, so a concurrent insert can
-        // still win the race — convert the resulting unique violation into a domain error
-        // (inside the acceptance transaction, so nothing partial is left behind).
+        // still win the race. Re-query the winning row to determine which constraint it
+        // actually collided on (id_number or phone) rather than assuming — and never let the
+        // raw QueryException reach the caller.
         try {
             return Guardian::create($attributes + ['id_number' => $idNumber]);
         } catch (QueryException $exception) {
-            if ($this->isUniqueViolation($exception)) {
+            if (! $this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            if (Guardian::where('id_number', $idNumber)->exists()) {
                 throw GuardianConflictException::identity((string) $idNumber);
             }
 
-            throw $exception;
+            if (Guardian::where('phone', $phone)->exists()) {
+                throw GuardianConflictException::phone((string) $phone);
+            }
+
+            throw new RuntimeException(__('alerts.application.guardian_required'), previous: $exception);
         }
     }
 
@@ -103,15 +113,55 @@ class AcceptApplicationAction
             ->lockForUpdate()
             ->first();
 
-        if ($existing && (int) $existing->branch_id !== (int) $application->branch_id) {
+        if ($existing) {
+            return $this->updateOrConflictStudent($existing, $application, $guardian);
+        }
+
+        // lockForUpdate does not lock a row that does not exist, so a concurrent insert can
+        // still win the race. Re-query the winning row and apply the same cross-branch
+        // conflict rule rather than assuming — and never let the raw QueryException reach
+        // the caller.
+        try {
+            return Student::create($this->studentAttributes($application, $guardian) + ['civil_number' => $civilNumber]);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            $winner = Student::withoutGlobalScope(BranchScope::class)
+                ->where('civil_number', $civilNumber)
+                ->lockForUpdate()
+                ->first();
+
+            if ($winner === null) {
+                throw new RuntimeException(__('alerts.application.student_civil_number_required'), previous: $exception);
+            }
+
+            return $this->updateOrConflictStudent($winner, $application, $guardian);
+        }
+    }
+
+    private function updateOrConflictStudent(Student $existing, Application $application, Guardian $guardian): Student
+    {
+        if ((int) $existing->branch_id !== (int) $application->branch_id) {
             throw StudentBranchConflictException::make(
-                (string) $civilNumber,
+                (string) $application->student_civil_number,
                 (int) $existing->branch_id,
                 (int) $application->branch_id,
             );
         }
 
-        $attributes = [
+        $existing->update($this->studentAttributes($application, $guardian));
+
+        return $existing;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function studentAttributes(Application $application, Guardian $guardian): array
+    {
+        return [
             'guardian_id' => $guardian->id,
             'branch_id' => $application->branch_id,
             'name' => $application->student_name,
@@ -124,14 +174,6 @@ class AcceptApplicationAction
             'parents_social_status' => $application->student_parents_social_status,
             'relationship_with_guardian' => $application->relationship_with_guardian,
         ];
-
-        if ($existing) {
-            $existing->update($attributes);
-
-            return $existing;
-        }
-
-        return Student::create($attributes + ['civil_number' => $civilNumber]);
     }
 
     /**

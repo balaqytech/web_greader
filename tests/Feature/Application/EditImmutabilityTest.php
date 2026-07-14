@@ -34,7 +34,7 @@ it('denies updating an application once past data entry, even with the permissio
     $application = Application::factory()->{$factoryState}()->create();
 
     expect(Gate::forUser($user)->denies('update', $application))->toBeTrue();
-})->with(['awaitingContractSignature', 'awaitingBranchReview', 'accepted', 'rejected', 'cancelled']);
+})->with(['awaitingContractSignature', 'awaitingBranchReview', 'accepted', 'rejected', 'cancelled', 'correctionRequested']);
 
 it('preserves the ordinary permission check for editable states', function () {
     // Editable state, but the user lacks Update:Application → still denied.
@@ -52,4 +52,4 @@ it('forbids direct route access to the edit page past data entry', function (str
 
     $this->get(ApplicationResource::getUrl('edit', ['record' => $application]))
         ->assertForbidden();
-})->with(['awaitingContractSignature', 'awaitingBranchReview', 'accepted', 'rejected', 'cancelled']);
+})->with(['awaitingContractSignature', 'awaitingBranchReview', 'accepted', 'rejected', 'cancelled', 'correctionRequested']);

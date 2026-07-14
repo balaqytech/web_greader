@@ -31,7 +31,7 @@ class AwaitingBranchReviewToAccepted extends Transition
         return DB::transaction(function () {
             $application = LockApplication::inState($this->application, AwaitingBranchReview::class);
 
-            $contract = $application->contract()->first();
+            $contract = $application->contract()->lockForUpdate()->first();
 
             if ($contract === null || ! $contract->isSignedOff()) {
                 throw new ApplicationIncompleteException(__('alerts.application.contract_not_signed'));
@@ -50,6 +50,6 @@ class AwaitingBranchReviewToAccepted extends Transition
             );
 
             return $application;
-        });
+        }, attempts: 3);
     }
 }
