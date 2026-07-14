@@ -14,7 +14,7 @@ class CreateApplicationDTO
      */
     public function __construct(
         public int $program_id,
-        public ?int $lead_id,
+        public int $lead_id,
         public int $branch_id,
         public int $season_id,
         public Source $source,
@@ -123,11 +123,16 @@ class CreateApplicationDTO
         );
     }
 
-    public static function fromFormData(array $data): self
+    /**
+     * $leadId is a required, explicit argument (not read from $data) so no caller can
+     * construct an application DTO with a null lead_id — every application originates from
+     * a lead, and the caller must already have created or resolved one.
+     */
+    public static function fromFormData(array $data, int $leadId): self
     {
         return new self(
             program_id: $data['program_id'],
-            lead_id: $data['lead_id'] ?? null,
+            lead_id: $leadId,
             branch_id: $data['branch_id'],
             season_id: $data['season_id'],
             source: $data['source'],

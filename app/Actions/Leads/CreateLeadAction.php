@@ -9,6 +9,7 @@ use App\Models\Program;
 use App\Models\Season;
 use App\Services\LeadDuplicateResolver;
 use App\States\Leads\ContactedLead;
+use App\Support\Database\DuplicateKeyViolation;
 use App\Support\LeadIdentityNormalizer;
 use Illuminate\Database\QueryException;
 use Spatie\WebhookServer\WebhookCall;
@@ -81,7 +82,7 @@ final class CreateLeadAction
                     ...$values,
                 ]);
             } catch (QueryException $e) {
-                if (! $this->isUniqueConstraintViolation($e)) {
+                if (! DuplicateKeyViolation::detect($e)) {
                     throw $e;
                 }
 
@@ -153,17 +154,5 @@ final class CreateLeadAction
     {
         return config('services.webhooks.lead.enabled')
             && app()->environment('production');
-    }
-
-    private function isUniqueConstraintViolation(QueryException $exception): bool
-    {
-        if ((string) $exception->getCode() === '23000') {
-            return true;
-        }
-
-        $message = $exception->getMessage();
-
-        return str_contains($message, 'Duplicate entry')
-            || str_contains($message, 'UNIQUE constraint failed');
     }
 }

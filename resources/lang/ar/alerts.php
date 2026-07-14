@@ -33,6 +33,7 @@ return [
         'rejection_reason_required' => 'سبب الرفض مطلوب.',
         'cancellation_note_required' => 'سبب الإلغاء مطلوب.',
         'unexpected_database_error' => 'حدث خطأ غير متوقع أثناء حفظ البيانات. يرجى المحاولة مرة أخرى.',
+        'lead_already_converted' => 'العميل المحتمل :ref_no محوّل بالفعل إلى طلب تسجيل.',
 
         // Guardian uniqueness conflicts during acceptance
         'guardian_phone_conflict' => 'رقم الهاتف :phone مسجّل بالفعل لولي أمر آخر.',

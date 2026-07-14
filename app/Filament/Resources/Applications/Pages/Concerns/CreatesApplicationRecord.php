@@ -2,11 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Pages\Concerns;
 
-use App\Actions\Applications\CreateApplicationAction;
-use App\DTOs\Application\CreateApplicationDTO;
-use App\Enums\Source;
-use App\Models\Program;
-use App\Models\Season;
+use App\Actions\Leads\CreateLeadWithApplicationAction;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,16 +10,13 @@ trait CreatesApplicationRecord
 {
     protected function handleRecordCreation(array $data): Model
     {
-        $program = Program::findOrFail($data['program_id']);
+        // Manual entry always creates the lead first (CreateLeadWithApplicationAction), in
+        // the same transaction as the application — this page never constructs an
+        // application on its own. Applications always start at the registration-fee gate
+        // (the model default); advancing past it is payment-gated and handled in the
+        // payments phase.
+        $application = app(CreateLeadWithApplicationAction::class)->execute($data);
 
-        $data['season_id'] = Season::current($program->type)->id;
-        $data['source'] = Source::DASHBOARD;
-
-        $dto = CreateApplicationDTO::fromFormData($data);
-        $application = app(CreateApplicationAction::class)->execute($dto);
-
-        // Applications always start at the registration-fee gate (the model default).
-        // Advancing past it is payment-gated and handled in the payments phase.
         return $application->fresh();
     }
 
