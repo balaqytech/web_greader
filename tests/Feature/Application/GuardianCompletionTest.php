@@ -66,29 +66,32 @@ it('throws a phone conflict, not a raw integrity error, when phone uniqueness is
     ]);
 
     // Simulate a concurrent transaction winning the target phone in the window between our
-    // pre-check (already passed once execution reaches this event) and the real UPDATE
-    // statement Eloquent is about to issue: insert the conflicting row directly, bypassing
-    // Eloquent, immediately before that statement runs.
-    Guardian::updating(function (Guardian $guardian) {
-        if ($guardian->id_number === 'RACE-TARGET-ID') {
-            DB::table('guardians')->insert([
-                'name' => 'Race Winner',
-                'phone' => 'RACE-CONTESTED-PHONE',
-                'id_number' => 'RACE-WINNER-ID',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    });
+    // pre-check and the real UPDATE statement Eloquent is about to issue: a test-scoped
+    // SQLite trigger inserts the conflicting row immediately before that UPDATE applies. This
+    // is deliberately SQL-level, not an Eloquent model-event listener — a listener registered
+    // on Guardian would need removing afterwards via flushEventListeners(), which strips every
+    // listener for the model (including e.g. the Auditable trait's own listeners) and leaks
+    // into later tests in the same process. The trigger only ever affects this connection and
+    // is dropped in `finally`, reliably, regardless of outcome.
+    DB::unprepared(<<<'SQL'
+        CREATE TRIGGER race_phone_conflict
+        BEFORE UPDATE ON guardians
+        WHEN NEW.id_number = 'RACE-TARGET-ID'
+        BEGIN
+            INSERT INTO guardians (name, phone, id_number, created_at, updated_at)
+            VALUES ('Race Winner', 'RACE-CONTESTED-PHONE', 'RACE-WINNER-ID', datetime('now'), datetime('now'));
+        END;
+    SQL);
 
     try {
         expect(fn () => $second->status->transitionTo(Accepted::class))
             ->toThrow(GuardianConflictException::class);
 
         expect($second->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class)
-            ->and(Guardian::where('id_number', 'RACE-TARGET-ID')->value('phone'))->toBe('RACE-ORIGINAL-PHONE');
+            ->and(Guardian::where('id_number', 'RACE-TARGET-ID')->value('phone'))->toBe('RACE-ORIGINAL-PHONE')
+            ->and(Guardian::where('id_number', 'RACE-WINNER-ID')->exists())->toBeFalse();
     } finally {
-        Guardian::flushEventListeners();
+        DB::unprepared('DROP TRIGGER IF EXISTS race_phone_conflict');
     }
 });
 

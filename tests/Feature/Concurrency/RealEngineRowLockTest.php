@@ -2,6 +2,7 @@
 
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CleanupAggregator;
 
 /**
  * SQLite (the test suite's default connection) cannot prove that `lockForUpdate()` — used
@@ -18,11 +19,13 @@ use Illuminate\Support\Facades\DB;
  * - This test NEVER issues `CREATE DATABASE` / `DROP DATABASE`. It only ever creates and
  *   drops a single throwaway table, by a cryptographically random name, inside a database
  *   that must already exist and must already be dedicated to this purpose.
- * - It requires explicit opt-in (`LOCK_TEST_ENABLED=true`). That is the *only* condition that
- *   skips it. Once opted in, a missing dedicated `LOCK_TEST_DB_*` variable or a database name
- *   that does not end in `_test` fails the test loudly (an exception, not a silent skip) —
- *   silently skipping a misconfigured opt-in would let a broken setup masquerade as "ran and
- *   passed".
+ * - Opt-in parsing is strict: unset/empty and a handful of recognized false values disable the
+ *   probe (skip); a handful of recognized true values enable it; any other non-empty value is
+ *   a misconfiguration and throws immediately, before any config or connection is touched —
+ *   silently treating an unrecognized value as "disabled" would let a typo masquerade as
+ *   "opted out" just as easily as silently skipping a misconfigured opt-in would.
+ * - Once opted in, a missing dedicated `LOCK_TEST_DB_*` variable or a database name that does
+ *   not end in `_test` also fails the test loudly (an exception, not a silent skip).
  * - Neither `LOCK_TEST_ENABLED` nor any `LOCK_TEST_DB_*` variable is set by default (not in
  *   `.env`, not in `phpunit.xml`), so a normal `pest`/`artisan test` run never even attempts
  *   to connect anywhere but the default test connection.
@@ -30,11 +33,11 @@ use Illuminate\Support\Facades\DB;
  *   (`--group=integration` / `--exclude-group=integration`).
  *
  * To opt in locally, provision a schema and a *schema-scoped, least-privilege* user yourself
- * (this test will not create a database or a user):
+ * (this test will not create a database or a user) — grant only what the probe actually uses:
+ * CREATE/DROP (the throwaway table), SELECT, INSERT, and UPDATE:
  *   CREATE DATABASE greader_lock_test;
  *   CREATE USER 'greader_lock_test'@'127.0.0.1' IDENTIFIED BY 'change-me';
- *   GRANT ALL PRIVILEGES ON greader_lock_test.* TO 'greader_lock_test'@'127.0.0.1';
- *   FLUSH PRIVILEGES;
+ *   GRANT CREATE, DROP, SELECT, INSERT, UPDATE ON greader_lock_test.* TO 'greader_lock_test'@'127.0.0.1';
  * then run with:
  *   LOCK_TEST_ENABLED=true LOCK_TEST_DB_HOST=127.0.0.1 LOCK_TEST_DB_PORT=3306 \
  *   LOCK_TEST_DB_DATABASE=greader_lock_test LOCK_TEST_DB_USERNAME=greader_lock_test \
@@ -48,9 +51,42 @@ use Illuminate\Support\Facades\DB;
  * configuration and by Laravel's documented `causedByDeadlock()` handling, not by forcing a
  * real deadlock here.
  */
+
+/**
+ * Pure parsing, deliberately injectable so it can be tested directly with fabricated values
+ * (including Laravel's own env()-level auto-casting of "true"/"false" to real booleans)
+ * without mutating process environment state or connecting to anything.
+ */
+function parseLockProbeOptIn(mixed $raw): bool
+{
+    if ($raw === null || $raw === '') {
+        return false;
+    }
+
+    if (is_bool($raw)) {
+        return $raw;
+    }
+
+    $normalized = strtolower(trim((string) $raw));
+
+    if (in_array($normalized, ['0', 'false', 'no', 'off'], true)) {
+        return false;
+    }
+
+    if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+        return true;
+    }
+
+    throw new RuntimeException(
+        'LOCK_TEST_ENABLED=['.$raw.'] is not a recognized boolean value. Use one of: '
+        .'true, false, 1, 0, yes, no, on, off (case-insensitive), or leave it unset to '
+        .'disable this opt-in integration test.'
+    );
+}
+
 function lockProbeOptedIn(): bool
 {
-    return filter_var(env('LOCK_TEST_ENABLED', false), FILTER_VALIDATE_BOOL);
+    return parseLockProbeOptIn(env('LOCK_TEST_ENABLED'));
 }
 
 /**
@@ -91,6 +127,39 @@ function lockProbeConnectionConfig(): array
     return compact('host', 'port', 'database', 'username', 'password');
 }
 
+it('disables the probe for unset and recognized false LOCK_TEST_ENABLED values', function (mixed $raw) {
+    expect(parseLockProbeOptIn($raw))->toBeFalse();
+})->with([
+    'unset (null)' => [null],
+    'empty string' => [''],
+    'boolean false' => [false],
+    '"false"' => ['false'],
+    '"FALSE"' => ['FALSE'],
+    '"0"' => ['0'],
+    '"no"' => ['no'],
+    '"off"' => ['off'],
+]);
+
+it('enables the probe for recognized true LOCK_TEST_ENABLED values', function (mixed $raw) {
+    expect(parseLockProbeOptIn($raw))->toBeTrue();
+})->with([
+    'boolean true' => [true],
+    '"true"' => ['true'],
+    '"TRUE"' => ['TRUE'],
+    '"1"' => ['1'],
+    '"yes"' => ['yes'],
+    '"on"' => ['on'],
+]);
+
+it('fails loudly on an unrecognized LOCK_TEST_ENABLED value instead of silently disabling', function (string $raw) {
+    expect(fn () => parseLockProbeOptIn($raw))->toThrow(RuntimeException::class);
+})->with([
+    'truthy' => ['truthy'],
+    'numeric but not 0/1' => ['2'],
+    'enable (typo)' => ['enable'],
+    'whitespace-only' => ['   '],
+]);
+
 it('genuinely blocks a second connection on a locked row (real InnoDB engine, not SQLite)', function () {
     if (! lockProbeOptedIn()) {
         $this->markTestSkipped(
@@ -112,6 +181,7 @@ it('genuinely blocks a second connection on a locked row (real InnoDB engine, no
 
     $table = 'lock_probe_'.bin2hex(random_bytes(16));
     $tableCreated = false;
+    $probeFailure = null;
 
     try {
         // Detect and report the server version so a run against this dedicated schema is
@@ -165,33 +235,45 @@ it('genuinely blocks a second connection on a locked row (real InnoDB engine, no
         });
 
         expect($connectionA->table($table)->where('id', 1)->value('val'))->toBe(1);
-    } finally {
-        // Each cleanup step is independent: one failing (e.g. a dropped connection) must not
-        // prevent the others from at least being attempted.
-        try {
-            if ($connectionA->transactionLevel() > 0) {
-                $connectionA->rollBack();
-            }
-        } catch (Throwable) {
-            // Best-effort safety net only.
-        }
-
-        try {
-            if ($tableCreated) {
-                $connectionA->statement("DROP TABLE IF EXISTS `{$table}`");
-            }
-        } catch (Throwable) {
-            // Best-effort only; never the database itself, only this invocation's own table.
-        }
-
-        try {
-            DB::purge('lock_probe_a');
-        } catch (Throwable) {
-        }
-
-        try {
-            DB::purge('lock_probe_b');
-        } catch (Throwable) {
-        }
+    } catch (Throwable $exception) {
+        $probeFailure = $exception;
     }
+
+    // Every cleanup step is attempted regardless of whether an earlier one failed, and
+    // regardless of whether the probe itself already failed above. Failures are collected,
+    // not silently swallowed: connection purges still run in every case, and a cleanup
+    // failure fails this test (after every cleanup attempt) rather than passing silently.
+    $cleanup = new CleanupAggregator;
+
+    $cleanup->run('rollback connection A transaction', function () use ($connectionA) {
+        if ($connectionA->transactionLevel() > 0) {
+            $connectionA->rollBack();
+        }
+    });
+
+    $cleanup->run('drop probe table', function () use ($connectionA, $table, $tableCreated) {
+        if ($tableCreated) {
+            $connectionA->statement("DROP TABLE IF EXISTS `{$table}`");
+        }
+    });
+
+    $cleanup->run('purge lock_probe_a connection', fn () => DB::purge('lock_probe_a'));
+    $cleanup->run('purge lock_probe_b connection', fn () => DB::purge('lock_probe_b'));
+
+    if ($probeFailure !== null) {
+        if ($cleanup->hasErrors()) {
+            $cleanupMessages = implode(' | ', array_map(fn (Throwable $e) => $e->getMessage(), $cleanup->errors()));
+
+            throw new RuntimeException(
+                'Probe failed: '.$probeFailure->getMessage()
+                .' | Additionally, '.count($cleanup->errors()).' cleanup step(s) failed: '.$cleanupMessages,
+                0,
+                $probeFailure,
+            );
+        }
+
+        throw $probeFailure;
+    }
+
+    $cleanup->throwIfAny();
 })->group('integration');
