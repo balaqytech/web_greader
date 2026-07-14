@@ -11,6 +11,7 @@ use App\States\Applications\Transitions\AwaitingContractSignatureToAwaitingAppli
 use App\States\Applications\Transitions\AwaitingContractSignatureToAwaitingBranchReview;
 use App\States\Applications\Transitions\AwaitingContractSignatureToCancelled;
 use App\States\Applications\Transitions\AwaitingRegistrationFeeToCancelled;
+use App\States\Applications\Transitions\CorrectionRequestedToCancelled;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 use Spatie\ModelStates\State;
@@ -36,6 +37,7 @@ abstract class ApplicationState extends State implements HasColor, HasLabel
             ->allowTransition(AwaitingRegistrationFee::class, Cancelled::class, AwaitingRegistrationFeeToCancelled::class)
             ->allowTransition(AwaitingApplicationCompletion::class, Cancelled::class, AwaitingApplicationCompletionToCancelled::class)
             ->allowTransition(AwaitingContractSignature::class, Cancelled::class, AwaitingContractSignatureToCancelled::class)
-            ->allowTransition(AwaitingBranchReview::class, Cancelled::class, AwaitingBranchReviewToCancelled::class);
+            ->allowTransition(AwaitingBranchReview::class, Cancelled::class, AwaitingBranchReviewToCancelled::class)
+            ->allowTransition(CorrectionRequested::class, Cancelled::class, CorrectionRequestedToCancelled::class);
     }
 }

@@ -31,6 +31,7 @@ use Spatie\ModelStates\HasStates;
     'program_id',
     'branch_id',
     'status',
+    'rejection_reason',
     'source',
     'student_name',
     'student_gender',

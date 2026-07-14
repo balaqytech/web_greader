@@ -111,6 +111,7 @@ class ApplicationFactory extends Factory
                 'token_expires_at' => now()->addDays(7),
                 'signed_at' => $signed ? now() : null,
                 'signed_by_applicant' => $signed,
+                'file_path' => $signed ? 'contracts/signed.pdf' : null,
             ]);
         });
     }

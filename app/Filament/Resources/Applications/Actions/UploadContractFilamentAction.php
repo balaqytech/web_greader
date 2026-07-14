@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Actions\Applications\UploadSignedContractAction;
 use App\Models\Application;
-use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -41,17 +41,7 @@ class UploadContractFilamentAction extends Action
 
         $this->action(function (Application $record, array $data) {
             try {
-                // Store file path on the ApplicationContract
-                if ($record->contract) {
-                    $record->contract->update([
-                        'file_path' => $data['contract_file'],
-                        'signed_at' => now(),
-                        'signed_by_applicant' => false,
-                    ]);
-                }
-
-                // Transition to branch review
-                $record->status->transitionTo(AwaitingBranchReview::class);
+                app(UploadSignedContractAction::class)->execute($record, $data['contract_file']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.upload_signed_contract_success'))

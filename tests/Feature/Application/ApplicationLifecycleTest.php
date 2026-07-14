@@ -45,12 +45,22 @@ it('blocks advancing to contract signature when required data is incomplete', fu
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingApplicationCompletion::class);
 });
 
-it('signs off contract signature into branch review', function () {
+it('advances a signed contract into branch review', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
+    $application->contract->update(['signed_at' => now(), 'file_path' => 'contracts/signed.pdf']);
 
     $application->status->transitionTo(AwaitingBranchReview::class);
 
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class);
+});
+
+it('rejects advancing an unsigned contract into branch review', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+
+    expect(fn () => $application->status->transitionTo(AwaitingBranchReview::class))
+        ->toThrow(ApplicationIncompleteException::class);
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
 it('reopens data entry from contract signature and invalidates the contract token', function () {
@@ -92,10 +102,10 @@ it('rejects an application from branch review', function () {
         ->and($application->rejection_reason)->toBe('Not eligible');
 });
 
-it('cancels applications from every non-terminal baseline state', function (string $factoryState) {
+it('cancels applications with a note from every non-terminal baseline state', function (string $factoryState) {
     $application = Application::factory()->{$factoryState}()->create();
 
-    $application->status->transitionTo(Cancelled::class);
+    $application->status->transitionTo(Cancelled::class, 'Cancelled by staff');
 
     expect($application->fresh()->status)->toBeInstanceOf(Cancelled::class);
 })->with([
@@ -104,6 +114,14 @@ it('cancels applications from every non-terminal baseline state', function (stri
     'awaitingContractSignature',
     'awaitingBranchReview',
 ]);
+
+it('cancels from correction requested with a note', function () {
+    $application = Application::factory()->create(['status' => CorrectionRequested::$name]);
+
+    $application->status->transitionTo(Cancelled::class, 'No longer proceeding');
+
+    expect($application->fresh()->status)->toBeInstanceOf(Cancelled::class);
+});
 
 it('does not register the payment-gated fee transition in Phase 0', function () {
     $application = Application::factory()->awaitingRegistrationFee()->create();

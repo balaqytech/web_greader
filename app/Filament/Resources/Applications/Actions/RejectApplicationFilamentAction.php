@@ -41,9 +41,7 @@ class RejectApplicationFilamentAction extends Action
 
         $this->action(function (Application $record, array $data) {
             try {
-                // Set rejection reason before transitioning
-                $record->update(['rejection_reason' => $data['rejection_reason']]);
-                $record->status->transitionTo(Rejected::class);
+                $record->status->transitionTo(Rejected::class, $data['rejection_reason']);
 
                 Notification::make()
                     ->title(__('admin.application.actions.reject_success'))

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Applications\Actions;
 
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
+use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
@@ -33,6 +34,7 @@ class CancelApplicationFilamentAction extends Action
             Textarea::make('notes')
                 ->label(__('admin.application.notes'))
                 ->placeholder(__('admin.application.notes_placeholder'))
+                ->required()
                 ->rows(3),
         ]);
 
@@ -40,7 +42,8 @@ class CancelApplicationFilamentAction extends Action
             fn (?Application $record): bool => $record !== null
                 && ($record->status instanceof AwaitingRegistrationFee
                     || $record->status instanceof AwaitingApplicationCompletion
-                    || $record->status instanceof AwaitingContractSignature)
+                    || $record->status instanceof AwaitingContractSignature
+                    || $record->status instanceof AwaitingBranchReview)
                 && ($record->status->canTransitionTo(Cancelled::class) ?? false)
         );
 

@@ -308,14 +308,20 @@ return [
         'contract_error_message' => 'حدث خطأ أثناء توقيع العقد، يرجى المحاولة مرة أخرى.',
         'states' => [
             'all' => 'الكل',
+            // Target baseline states
+            'awaiting_registration_fee' => 'بانتظار رسوم التسجيل',
+            'awaiting_application_completion' => 'بانتظار استكمال الطلب',
+            'awaiting_contract_signature' => 'بانتظار توقيع العقد',
+            'awaiting_branch_review' => 'بانتظار مراجعة الفرع',
+            'correction_requested' => 'مطلوب تصحيح',
+            'accepted' => 'مقبول',
+            'rejected' => 'مرفوض',
+            'cancelled' => 'ملغي',
+            // Legacy state names preserved for historical activity log display
             'draft' => 'مسودة',
             'submitted' => 'مراجعة اكمال البيانات',
             'waiting_contract_signature' => 'في انتظار توقيع العقد',
             'under_review' => 'قيد المراجعة',
-            'accepted' => 'مقبول',
-            'rejected' => 'مرفوض',
-            'cancelled' => 'ملغي',
-            // Legacy state names for activity log display
             'pending_registration' => 'قيد الانتظار',
             'data_complete' => 'البيانات مكتملة',
             'waiting_contract' => 'في انتظار توقيع العقد',

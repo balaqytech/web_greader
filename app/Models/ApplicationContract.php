@@ -39,6 +39,16 @@ class ApplicationContract extends Model
             && $this->token !== null;
     }
 
+    /**
+     * A contract is "signed off" once it has a signature timestamp and a stored signed
+     * artifact. This supports both signing paths: electronic signing (which also stores a
+     * signature_path) and staff upload of a signed copy (which stores only file_path).
+     */
+    public function isSignedOff(): bool
+    {
+        return $this->signed_at !== null && $this->file_path !== null;
+    }
+
     public function isTokenExpired(): bool
     {
         return $this->token_expires_at !== null && $this->token_expires_at->isPast();

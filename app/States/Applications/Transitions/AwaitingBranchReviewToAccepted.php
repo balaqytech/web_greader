@@ -28,9 +28,9 @@ class AwaitingBranchReviewToAccepted extends Transition
     public function handle(): Application
     {
         return DB::transaction(function () {
-            $this->application->loadMissing('contract');
+            $contract = $this->application->contract()->first();
 
-            if ($this->application->contract === null || $this->application->contract->signed_at === null) {
+            if ($contract === null || ! $contract->isSignedOff()) {
                 throw new ApplicationIncompleteException(__('alerts.application.contract_not_signed'));
             }
 

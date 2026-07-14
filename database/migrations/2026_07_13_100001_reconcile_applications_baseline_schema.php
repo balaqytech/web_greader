@@ -1,18 +1,24 @@
 <?php
 
+use App\Exceptions\DuplicateCivilNumberSeasonException;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Guarded, additive reconciliation of the `applications` table toward the target
- * baseline (§1.4 canonical reconciliation target). Every operation is guarded so it
- * is a safe no-op whether run against the repository/fresh schema (Tier 1) or a
- * drifted operational database (Tier 2) — it never raises a duplicate-column or
- * duplicate-index error on either path.
+ * baseline (§1.4 canonical reconciliation target). Every operation is guarded so it is a
+ * safe no-op whether run against the repository/fresh schema (Tier 1) or a drifted
+ * operational database (Tier 2) — it never raises a duplicate-column or duplicate-index
+ * error on either path.
  *
- * Scope note: `lead_id` NOT NULL / restricted-FK tightening is intentionally NOT part
- * of this migration; it lands with transactional manual entry (Phase 0 commit 2).
+ * The duplicate `(student_civil_number, season_id)` preflight runs *before* any DDL,
+ * because MariaDB auto-commits each DDL statement and a mid-run failure could otherwise
+ * leave the table partially reconciled.
+ *
+ * Scope note: `lead_id` NOT NULL / restricted-FK tightening is intentionally NOT part of
+ * this migration; it lands with transactional manual entry (Phase 0 commit 2).
  */
 return new class extends Migration
 {
@@ -20,6 +26,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Preflight BEFORE any DDL (see class docblock).
+        if (! $this->hasCompoundUniqueIndex()) {
+            $this->assertNoDuplicateCivilSeasonPairs();
+        }
+
         Schema::table('applications', function (Blueprint $table) {
             // Present in Tier 1, absent in the drifted Tier 2 database. Add where missing
             // so the flat-schema forms/model can read/write them on every tier.
@@ -38,7 +49,7 @@ return new class extends Migration
             }
 
             // New on every tier: canonical Application -> Student link, populated
-            // atomically on acceptance (§5.1). No column exists in any tier today.
+            // atomically on acceptance (§5.1).
             if (! Schema::hasColumn('applications', 'student_id')) {
                 $table->foreignId('student_id')
                     ->nullable()
@@ -49,9 +60,9 @@ return new class extends Migration
         });
 
         // Compound unique index: absent in Tier 1, already present in Tier 2. Add only
-        // where missing. On a real drifted/production database the §9.4 duplicate-pair
-        // check must pass first; on fresh/empty installs there is nothing to conflict.
-        if (! $this->hasCompoundUniqueIndex()) {
+        // when a genuine *unique* constraint is not already present and no index of the
+        // target name exists — a same-column non-unique index must not be mistaken for it.
+        if (! $this->hasCompoundUniqueIndex() && ! $this->hasIndexNamed(self::COMPOUND_UNIQUE_INDEX)) {
             Schema::table('applications', function (Blueprint $table) {
                 $table->unique(['student_civil_number', 'season_id'], self::COMPOUND_UNIQUE_INDEX);
             });
@@ -59,18 +70,36 @@ return new class extends Migration
     }
 
     /**
-     * Non-destructive rollback: only reverse the objects this migration is certain it
-     * introduced on every tier (`student_id`). `source`, `relationship_with_guardian`,
-     * `rejection_reason`, and the compound unique index may have predated this migration
-     * on a drifted database, so they are deliberately left in place rather than dropped.
+     * Non-destructive rollback. Every object this migration manages is *conditionally*
+     * added and the migration cannot determine whether a given object predated it on a
+     * drifted database — so rollback intentionally drops nothing (including `student_id`)
+     * rather than risk destroying pre-existing data/structure.
      */
     public function down(): void
     {
-        Schema::table('applications', function (Blueprint $table) {
-            if (Schema::hasColumn('applications', 'student_id')) {
-                $table->dropConstrainedForeignId('student_id');
-            }
-        });
+        // Intentionally empty — see method docblock.
+    }
+
+    private function assertNoDuplicateCivilSeasonPairs(): void
+    {
+        $duplicates = DB::table('applications')
+            ->selectRaw('student_civil_number, season_id, COUNT(*) as aggregate')
+            ->whereNotNull('student_civil_number')
+            ->groupBy('student_civil_number', 'season_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        if ($duplicates->isEmpty()) {
+            return;
+        }
+
+        throw DuplicateCivilNumberSeasonException::fromDuplicates(
+            $duplicates->map(fn ($row) => [
+                'student_civil_number' => (string) $row->student_civil_number,
+                'season_id' => $row->season_id,
+                'count' => (int) $row->aggregate,
+            ])->all()
+        );
     }
 
     private function hasCompoundUniqueIndex(): bool
@@ -78,9 +107,21 @@ return new class extends Migration
         foreach (Schema::getIndexes('applications') as $index) {
             $columns = $index['columns'] ?? [];
 
-            if (in_array('student_civil_number', $columns, true)
-                && in_array('season_id', $columns, true)
-                && count($columns) === 2) {
+            if (($index['unique'] ?? false)
+                && count($columns) === 2
+                && in_array('student_civil_number', $columns, true)
+                && in_array('season_id', $columns, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function hasIndexNamed(string $name): bool
+    {
+        foreach (Schema::getIndexes('applications') as $index) {
+            if (($index['name'] ?? null) === $name) {
                 return true;
             }
         }

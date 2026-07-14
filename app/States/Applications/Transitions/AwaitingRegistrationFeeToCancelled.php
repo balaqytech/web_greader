@@ -2,33 +2,12 @@
 
 namespace App\States\Applications\Transitions;
 
-use App\Actions\Applications\RecordApplicationActivityAction;
-use App\Models\Application;
 use App\States\Applications\AwaitingRegistrationFee;
-use App\States\Applications\Cancelled;
-use Spatie\ModelStates\Transition;
 
-class AwaitingRegistrationFeeToCancelled extends Transition
+class AwaitingRegistrationFeeToCancelled extends CancelApplicationTransition
 {
-    public function __construct(
-        public Application $application,
-        public ?string $notes = null,
-    ) {}
-
-    public function handle(): Application
+    protected function fromStateName(): string
     {
-        $fromState = AwaitingRegistrationFee::$name;
-
-        $this->application->status = Cancelled::class;
-        $this->application->save();
-
-        app(RecordApplicationActivityAction::class)->handle(
-            $this->application,
-            $fromState,
-            Cancelled::$name,
-            $this->notes,
-        );
-
-        return $this->application;
+        return AwaitingRegistrationFee::$name;
     }
 }

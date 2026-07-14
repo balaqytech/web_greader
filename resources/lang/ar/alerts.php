@@ -19,5 +19,15 @@ return [
         'invalid_signature_data' => 'بيانات التوقيع غير صحيحة',
         'invalid_signature_format' => 'تنسيق التوقيع غير صحيح',
         'application_contract_signed_online_by_applicant' => 'تم توقيع العقد عبر الإنترنت من قبل ولي الأمر',
-    ]
+
+        // Baseline hardening (Phase 0)
+        'student_name_required' => 'اسم الطالب مطلوب.',
+        'student_civil_number_required' => 'الرقم المدني للطالب مطلوب.',
+        'guardian_required' => 'بيانات ولي الأمر مطلوبة.',
+        'contract_not_signed' => 'يجب توقيع العقد قبل الانتقال إلى مراجعة الفرع.',
+        'contract_missing' => 'لا يوجد عقد مرتبط بهذا الطلب.',
+        'application_contract_uploaded_by_staff' => 'تم رفع نسخة العقد الموقّعة بواسطة الموظف.',
+        'rejection_reason_required' => 'سبب الرفض مطلوب.',
+        'cancellation_note_required' => 'سبب الإلغاء مطلوب.',
+    ],
 ];

@@ -3,32 +3,34 @@
 namespace App\Actions\Applications;
 
 use App\Enums\GuardianRelationship;
-use App\Exceptions\ApplicationIncompleteException;
+use App\Exceptions\StudentBranchConflictException;
 use App\Models\Application;
 use App\Models\Guardian;
+use App\Models\Scopes\BranchScope;
 use App\Models\Student;
-use App\Models\StudentContact;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Baseline acceptance against the flat `applications` schema (§3.5, §4.1): resolves the
- * guardian and student from the denormalized columns, upserts Guardian + Student +
- * StudentContact rows, and back-links `applications.student_id`. Runs inside the caller's
- * transaction so a mid-transaction failure rolls student, guardian, contacts, student_id,
- * and the application state back together.
+ * Baseline acceptance against the flat `applications` schema (§3.5, §4.1): re-validates
+ * completion, resolves the guardian and student from the denormalized columns, upserts
+ * Guardian + Student + StudentContact rows, and back-links `applications.student_id`.
+ *
+ * Runs inside the caller's transaction. Student and guardian are looked up explicitly
+ * without BranchScope and with a row lock so a returning student cannot be missed or
+ * double-created under concurrency; an existing student in another branch is a hard
+ * conflict (no silent cross-branch transfer). Contacts are fully synchronised so removed
+ * or changed contacts and stale guardian flags never linger.
  */
 class AcceptApplicationAction
 {
     public function handle(Application $application): Student
     {
         return DB::transaction(function () use ($application) {
-            if (blank($application->student_civil_number)) {
-                throw new ApplicationIncompleteException(__('alerts.application.student_civil_number_required'));
-            }
+            app(ValidateApplicationCompletionAction::class)->handle($application);
 
             $guardian = $this->createOrUpdateGuardian($application);
 
-            $student = $this->createOrUpdateStudent($application, $guardian);
+            $student = $this->resolveStudent($application, $guardian);
 
             $this->syncStudentContacts($student, $application);
 
@@ -43,60 +45,80 @@ class AcceptApplicationAction
     {
         [$name, $phone, $email, $idNumber, $occupation, $workAddress, $workPhone] = $this->resolveGuardianContact($application);
 
-        if (blank($idNumber)) {
-            throw new ApplicationIncompleteException(__('alerts.application.guardian_required'));
+        $attributes = [
+            'name' => $name,
+            'phone' => $phone,
+            'email' => $email,
+            'occupation' => $occupation,
+            'work_address' => $workAddress,
+            'work_phone' => $workPhone,
+        ];
+
+        $guardian = Guardian::where('id_number', $idNumber)->lockForUpdate()->first();
+
+        if ($guardian) {
+            $guardian->update($attributes);
+
+            return $guardian;
         }
 
-        return Guardian::updateOrCreate(
-            ['id_number' => $idNumber],
-            [
-                'name' => $name,
-                'phone' => $phone,
-                'email' => $email,
-                'occupation' => $occupation,
-                'work_address' => $workAddress,
-                'work_phone' => $workPhone,
-            ]
-        );
+        return Guardian::create($attributes + ['id_number' => $idNumber]);
     }
 
-    private function createOrUpdateStudent(Application $application, Guardian $guardian): Student
+    private function resolveStudent(Application $application, Guardian $guardian): Student
     {
-        return Student::updateOrCreate(
-            ['civil_number' => $application->student_civil_number],
-            [
-                'guardian_id' => $guardian->id,
-                'branch_id' => $application->branch_id,
-                'name' => $application->student_name,
-                'gender' => $application->student_gender,
-                'birth_date' => $application->student_birth_date,
-                'state' => $application->student_state,
-                'governorate' => $application->student_governorate,
-                'village' => $application->student_village,
-                'house_number' => $application->student_house_number,
-                'parents_social_status' => $application->student_parents_social_status,
-                'relationship_with_guardian' => $application->relationship_with_guardian,
-            ]
-        );
+        $civilNumber = $application->student_civil_number;
+
+        $existing = Student::withoutGlobalScope(BranchScope::class)
+            ->where('civil_number', $civilNumber)
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing && (int) $existing->branch_id !== (int) $application->branch_id) {
+            throw StudentBranchConflictException::make(
+                (string) $civilNumber,
+                (int) $existing->branch_id,
+                (int) $application->branch_id,
+            );
+        }
+
+        $attributes = [
+            'guardian_id' => $guardian->id,
+            'branch_id' => $application->branch_id,
+            'name' => $application->student_name,
+            'gender' => $application->student_gender,
+            'birth_date' => $application->student_birth_date,
+            'state' => $application->student_state,
+            'governorate' => $application->student_governorate,
+            'village' => $application->student_village,
+            'house_number' => $application->student_house_number,
+            'parents_social_status' => $application->student_parents_social_status,
+            'relationship_with_guardian' => $application->relationship_with_guardian,
+        ];
+
+        if ($existing) {
+            $existing->update($attributes);
+
+            return $existing;
+        }
+
+        return Student::create($attributes + ['civil_number' => $civilNumber]);
     }
 
+    /**
+     * Full synchronisation: replace the student's contacts with exactly the set described
+     * by the flat application, so stale rows and outdated guardian flags do not remain.
+     */
     private function syncStudentContacts(Student $student, Application $application): void
     {
+        $student->contacts()->delete();
+
         foreach ($this->contactRows($application) as $contact) {
             if (blank($contact['name'])) {
                 continue;
             }
 
-            $lookup = ['student_id' => $student->id];
-
-            if (filled($contact['id_number'])) {
-                $lookup['id_number'] = $contact['id_number'];
-            } else {
-                $lookup['relationship'] = $contact['relationship'];
-                $lookup['name'] = $contact['name'];
-            }
-
-            StudentContact::updateOrCreate($lookup, $contact + ['student_id' => $student->id]);
+            $student->contacts()->create($contact);
         }
     }
 

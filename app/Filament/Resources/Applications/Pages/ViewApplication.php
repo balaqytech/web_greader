@@ -14,7 +14,6 @@ use App\Filament\Resources\Applications\Actions\UploadContractFilamentAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
-use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingRegistrationFee;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -28,11 +27,12 @@ class ViewApplication extends ViewRecord
     {
         return [
             // ── Data-entry stage ──────────────────────────────────
+            // Editing is limited to the data-entry states. Once signed (branch review and
+            // beyond) the record is immutable here until correction/versioning exists.
             EditAction::make()
                 ->visible(
                     fn (Application $record): bool => $record->status instanceof AwaitingRegistrationFee
                         || $record->status instanceof AwaitingApplicationCompletion
-                        || $record->status instanceof AwaitingBranchReview
                 ),
             SubmitApplicationFilamentAction::make(),
             MoveToWaitingContractFilamentAction::make(),

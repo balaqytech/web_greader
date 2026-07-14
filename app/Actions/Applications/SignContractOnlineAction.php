@@ -7,9 +7,11 @@ use App\Models\Application;
 use App\Models\ApplicationContract;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Throwable;
 
 final class SignContractOnlineAction
 {
@@ -39,26 +41,39 @@ final class SignContractOnlineAction
 
         $filename = 'contract_signature_'.Str::random(10).'.'.$imageType;
         $signaturePath = 'contracts/signatures/'.$filename;
+        $pdfPath = 'pdfs/contracts/'.time().'_'.Str::random(8).'.pdf';
 
-        $storage = Storage::disk('public')->put($signaturePath, $imageBase64);
+        Storage::disk('public')->put($signaturePath, $imageBase64);
 
-        $file_path = app(CreatePdfAction::class)->execute('pdf.contract', 'pdfs/contracts/'.time().'.pdf', [
+        $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
             'title' => 'test',
             'contract' => $contract,
             'signature' => Storage::url($signaturePath),
         ]);
 
-        $applicationContract->application->status->transitionTo(
-            AwaitingBranchReview::class,
-            notes: __('alerts.application.application_contract_signed_online_by_applicant')
-        );
+        try {
+            // Persist the signed contract first, then run the guarded transition — the
+            // transition rejects an unsigned contract, so ordering matters. Contract
+            // update, application state, and activity all commit in one transaction.
+            DB::transaction(function () use ($applicationContract, $signaturePath, $fileUrl) {
+                $applicationContract->update([
+                    'signed_at' => now(),
+                    'signed_by_applicant' => true,
+                    'signature_path' => $signaturePath,
+                    'file_path' => $fileUrl,
+                ]);
 
-        $applicationContract->update([
-            'signed_at' => now(),
-            'signed_by_applicant' => true,
-            'signature_path' => $signaturePath,
-            'file_path' => $file_path,
-        ]);
+                $applicationContract->application->status->transitionTo(
+                    AwaitingBranchReview::class,
+                    notes: __('alerts.application.application_contract_signed_online_by_applicant')
+                );
+            });
+        } catch (Throwable $e) {
+            // Compensate the artifacts written before the failed database work.
+            Storage::disk('public')->delete([$signaturePath, $pdfPath]);
+
+            throw $e;
+        }
 
         return $applicationContract->application->fresh();
     }
