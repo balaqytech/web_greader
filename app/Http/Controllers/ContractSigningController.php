@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Applications\RenderApplicationContractAction;
 use App\Actions\Applications\SignContractOnlineAction;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Exceptions\StaleApplicationStateException;
@@ -11,7 +12,7 @@ use InvalidArgumentException;
 
 class ContractSigningController extends Controller
 {
-    public function show(string $token)
+    public function show(string $token, RenderApplicationContractAction $render)
     {
         $applicationContract = ApplicationContract::with('application')->where('token', $token)->first();
 
@@ -23,7 +24,7 @@ class ContractSigningController extends Controller
 
         return view('contract.show', [
             'applicationContract' => $applicationContract,
-            'contract' => $this->renderContract($applicationContract),
+            'contract' => $render->execute($applicationContract->application),
         ]);
     }
 
@@ -43,8 +44,10 @@ class ContractSigningController extends Controller
         }
 
         try {
-            $contract = $this->renderContract($applicationContract);
-            $action->execute($applicationContract, $request->input('signature'), $contract);
+            // The contract body is deliberately NOT rendered here: it is rendered by the
+            // action itself, after locking, from the locked (current) application data — not
+            // from this pre-lock read, which could be stale by the time the lock is acquired.
+            $action->execute($applicationContract, $token, $request->input('signature'));
 
             return view('contract.success');
         } catch (InvalidArgumentException $e) {
@@ -70,34 +73,5 @@ class ContractSigningController extends Controller
         return $applicationContract === null
             || $applicationContract->application === null
             || ! $applicationContract->application->hasSignableContract($applicationContract);
-    }
-
-    /**
-     * Resolve the contract body. The acting guardian (father, mother, or relative) is
-     * resolved through the single `guardian_name` domain accessor so GET and POST always
-     * render the same signer.
-     */
-    private function renderContract(ApplicationContract $applicationContract): string
-    {
-        $application = $applicationContract->application;
-
-        return $this->parseContract($application->program->contract, [
-            'program_name' => $application->program->name,
-            'parent_name' => $application->guardian_name,
-            'student_name' => $application->student_name,
-            'enrollment_date' => $application->created_at->format('d/m/Y'),
-            'branch_price' => $application->program->branchPrice($application->branch),
-        ]);
-    }
-
-    private function parseContract(?string $template, array $variables): string
-    {
-        $template ??= '';
-
-        foreach ($variables as $key => $value) {
-            $template = str_replace('$'.$key.'$', (string) $value, $template);
-        }
-
-        return $template;
     }
 }

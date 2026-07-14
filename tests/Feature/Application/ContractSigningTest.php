@@ -8,6 +8,7 @@ use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
+use Illuminate\Contracts\Filesystem\Cloud;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -52,7 +53,7 @@ it('rejects the branch-review transition when no contract exists', function () {
 it('signs the contract electronically and advances to branch review', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
 
-    app(SignContractOnlineAction::class)->execute($application->contract, signature(), 'contract body');
+    app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signature());
 
     $application->refresh();
     $contract = $application->contract;
@@ -82,9 +83,20 @@ it('records a staff-uploaded signed copy and advances to branch review', functio
 
 it('rejects an uploaded signed copy when the contract is missing', function () {
     $application = Application::factory()->create(['status' => AwaitingContractSignature::$name]);
+    Storage::disk('public')->put('contracts/uploads/x.pdf', 'uploaded');
 
     expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/x.pdf'))
         ->toThrow(ApplicationIncompleteException::class);
+});
+
+it('rejects an upload when the referenced storage path does not exist', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+
+    expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/does-not-exist.pdf'))
+        ->toThrow(ApplicationIncompleteException::class);
+
+    expect($application->fresh()->contract->file_path)->toBeNull()
+        ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
 it('compensates signature artifacts and rolls back when the signing transaction fails', function () {
@@ -99,7 +111,7 @@ it('compensates signature artifacts and rolls back when the signing transaction 
 
     $application = Application::factory()->awaitingContractSignature()->create();
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, signature(), 'contract body'))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signature()))
         ->toThrow(RuntimeException::class);
 
     $application->refresh();
@@ -109,13 +121,29 @@ it('compensates signature artifacts and rolls back when the signing transaction 
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
+it('throws when the signature write returns false, leaving no state changes', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+
+    $fakeDisk = Mockery::mock(Cloud::class);
+    $fakeDisk->shouldReceive('put')->andReturn(false);
+    $fakeDisk->shouldReceive('delete')->andReturn(true);
+    Storage::shouldReceive('disk')->with('public')->andReturn($fakeDisk);
+
+    expect(fn () => app(SignContractOnlineAction::class)->execute(
+        $application->contract, $application->contract->token, signature(),
+    ))->toThrow(RuntimeException::class);
+
+    expect($application->fresh()->contract->signed_at)->toBeNull()
+        ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
+});
+
 it('rejects a signature with invalid base64 characters, leaving no artifacts', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
 
     expect(fn () => app(SignContractOnlineAction::class)->execute(
         $application->contract,
+        $application->contract->token,
         'data:image/png;base64,not!!valid==base64',
-        'contract body',
     ))->toThrow(InvalidArgumentException::class);
 
     expect($application->fresh()->contract->signed_at)->toBeNull()
@@ -126,7 +154,7 @@ it('rejects a signature payload that is not a real PNG image, leaving no artifac
     $application = Application::factory()->awaitingContractSignature()->create();
     $notAnImage = 'data:image/png;base64,'.base64_encode('this is definitely not a png file');
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $notAnImage, 'contract body'))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, $notAnImage))
         ->toThrow(InvalidArgumentException::class);
 
     expect($application->fresh()->contract->signed_at)->toBeNull()
@@ -137,7 +165,7 @@ it('rejects an oversized signature payload, leaving no artifacts', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
     $oversized = 'data:image/png;base64,'.str_repeat('A', 2_000_001);
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $oversized, 'contract body'))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, $oversized))
         ->toThrow(InvalidArgumentException::class);
 
     expect($application->fresh()->contract->signed_at)->toBeNull()

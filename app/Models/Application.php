@@ -166,8 +166,12 @@ class Application extends Model
      * must not already be signed off. Reused by the public controller (GET/POST) and the
      * signing action so all three agree; callers under a row lock should pass the freshly
      * locked contract explicitly rather than relying on a possibly-stale loaded relation.
+     *
+     * Pass $expectedToken when binding a specific request to a specific contract (e.g. while
+     * signing): a token invalidated by a reopen/regenerate cycle in between must not match
+     * the replacement contract's new token, even though the replacement is otherwise signable.
      */
-    public function hasSignableContract(?ApplicationContract $contract = null): bool
+    public function hasSignableContract(?ApplicationContract $contract = null, ?string $expectedToken = null): bool
     {
         $contract ??= $this->contract;
 
@@ -176,7 +180,8 @@ class Application extends Model
             && $contract->token !== null
             && $contract->token_expires_at !== null
             && $contract->token_expires_at->isFuture()
-            && ! $contract->isSignedOff();
+            && ! $contract->isSignedOff()
+            && ($expectedToken === null || $contract->token === $expectedToken);
     }
 
     /**

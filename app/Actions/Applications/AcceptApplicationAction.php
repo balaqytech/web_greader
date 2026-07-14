@@ -59,10 +59,65 @@ class AcceptApplicationAction
 
         $guardian = Guardian::where('id_number', $idNumber)->lockForUpdate()->first();
 
+        if ($guardian) {
+            return $this->updateOrConflictGuardian($guardian, $phone, $attributes);
+        }
+
+        // Not found by id_number, but the phone may still belong to a different guardian
+        // entirely (a new identity attempting to reuse someone else's phone number).
+        $phoneOwner = Guardian::where('phone', $phone)->lockForUpdate()->first();
+
+        if ($phoneOwner) {
+            throw GuardianConflictException::phone((string) $phone);
+        }
+
+        // lockForUpdate does not lock a row that does not exist, so a concurrent insert can
+        // still win the race between our reads above and this insert.
+        try {
+            return Guardian::create($attributes + ['id_number' => $idNumber]);
+        } catch (QueryException $exception) {
+            return $this->resolveGuardianInsertRace($exception, (string) $idNumber, $phone, $attributes);
+        }
+    }
+
+    /**
+     * A concurrent transaction won the missing-row race. If it won on id_number, that row IS
+     * the same real-world person (id_number is the identity key, not an arbitrary column) —
+     * lock and reuse/update it through the exact same phone-conflict rule as the normal
+     * existing-guardian path, rather than treating the race as a hard identity conflict.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function resolveGuardianInsertRace(QueryException $exception, string $idNumber, ?string $phone, array $attributes): Guardian
+    {
+        if (! $this->isDuplicateKeyViolation($exception)) {
+            $this->rethrowIntegrityFailure($exception);
+        }
+
+        $winner = Guardian::where('id_number', $idNumber)->lockForUpdate()->first();
+
+        if ($winner !== null) {
+            return $this->updateOrConflictGuardian($winner, $phone, $attributes);
+        }
+
+        if (Guardian::where('phone', $phone)->lockForUpdate()->first() !== null) {
+            throw GuardianConflictException::phone((string) $phone);
+        }
+
+        report($exception);
+
+        throw new RuntimeException(__('alerts.application.unexpected_database_error'), previous: $exception);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function updateOrConflictGuardian(Guardian $guardian, ?string $phone, array $attributes): Guardian
+    {
         // Explicit phone-uniqueness conflict: the phone already belongs to a *different*
         // guardian. Surfaced as a domain error rather than a raw integrity violation.
         $phoneOwner = Guardian::where('phone', $phone)
-            ->when($guardian, fn ($query) => $query->whereKeyNot($guardian->getKey()))
+            ->whereKeyNot($guardian->getKey())
             ->lockForUpdate()
             ->first();
 
@@ -70,38 +125,42 @@ class AcceptApplicationAction
             throw GuardianConflictException::phone((string) $phone);
         }
 
-        if ($guardian) {
-            $guardian->update($attributes);
+        $guardian->update($attributes);
 
-            return $guardian;
-        }
-
-        // lockForUpdate does not lock a row that does not exist, so a concurrent insert can
-        // still win the race. Re-query the winning row to determine which constraint it
-        // actually collided on (id_number or phone) rather than assuming — and never let the
-        // raw QueryException reach the caller.
-        try {
-            return Guardian::create($attributes + ['id_number' => $idNumber]);
-        } catch (QueryException $exception) {
-            if (! $this->isUniqueViolation($exception)) {
-                throw $exception;
-            }
-
-            if (Guardian::where('id_number', $idNumber)->exists()) {
-                throw GuardianConflictException::identity((string) $idNumber);
-            }
-
-            if (Guardian::where('phone', $phone)->exists()) {
-                throw GuardianConflictException::phone((string) $phone);
-            }
-
-            throw new RuntimeException(__('alerts.application.guardian_required'), previous: $exception);
-        }
+        return $guardian;
     }
 
-    private function isUniqueViolation(QueryException $exception): bool
+    /**
+     * MySQL/MariaDB report a duplicate-key violation as driver error 1062; SQLite (used by
+     * the test suite) reports it as driver error 19 (SQLITE_CONSTRAINT). SQLSTATE 23000 alone
+     * is not specific enough — it is also reported for foreign-key and NOT NULL violations,
+     * which must not be misrouted into a "unique conflict" domain exception.
+     */
+    private function isDuplicateKeyViolation(QueryException $exception): bool
     {
-        return (string) $exception->getCode() === '23000';
+        if ((string) $exception->getCode() !== '23000') {
+            return false;
+        }
+
+        return in_array($exception->errorInfo[1] ?? null, [1062, 19], true);
+    }
+
+    /**
+     * A genuine SQLSTATE 23000 that is not a duplicate-key violation (e.g. a foreign-key or
+     * NOT NULL failure) is unexpected here: log it and surface a generic translated failure —
+     * never the raw SQL message. Anything outside SQLSTATE 23000 (deadlocks, lock-wait
+     * timeouts, connection errors) is not an integrity failure at all and must propagate
+     * untouched so the caller's deadlock-retrying transaction can still catch and retry it.
+     */
+    private function rethrowIntegrityFailure(QueryException $exception): never
+    {
+        if ((string) $exception->getCode() === '23000') {
+            report($exception);
+
+            throw new RuntimeException(__('alerts.application.unexpected_database_error'), previous: $exception);
+        }
+
+        throw $exception;
     }
 
     private function resolveStudent(Application $application, Guardian $guardian): Student
@@ -124,8 +183,8 @@ class AcceptApplicationAction
         try {
             return Student::create($this->studentAttributes($application, $guardian) + ['civil_number' => $civilNumber]);
         } catch (QueryException $exception) {
-            if (! $this->isUniqueViolation($exception)) {
-                throw $exception;
+            if (! $this->isDuplicateKeyViolation($exception)) {
+                $this->rethrowIntegrityFailure($exception);
             }
 
             $winner = Student::withoutGlobalScope(BranchScope::class)
@@ -134,7 +193,9 @@ class AcceptApplicationAction
                 ->first();
 
             if ($winner === null) {
-                throw new RuntimeException(__('alerts.application.student_civil_number_required'), previous: $exception);
+                report($exception);
+
+                throw new RuntimeException(__('alerts.application.unexpected_database_error'), previous: $exception);
             }
 
             return $this->updateOrConflictStudent($winner, $application, $guardian);

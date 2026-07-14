@@ -28,12 +28,13 @@ return [
         'guardian_required' => 'بيانات ولي الأمر مطلوبة.',
         'contract_not_signed' => 'يجب توقيع العقد قبل الانتقال إلى مراجعة الفرع.',
         'contract_missing' => 'لا يوجد عقد مرتبط بهذا الطلب.',
+        'uploaded_file_missing' => 'الملف الذي تم رفعه غير موجود.',
         'application_contract_uploaded_by_staff' => 'تم رفع نسخة العقد الموقّعة بواسطة الموظف.',
         'rejection_reason_required' => 'سبب الرفض مطلوب.',
         'cancellation_note_required' => 'سبب الإلغاء مطلوب.',
+        'unexpected_database_error' => 'حدث خطأ غير متوقع أثناء حفظ البيانات. يرجى المحاولة مرة أخرى.',
 
         // Guardian uniqueness conflicts during acceptance
         'guardian_phone_conflict' => 'رقم الهاتف :phone مسجّل بالفعل لولي أمر آخر.',
-        'guardian_identity_conflict' => 'رقم الهوية :id_number مسجّل بالفعل لولي أمر آخر.',
     ],
 ];

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 final class SignContractOnlineAction
@@ -20,11 +21,17 @@ final class SignContractOnlineAction
 
     private const MAX_DECODED_BYTES = 1_500_000;
 
-    public function execute(ApplicationContract $applicationContract, string $base64Signature, string $contract): Application
+    /**
+     * $token is the token the caller actually submitted (from the route/request), bound and
+     * re-verified against the freshly locked contract row — not the possibly-stale token on
+     * $applicationContract as loaded before the lock. A token invalidated by a concurrent
+     * reopen/regenerate cycle must never sign the replacement contract it no longer names.
+     */
+    public function execute(ApplicationContract $applicationContract, string $token, string $base64Signature): Application
     {
         $imageBytes = $this->decodeSignature($base64Signature);
 
-        if (! $applicationContract->application->hasSignableContract($applicationContract)) {
+        if (! $applicationContract->application->hasSignableContract($applicationContract, $token)) {
             throw new InvalidArgumentException(__('alerts.application.contract_token_invalid_or_expired'));
         }
 
@@ -33,28 +40,32 @@ final class SignContractOnlineAction
         $pdfPath = 'pdfs/contracts/'.time().'_'.Str::random(8).'.pdf';
 
         try {
-            // Write artifacts and persist inside one guarded boundary. Signature storage,
-            // PDF generation, and the database work are all compensated on failure — not
-            // just database failures. The application row is locked and its contract
-            // re-verified against the single authoritative rule before any write, in
-            // application -> contract lock order, so a stale replay cannot overwrite the
-            // first signer's artifacts or rotate the token.
-            Storage::disk('public')->put($signaturePath, $imageBytes);
-
-            $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
-                'title' => 'test',
-                'contract' => $contract,
-                'signature' => Storage::url($signaturePath),
-            ]);
-
-            DB::transaction(function () use ($applicationContract, $signaturePath, $fileUrl) {
+            // Application -> contract lock order, all in one guarded boundary: the row is
+            // locked and re-verified — including that the locked contract's token still
+            // matches the one actually submitted — before the contract body is rendered from
+            // the *locked* (current) data and before any artifact is written. A stale replay
+            // therefore cannot overwrite a later signer's artifacts, rotate the token, or sign
+            // a contract it was never shown.
+            DB::transaction(function () use ($applicationContract, $token, $imageBytes, $signaturePath, $pdfPath) {
                 $application = LockApplication::inState($applicationContract->application, AwaitingContractSignature::class);
 
                 $lockedContract = $application->contract()->lockForUpdate()->first();
 
-                if (! $application->hasSignableContract($lockedContract)) {
+                if (! $application->hasSignableContract($lockedContract, $token)) {
                     throw new InvalidArgumentException(__('alerts.application.contract_token_invalid_or_expired'));
                 }
+
+                $contractBody = app(RenderApplicationContractAction::class)->execute($application);
+
+                if (! Storage::disk('public')->put($signaturePath, $imageBytes)) {
+                    throw new RuntimeException("Failed to write signature image to storage path [{$signaturePath}].");
+                }
+
+                $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
+                    'title' => 'test',
+                    'contract' => $contractBody,
+                    'signature' => Storage::url($signaturePath),
+                ]);
 
                 $lockedContract->update([
                     'signed_at' => now(),
