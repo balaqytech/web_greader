@@ -3,8 +3,14 @@
 namespace App\Filament\Resources\Applications\Pages\Concerns;
 
 use App\Actions\Leads\CreateLeadWithApplicationAction;
+use App\Exceptions\LeadAlreadyConvertedException;
+use App\Exceptions\ProgramNotAvailableInBranchException;
 use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 trait CreatesApplicationRecord
 {
@@ -15,7 +21,24 @@ trait CreatesApplicationRecord
         // application on its own. Applications always start at the registration-fee gate
         // (the model default); advancing past it is payment-gated and handled in the
         // payments phase.
-        $application = app(CreateLeadWithApplicationAction::class)->execute($data);
+        try {
+            $application = app(CreateLeadWithApplicationAction::class)->execute($data, Auth::user());
+        } catch (ProgramNotAvailableInBranchException $exception) {
+            throw ValidationException::withMessages([
+                'program_id' => $exception->getMessage(),
+            ]);
+        } catch (AuthorizationException $exception) {
+            throw ValidationException::withMessages([
+                'branch_id' => $exception->getMessage(),
+            ]);
+        } catch (LeadAlreadyConvertedException $exception) {
+            Notification::make()
+                ->title($exception->getMessage())
+                ->danger()
+                ->send();
+
+            throw new Halt;
+        }
 
         return $application->fresh();
     }

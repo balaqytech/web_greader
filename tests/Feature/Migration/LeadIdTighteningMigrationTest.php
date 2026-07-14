@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\NullLeadIdApplicationsExistException;
+use App\Exceptions\OrphanedLeadIdApplicationsExistException;
 use App\Models\Application;
 use App\Models\Lead;
 use Illuminate\Database\QueryException;
@@ -49,6 +50,65 @@ function driftToTier1(): void
         $table->unsignedBigInteger('lead_id')->nullable()->change();
 
         $table->foreign('lead_id')->references('id')->on('leads')->nullOnDelete();
+    });
+}
+
+/**
+ * Simulates a prior local run of this migration that dropped the foreign key but was
+ * interrupted before re-adding it — leaving the column with no lead_id FK at all, at either
+ * nullability.
+ */
+function driftToNoFk(bool $nullable): void
+{
+    $foreignKey = collect(Schema::getForeignKeys('applications'))
+        ->first(fn (array $fk) => $fk['columns'] === ['lead_id']);
+
+    Schema::table('applications', function (Blueprint $table) use ($foreignKey, $nullable) {
+        if ($foreignKey !== null) {
+            $table->dropForeign($foreignKey['name'] ?? ['lead_id']);
+        }
+
+        $table->unsignedBigInteger('lead_id')->nullable($nullable)->change();
+    });
+}
+
+/**
+ * A lead_id foreign key that references the wrong table entirely — outside anything this
+ * migration should ever attempt to drop or modify.
+ */
+function driftToWrongFkTarget(): void
+{
+    $foreignKey = collect(Schema::getForeignKeys('applications'))
+        ->first(fn (array $fk) => $fk['columns'] === ['lead_id']);
+
+    Schema::table('applications', function (Blueprint $table) use ($foreignKey) {
+        if ($foreignKey !== null) {
+            $table->dropForeign($foreignKey['name'] ?? ['lead_id']);
+        }
+
+        $table->unsignedBigInteger('lead_id')->nullable()->change();
+
+        $table->foreign('lead_id')->references('id')->on('branches')->nullOnDelete();
+    });
+}
+
+/**
+ * A lead_id foreign key to leads.id that exists, but in a nullability/on-delete combination
+ * that is neither the documented Tier 1 (nullable, SET NULL) nor a recoverable no-FK state.
+ */
+function driftToUnknownFkCombo(): void
+{
+    $foreignKey = collect(Schema::getForeignKeys('applications'))
+        ->first(fn (array $fk) => $fk['columns'] === ['lead_id']);
+
+    Schema::table('applications', function (Blueprint $table) use ($foreignKey) {
+        if ($foreignKey !== null) {
+            $table->dropForeign($foreignKey['name'] ?? ['lead_id']);
+        }
+
+        $table->unsignedBigInteger('lead_id')->nullable(false)->change();
+
+        $table->foreign('lead_id')->references('id')->on('leads')->cascadeOnDelete();
     });
 }
 
@@ -128,4 +188,105 @@ it('keeps the unique lead_id constraint effective after reconciliation', functio
 
     expect(fn () => Application::factory()->create(['lead_id' => $first->lead_id]))
         ->toThrow(QueryException::class);
+});
+
+it('recovers from a nullable, no-FK state left by a prior interrupted attempt', function () {
+    driftToNoFk(nullable: true);
+
+    expect(leadIdColumnNullable())->toBeTrue()
+        ->and(leadIdOnDelete())->toBeNull();
+
+    leadIdMigration()->up();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(hasUniqueLeadIdIndex())->toBeTrue();
+});
+
+it('recovers from a NOT NULL, no-FK state left by a prior interrupted attempt', function () {
+    driftToNoFk(nullable: false);
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBeNull();
+
+    leadIdMigration()->up();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(hasUniqueLeadIdIndex())->toBeTrue();
+});
+
+it('aborts before any DDL when orphaned (non-NULL, dangling) lead_id rows exist', function () {
+    driftToNoFk(nullable: true);
+
+    $application = Application::factory()->create();
+    Lead::find($application->lead_id)->delete();
+
+    expect(fn () => leadIdMigration()->up())
+        ->toThrow(OrphanedLeadIdApplicationsExistException::class);
+
+    // The aborted attempt must not have touched the schema at all.
+    expect(leadIdColumnNullable())->toBeTrue()
+        ->and(leadIdOnDelete())->toBeNull();
+});
+
+it('names the affected count and a sample of IDs in the orphan abort exception', function () {
+    driftToNoFk(nullable: true);
+
+    $application = Application::factory()->create();
+    Lead::find($application->lead_id)->delete();
+
+    try {
+        leadIdMigration()->up();
+        expect(false)->toBeTrue('Expected the migration to throw.');
+    } catch (OrphanedLeadIdApplicationsExistException $exception) {
+        expect($exception->getMessage())
+            ->toContain('1 application(s)')
+            ->toContain((string) $application->id);
+    }
+});
+
+it('rejects a lead_id foreign key that targets something other than leads.id, before any DDL', function () {
+    driftToWrongFkTarget();
+
+    expect(leadIdOnDelete())->toBe('set null');
+
+    expect(fn () => leadIdMigration()->up())->toThrow(RuntimeException::class);
+
+    // Refused before touching anything.
+    expect(leadIdOnDelete())->toBe('set null');
+});
+
+it('rejects a lead_id foreign key in a nullability/on-delete combination outside the documented tiers', function () {
+    driftToUnknownFkCombo();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('cascade');
+
+    expect(fn () => leadIdMigration()->up())->toThrow(RuntimeException::class);
+
+    // Refused before touching anything.
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('cascade');
+});
+
+it('preserves schema shape after any deliberately failing reconciliation attempt', function () {
+    driftToNoFk(nullable: true);
+    $application = Application::factory()->create();
+    Lead::find($application->lead_id)->delete();
+
+    expect(fn () => leadIdMigration()->up())->toThrow(OrphanedLeadIdApplicationsExistException::class);
+
+    // Schema is exactly as it was left by driftToNoFk(), and the migration remains runnable
+    // once the orphan is resolved (proving the failed attempt left no half-applied state).
+    expect(leadIdColumnNullable())->toBeTrue()
+        ->and(leadIdOnDelete())->toBeNull()
+        ->and(hasUniqueLeadIdIndex())->toBeTrue();
+
+    $application->delete();
+    leadIdMigration()->up();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(hasUniqueLeadIdIndex())->toBeTrue();
 });

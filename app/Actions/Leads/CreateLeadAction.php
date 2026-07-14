@@ -12,6 +12,7 @@ use App\States\Leads\ContactedLead;
 use App\Support\Database\DuplicateKeyViolation;
 use App\Support\LeadIdentityNormalizer;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Spatie\WebhookServer\WebhookCall;
 
 final class CreateLeadAction
@@ -21,6 +22,12 @@ final class CreateLeadAction
         private LeadIdentityNormalizer $normalizer,
     ) {}
 
+    /**
+     * $season lets a caller that already resolved the current season (e.g.
+     * CreateLeadWithApplicationAction, so the lead and its application share one resolution)
+     * hand it in explicitly. Existing callers that omit it keep the previous behavior of
+     * resolving it here.
+     */
     public function execute(
         string $whatsapp,
         string $guardian_name,
@@ -30,6 +37,7 @@ final class CreateLeadAction
         string $source,
         array $data = [],
         ?string $affiliate_code = null,
+        ?Season $season = null,
     ): Lead {
         $whatsapp = normalize_phone_number(
             convert_eastern_arabic_to_arabic($whatsapp),
@@ -37,7 +45,7 @@ final class CreateLeadAction
 
         $program = Program::findOrFail($program_id);
 
-        $season = Season::current($program->type);
+        $season ??= Season::current($program->type);
 
         $affiliate = $this->resolveAffiliate($affiliate_code);
         $motherPhone = $data['mother_phone'] ?? null;
@@ -62,12 +70,7 @@ final class CreateLeadAction
         );
 
         if ($existing !== null) {
-            $values['student_name'] = $this->normalizer->preferLongerDisplayName(
-                $existing->student_name,
-                $student_name,
-            );
-
-            $existing->fill($values);
+            $existing->fill($this->mergeValues($values, $existing, $student_name));
             $existing->save();
 
             $lead = $existing->fresh();
@@ -98,12 +101,7 @@ final class CreateLeadAction
                     throw $e;
                 }
 
-                $values['student_name'] = $this->normalizer->preferLongerDisplayName(
-                    $lead->student_name,
-                    $student_name,
-                );
-
-                $lead->fill($values);
+                $lead->fill($this->mergeValues($values, $lead, $student_name));
                 $lead->save();
                 $lead = $lead->fresh();
             }
@@ -112,6 +110,31 @@ final class CreateLeadAction
         $this->dispatchWebhookIfNeeded($lead);
 
         return $lead;
+    }
+
+    /**
+     * A duplicate match is a resolution of the *same* lead, not a resubmission — it must not
+     * silently overwrite how/where the lead originally arrived. `source`, `affiliate_id`,
+     * `affiliate_code_snapshot`, and unrelated `data` keys are preserved from the existing
+     * lead; only the display name (already merge-aware) and other non-attribution fields
+     * update.
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function mergeValues(array $values, Lead $existing, string $incomingStudentName): array
+    {
+        $values['student_name'] = $this->normalizer->preferLongerDisplayName(
+            $existing->student_name,
+            $incomingStudentName,
+        );
+
+        $values['source'] = $existing->source->value;
+        $values['affiliate_id'] = $existing->affiliate_id;
+        $values['affiliate_code_snapshot'] = $existing->affiliate_code_snapshot;
+        $values['data'] = array_merge($existing->data ?? [], $values['data'] ?? []);
+
+        return $values;
     }
 
     private function resolveAffiliate(?string $affiliateCode): ?Affiliate
@@ -129,6 +152,14 @@ final class CreateLeadAction
         return $affiliate;
     }
 
+    /**
+     * The status transition is a required database state change and stays inside whatever
+     * transaction the caller opened. The outbound webhook call is not — it is registered via
+     * `DB::afterCommit()` so a rolled-back lead creation (or one still mid-transaction) can
+     * never fire a webhook for data that was never actually persisted. Outside a transaction,
+     * `afterCommit()` runs the callback immediately, preserving current behavior for callers
+     * that don't wrap this in one.
+     */
     private function dispatchWebhookIfNeeded(Lead $lead): void
     {
         if (! $this->shouldDispatchWebhook()) {
@@ -143,11 +174,13 @@ final class CreateLeadAction
             );
         }
 
-        WebhookCall::create()
-            ->url(config('services.webhooks.lead.created_url'))
-            ->payload($lead->fresh()->toArray())
-            ->useSecret(config('services.webhooks.secret'))
-            ->dispatch();
+        DB::afterCommit(function () use ($lead) {
+            WebhookCall::create()
+                ->url(config('services.webhooks.lead.created_url'))
+                ->payload($lead->fresh()->toArray())
+                ->useSecret(config('services.webhooks.secret'))
+                ->dispatch();
+        });
     }
 
     private function shouldDispatchWebhook(): bool

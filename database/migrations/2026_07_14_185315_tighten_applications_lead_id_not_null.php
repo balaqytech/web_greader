@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\NullLeadIdApplicationsExistException;
+use App\Exceptions\OrphanedLeadIdApplicationsExistException;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -8,24 +9,43 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Forward repair migration (after 100003; historical migrations are never edited). Reconciles
- * `applications.lead_id` to the canonical shape — unsigned, NOT NULL, unique, referencing
- * `leads.id` with `ON DELETE RESTRICT` — across both known schema tiers:
+ * `applications.lead_id` to the canonical shape — unsigned bigint, NOT NULL, unique,
+ * referencing `leads.id` with `ON DELETE RESTRICT` — from any of the schema shapes this
+ * migration recognizes:
  *
  *   Tier 1 (fresh installs, per the historical migration): nullable, `ON DELETE SET NULL`.
- *   Tier 2 (the reviewer-configured operational database): already NOT NULL, already
- *   `ON DELETE RESTRICT` — the canonical target already, preserved here as a no-op.
+ *   Tier 2 (the reviewer-configured operational database, and the canonical target itself):
+ *   already NOT NULL, already `ON DELETE RESTRICT` — preserved here as a no-op.
+ *   Recoverable (a prior local run of *this* migration that dropped the foreign key but did
+ *   not finish re-adding it): nullable or NOT NULL, with no lead_id foreign key at all.
  *
  * A column cannot be both NOT NULL and SET NULL on delete, so Tier 1 requires both the
  * nullability and the FK on-delete action to change together. The existing unique index on
- * `lead_id` (present on both tiers) is left untouched throughout — it is never dropped or
- * recreated. Foreign key names are discovered via schema inspection rather than assumed
- * (MySQL/MariaDB names them; SQLite does not name them at all, so drop-by-name would either
- * fail outright or — if it fell back to a guessed conventional name — could silently miss a
- * differently-named constraint on a drifted database).
+ * `lead_id` (present on every recognized shape) is left untouched by this migration's own
+ * statements throughout. On MySQL/MariaDB that means it is genuinely never dropped or
+ * recreated. On SQLite, though, any `.change()` on a column forces Laravel's full-table
+ * rebuild strategy, which drops and recreates the *entire* table (including that index) to
+ * apply the change — so on SQLite the index is physically recreated as a byproduct; only the
+ * *logical* uniqueness guarantee (not the physical index object) is preserved there.
+ *
+ * Foreign key names are discovered via schema inspection rather than assumed (MySQL/MariaDB
+ * names them; SQLite does not name them at all, so drop-by-name would either fail outright or
+ * — if it fell back to a guessed conventional name — could silently miss a differently-named
+ * constraint on a drifted database). A lead_id foreign key that exists but targets anything
+ * other than `leads.id`, or more than one lead_id foreign key, is refused before any DDL runs
+ * rather than guessed at.
  *
  * Now that CreateLeadWithApplicationAction guarantees every new application has a lead, this
- * is gated on a zero-`lead_id IS NULL` preflight (checked before any DDL) so it never silently
- * strands legacy NULL rows behind a constraint they cannot satisfy.
+ * is gated on preflight checks (before any DDL — MySQL/MariaDB DDL auto-commits and cannot be
+ * rolled back) for zero NULL lead_id rows and zero orphaned (non-NULL, but referencing a
+ * deleted/nonexistent lead) rows, so it never silently strands rows behind a constraint they
+ * cannot satisfy.
+ *
+ * On MySQL/MariaDB, the foreign key removal, the column type/nullability change, and the
+ * foreign key re-addition are issued as a *single* `ALTER TABLE` statement. Each is otherwise
+ * its own auto-committing DDL statement; combining them means the engine holds one metadata
+ * lock for the whole change and can never leave the table observable in an intermediate
+ * no-FK state if the process is interrupted mid-migration.
  */
 return new class extends Migration
 {
@@ -39,35 +59,50 @@ return new class extends Migration
 
         // Preflight before any DDL (MySQL/MariaDB DDL auto-commits and cannot be rolled back).
         $this->assertNoNullLeadIds();
-        $this->assertKnownTierShape();
+        $this->assertNoOrphanedLeadIds();
+        $this->assertKnownRecoverableShape();
 
-        $this->reconcile();
+        if ($this->isMySqlFamily()) {
+            $this->reconcileMySql();
+        } else {
+            $this->reconcileViaBlueprint();
+        }
     }
 
     /**
-     * Non-destructive rollback: this migration only ever moves a Tier 1 (nullable / SET NULL)
-     * shape toward the canonical one, and preserves a Tier 2 (already NOT NULL / RESTRICT)
-     * shape untouched. On a drifted database it cannot know whether NOT NULL / RESTRICT
-     * predated this migration (Tier 2 always had it) or was created here (Tier 1), so it
-     * cannot safely reverse either case and drops nothing.
+     * Non-destructive rollback: this migration only ever moves a Tier 1 or recoverable
+     * (nullable/no-FK, NOT NULL/no-FK) shape toward the canonical one, and preserves an
+     * already-canonical (Tier 2) shape untouched. On a drifted database it cannot know
+     * whether NOT NULL/RESTRICT predated this migration (Tier 2 always had it) or was created
+     * here, so it cannot safely reverse either case and drops nothing.
      */
     public function down(): void
     {
         // Intentionally empty — see method docblock.
     }
 
+    private function isMySqlFamily(): bool
+    {
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+    }
+
     private function isCanonical(): bool
     {
-        $column = collect(Schema::getColumns('applications'))->firstWhere('name', 'lead_id');
+        $column = $this->leadIdColumn();
 
-        if ($column === null || $column['nullable']) {
+        if ($column === null || $column['nullable'] || ! $this->isRecognizedLeadIdColumnType($column)) {
             return false;
         }
 
-        $foreignKey = $this->leadIdForeignKey();
+        $foreignKeys = $this->leadIdForeignKeys();
 
-        if ($foreignKey === null
-            || $foreignKey['foreign_table'] !== 'leads'
+        if (count($foreignKeys) !== 1) {
+            return false;
+        }
+
+        $foreignKey = $foreignKeys[0];
+
+        if ($foreignKey['foreign_table'] !== 'leads'
             || $foreignKey['foreign_columns'] !== ['id']
             || $foreignKey['on_delete'] !== 'restrict') {
             return false;
@@ -95,32 +130,169 @@ return new class extends Migration
     }
 
     /**
-     * This migration only knows how to reconcile the two documented tiers. A database with a
-     * NULL-lead_id-free but otherwise unrecognized shape (no unique index on lead_id at all)
-     * is outside that scope — fail clearly rather than guess and risk building the wrong
+     * Guards against re-adding the foreign key onto rows left dangling by a prior interrupted
+     * attempt (dropped the FK, never finished restoring it) — those would otherwise fail the
+     * `ADD CONSTRAINT` with an opaque database error instead of this clear, actionable one.
+     */
+    private function assertNoOrphanedLeadIds(): void
+    {
+        $orphanedQuery = fn () => DB::table('applications')
+            ->whereNotNull('lead_id')
+            ->whereNotExists(
+                fn ($query) => $query->select(DB::raw(1))
+                    ->from('leads')
+                    ->whereColumn('leads.id', 'applications.lead_id')
+            );
+
+        $count = $orphanedQuery()->count();
+
+        if ($count === 0) {
+            return;
+        }
+
+        $sampleIds = $orphanedQuery()->orderBy('id')->limit(10)->pluck('id')->all();
+
+        throw OrphanedLeadIdApplicationsExistException::make($count, $sampleIds);
+    }
+
+    /**
+     * This migration only knows how to reconcile the documented tiers and the recoverable
+     * no-FK states. Anything else — no unique index at all, more than one lead_id foreign
+     * key, a lead_id foreign key that targets something other than `leads.id`, or a
+     * nullability/on-delete combination that is neither Tier 1 nor a recoverable no-FK state
+     * — is outside that scope: fail clearly rather than guess and risk building the wrong
      * constraint set.
      */
-    private function assertKnownTierShape(): void
+    private function assertKnownRecoverableShape(): void
     {
         if (! $this->hasUniqueLeadIdIndex()) {
             throw new RuntimeException(
-                'applications.lead_id has no unique index. This migration only reconciles the two '.
-                'documented schema tiers (both of which already have this index); manual '.
+                'applications.lead_id has no unique index. This migration only reconciles known '.
+                'schema shapes (all of which already have this index); manual intervention is '.
+                'required on this database.'
+            );
+        }
+
+        $column = $this->leadIdColumn();
+
+        if (! $this->isRecognizedLeadIdColumnType($column)) {
+            throw new RuntimeException(
+                "applications.lead_id has an unrecognized column type ({$column['type']}). This ".
+                'migration only reconciles an integer-family lead_id column; manual intervention '.
+                'is required on this database.'
+            );
+        }
+
+        $foreignKeys = $this->leadIdForeignKeys();
+
+        if (count($foreignKeys) > 1) {
+            throw new RuntimeException(
+                'applications.lead_id has '.count($foreignKeys).' foreign keys. This migration only '.
+                'reconciles a single, unambiguous lead_id foreign key; manual intervention is '.
+                'required on this database.'
+            );
+        }
+
+        if ($foreignKeys === []) {
+            // Recoverable no-FK state (nullable or NOT NULL) — accepted regardless of
+            // nullability now that the orphan preflight above has already passed.
+            return;
+        }
+
+        $foreignKey = $foreignKeys[0];
+
+        if ($foreignKey['foreign_table'] !== 'leads' || $foreignKey['foreign_columns'] !== ['id']) {
+            $target = $foreignKey['foreign_table'].'.'.implode(',', $foreignKey['foreign_columns']);
+
+            throw new RuntimeException(
+                'applications.lead_id has a foreign key that does not reference leads.id (references '.
+                "{$target}). Refusing to drop or modify an unrecognized constraint; manual ".
                 'intervention is required on this database.'
+            );
+        }
+
+        $isTier1 = $column['nullable'] && $foreignKey['on_delete'] === 'set null';
+
+        if (! $isTier1) {
+            throw new RuntimeException(
+                'applications.lead_id has a foreign key to leads.id in an unrecognized '.
+                "combination (nullable: {$this->boolLabel($column['nullable'])}, ".
+                "on_delete: {$foreignKey['on_delete']}). This migration only reconciles the ".
+                'documented Tier 1 (nullable, SET NULL) shape; manual intervention is required '.
+                'on this database.'
             );
         }
     }
 
-    private function reconcile(): void
+    private function boolLabel(bool $value): string
     {
-        $foreignKey = $this->leadIdForeignKey();
+        return $value ? 'true' : 'false';
+    }
 
-        Schema::table('applications', function (Blueprint $table) use ($foreignKey) {
-            if ($foreignKey !== null) {
+    /**
+     * A single `ALTER TABLE` statement: the foreign key drop (if one exists), the column
+     * type/nullability change, and the foreign key re-add all happen under one metadata lock.
+     * Built and executed as raw SQL rather than through separate Blueprint commands, which
+     * would otherwise compile to separate auto-committing statements.
+     */
+    private function reconcileMySql(): void
+    {
+        $foreignKeys = $this->leadIdForeignKeys();
+        $existingName = $foreignKeys[0]['name'] ?? null;
+
+        $clauses = [];
+
+        if ($existingName !== null) {
+            $clauses[] = 'DROP FOREIGN KEY '.$this->quoteIdentifier($existingName);
+        }
+
+        $clauses[] = 'MODIFY '.$this->quoteIdentifier('lead_id').' BIGINT UNSIGNED NOT NULL';
+
+        $clauses[] = 'ADD CONSTRAINT '.$this->quoteIdentifier($this->newForeignKeyName($existingName))
+            .' FOREIGN KEY ('.$this->quoteIdentifier('lead_id').') '
+            .'REFERENCES '.$this->quoteIdentifier('leads').' ('.$this->quoteIdentifier('id').') '
+            .'ON DELETE RESTRICT';
+
+        DB::statement('ALTER TABLE '.$this->quoteIdentifier('applications').' '.implode(', ', $clauses));
+    }
+
+    /**
+     * MySQL/MariaDB refuse `DROP FOREIGN KEY x, ADD CONSTRAINT x ...` in the same `ALTER
+     * TABLE` statement — "Duplicate foreign key constraint name" — even though the drop
+     * logically happens first. The Laravel-conventional name is used whenever it would not
+     * collide with the name being dropped in this same statement; otherwise a distinct,
+     * still-recognizable alternate is used. The constraint's *name* is not part of the
+     * canonical shape this migration checks for (only its column/target/on-delete-action/
+     * uniqueness are), so this never affects idempotency.
+     */
+    private function newForeignKeyName(?string $existingName): string
+    {
+        $default = 'applications_lead_id_foreign';
+
+        return $existingName === $default ? $default.'_restrict' : $default;
+    }
+
+    private function quoteIdentifier(string $identifier): string
+    {
+        return '`'.str_replace('`', '``', $identifier).'`';
+    }
+
+    /**
+     * SQLite has no `ALTER TABLE ... MODIFY` / multi-clause equivalent; Laravel's Blueprint
+     * already compiles a column `.change()` there into a full-table rebuild that atomically
+     * reads and preserves the table's current columns/indexes/FKs, applies the requested
+     * changes, and swaps the table in — the SQLite-native equivalent of one atomic operation.
+     */
+    private function reconcileViaBlueprint(): void
+    {
+        $foreignKeys = $this->leadIdForeignKeys();
+
+        Schema::table('applications', function (Blueprint $table) use ($foreignKeys) {
+            if ($foreignKeys !== []) {
                 // MySQL/MariaDB name their foreign keys and require the exact name to drop
                 // one; SQLite never names them, so dropForeign() must be given the column
                 // instead (it matches by column when there is no name to match by).
-                $table->dropForeign($foreignKey['name'] ?? ['lead_id']);
+                $table->dropForeign($foreignKeys[0]['name'] ?? ['lead_id']);
             }
 
             $table->unsignedBigInteger('lead_id')->nullable(false)->change();
@@ -129,13 +301,39 @@ return new class extends Migration
         });
     }
 
+    private function isRecognizedLeadIdColumnType(?array $column): bool
+    {
+        if ($column === null) {
+            return false;
+        }
+
+        if ($this->isMySqlFamily()) {
+            return $column['type_name'] === 'bigint' && str_contains($column['type'], 'unsigned');
+        }
+
+        // SQLite has no distinct unsigned/bigint storage class; every integer variant
+        // normalizes to the same "integer" type_name, so that is the closest verifiable
+        // equivalent there.
+        return $column['type_name'] === 'integer';
+    }
+
     /**
-     * @return array{name: ?string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: string, on_delete: string}|null
+     * @return array{name: ?string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: string, on_delete: string}
      */
-    private function leadIdForeignKey(): ?array
+    private function leadIdColumn(): ?array
+    {
+        return collect(Schema::getColumns('applications'))->firstWhere('name', 'lead_id');
+    }
+
+    /**
+     * @return list<array{name: ?string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: string, on_delete: string}>
+     */
+    private function leadIdForeignKeys(): array
     {
         return collect(Schema::getForeignKeys('applications'))
-            ->first(fn (array $foreignKey) => $foreignKey['columns'] === ['lead_id']);
+            ->filter(fn (array $foreignKey) => $foreignKey['columns'] === ['lead_id'])
+            ->values()
+            ->all();
     }
 
     private function hasUniqueLeadIdIndex(): bool

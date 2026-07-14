@@ -5,15 +5,15 @@ namespace App\Filament\Resources\Applications\Schemas;
 use App\Enums\Gender;
 use App\Enums\GuardianRelationship;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class CreateApplicationForm
 {
@@ -27,7 +27,14 @@ class CreateApplicationForm
                         ->schema([
                             Select::make('branch_id')
                                 ->label(__('admin.branch.label'))
-                                ->relationship('branch', 'name')
+                                ->relationship(
+                                    'branch',
+                                    'name',
+                                    modifyQueryUsing: fn (Builder $query) => static::restrictBranchQueryForEmployee($query),
+                                )
+                                ->default(static::defaultBranchIdForEmployee())
+                                ->disabled(static::defaultBranchIdForEmployee() !== null)
+                                ->dehydrated()
                                 ->required(),
                             Select::make('program_id')
                                 ->label(__('admin.program.name'))
@@ -96,7 +103,7 @@ class CreateApplicationForm
                                 ->label(__('admin.application.father_is_guardian'))
                                 ->live()
                                 ->afterStateHydrated(function ($component, Get $get) {
-                                    $component->state(!$get('mother_is_guardian'));
+                                    $component->state(! $get('mother_is_guardian'));
                                 }),
                         ])
                         ->columns(2),
@@ -161,5 +168,29 @@ class CreateApplicationForm
                 ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    /**
+     * UX-only restriction: a branch-scoped employee only sees their own branch in the
+     * select. This does not replace server-side authorization — CreateLeadWithApplicationAction
+     * re-checks the acting user's branch against the submitted branch_id independently, so a
+     * tampered request is still rejected even if this query were bypassed.
+     */
+    private static function restrictBranchQueryForEmployee(Builder $query): Builder
+    {
+        $branchId = static::defaultBranchIdForEmployee();
+
+        return $branchId === null ? $query : $query->where('id', $branchId);
+    }
+
+    private static function defaultBranchIdForEmployee(): ?int
+    {
+        $user = Auth::user();
+
+        if ($user === null || $user->hasRole('super_admin')) {
+            return null;
+        }
+
+        return $user->branch_id;
     }
 }
