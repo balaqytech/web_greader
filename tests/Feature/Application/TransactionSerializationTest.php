@@ -162,8 +162,11 @@ it('records an uploaded signature once and rejects a stale upload replay', funct
     expect(fn () => app(UploadSignedContractAction::class)->execute($stale, 'contracts/uploads/second.pdf'))
         ->toThrow(StaleApplicationStateException::class);
 
+    // The stale replay's own distinct candidate is left in place, not deleted: this action
+    // never created it and cannot prove exclusive ownership, so a failure is reported, not
+    // compensated by storage deletion. It becomes a later cleanup job's concern.
     expect($application->fresh()->contract->file_path)->toBe('contracts/uploads/first.pdf')
-        ->and(Storage::disk('public')->exists('contracts/uploads/second.pdf'))->toBeFalse()
+        ->and(Storage::disk('public')->exists('contracts/uploads/second.pdf'))->toBeTrue()
         ->and($application->activities()->where('to_state', AwaitingBranchReview::getMorphClass())->count())->toBe(1);
 });
 

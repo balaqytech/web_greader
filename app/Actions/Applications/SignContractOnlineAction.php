@@ -55,16 +55,27 @@ final class SignContractOnlineAction
                     throw new InvalidArgumentException(__('alerts.application.contract_token_invalid_or_expired'));
                 }
 
+                // KNOWN PHASE 0 GAP, not fixed here: this re-renders the contract body from
+                // *current* data at signing time — it is not a stored snapshot of the exact
+                // body that was actually displayed to the signer when the page was rendered
+                // (GET). If the program's contract template or the application's data changes
+                // between GET and this POST, the signed PDF can legitimately differ from what
+                // the signer saw. Electronic signing is not production-ready until contract
+                // generation persists an immutable `rendered_body` (+ `template_hash`) and both
+                // display and signing reuse that stored snapshot instead of re-rendering — see
+                // the contract-versioning section of docs/target-registration-architecture.md.
                 $contractBody = app(RenderApplicationContractAction::class)->execute($application);
 
                 if (! Storage::disk('public')->put($signaturePath, $imageBytes)) {
                     throw new RuntimeException("Failed to write signature image to storage path [{$signaturePath}].");
                 }
 
+                // Resolve through the same 'public' disk the signature was actually written
+                // to — the default disk resolves URLs through a different serving route.
                 $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
                     'title' => 'test',
                     'contract' => $contractBody,
-                    'signature' => Storage::url($signaturePath),
+                    'signature' => Storage::disk('public')->url($signaturePath),
                 ]);
 
                 $lockedContract->update([

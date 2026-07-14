@@ -4,23 +4,28 @@ namespace App\Actions\Applications;
 
 use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
-use App\Models\ApplicationContract;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Throwable;
 
 /**
  * Staff upload of a signed contract copy. The application row is locked and its persisted
  * state re-verified (application -> contract lock order) before the contract is touched, so
  * a stale replay cannot overwrite an already-signed contract or duplicate the transition.
  * Rejects a missing or already-signed-off contract, and a candidate path that does not
- * actually exist on disk; contract update, application state, and activity are written in one
- * transaction. If the database work fails, the uploaded file is compensated (deleted) — but
- * only when no persisted contract still references that exact path, so a stale replay that
- * happens to reuse the winning request's path cannot delete the winner's artifact.
+ * actually exist on disk — checked once up front and re-checked under lock, immediately
+ * before persisting, since a separate process could remove the candidate in between; contract
+ * update, application state, and activity are written in one transaction.
+ *
+ * This action never created the candidate file (the upload component did) and therefore
+ * cannot prove exclusive ownership of it. On any failure — stale state, a missing contract,
+ * or anything else — the candidate is deliberately left on disk rather than deleted: a
+ * query-then-delete check cannot rule out a concurrent transaction persisting a reference to
+ * that same path a moment later, and deleting another transaction's winning artifact would be
+ * far worse than leaving an orphan behind. Reclaiming genuinely orphaned uploads is the job of
+ * a separate, age-threshold cleanup process, not this action.
  */
 final class UploadSignedContractAction
 {
@@ -30,42 +35,31 @@ final class UploadSignedContractAction
             throw new ApplicationIncompleteException(__('alerts.application.uploaded_file_missing'));
         }
 
-        try {
-            DB::transaction(function () use ($application, $filePath, $notes) {
-                $locked = LockApplication::inState($application, AwaitingContractSignature::class);
+        DB::transaction(function () use ($application, $filePath, $notes) {
+            $locked = LockApplication::inState($application, AwaitingContractSignature::class);
 
-                $contract = $locked->contract()->lockForUpdate()->first();
+            $contract = $locked->contract()->lockForUpdate()->first();
 
-                if ($contract === null || $contract->isSignedOff()) {
-                    throw new ApplicationIncompleteException(__('alerts.application.contract_missing'));
-                }
+            if ($contract === null || $contract->isSignedOff()) {
+                throw new ApplicationIncompleteException(__('alerts.application.contract_missing'));
+            }
 
-                $contract->update([
-                    'file_path' => $filePath,
-                    'signed_at' => now(),
-                    'signed_by_applicant' => false,
-                ]);
+            if (! Storage::disk('public')->exists($filePath)) {
+                throw new ApplicationIncompleteException(__('alerts.application.uploaded_file_missing'));
+            }
 
-                $locked->status->transitionTo(
-                    AwaitingBranchReview::class,
-                    $notes ?? __('alerts.application.application_contract_uploaded_by_staff'),
-                );
-            }, attempts: 3);
-        } catch (Throwable $e) {
-            $this->deleteIfUnreferenced($filePath);
+            $contract->update([
+                'file_path' => $filePath,
+                'signed_at' => now(),
+                'signed_by_applicant' => false,
+            ]);
 
-            throw $e;
-        }
+            $locked->status->transitionTo(
+                AwaitingBranchReview::class,
+                $notes ?? __('alerts.application.application_contract_uploaded_by_staff'),
+            );
+        }, attempts: 3);
 
         return $application->fresh();
-    }
-
-    private function deleteIfUnreferenced(string $filePath): void
-    {
-        if (ApplicationContract::where('file_path', $filePath)->exists()) {
-            return;
-        }
-
-        Storage::disk('public')->delete($filePath);
     }
 }

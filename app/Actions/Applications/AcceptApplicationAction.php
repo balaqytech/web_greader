@@ -9,6 +9,7 @@ use App\Models\Application;
 use App\Models\Guardian;
 use App\Models\Scopes\BranchScope;
 use App\Models\Student;
+use App\Support\Database\DuplicateKeyViolation;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -90,7 +91,7 @@ class AcceptApplicationAction
      */
     private function resolveGuardianInsertRace(QueryException $exception, string $idNumber, ?string $phone, array $attributes): Guardian
     {
-        if (! $this->isDuplicateKeyViolation($exception)) {
+        if (! DuplicateKeyViolation::detect($exception)) {
             $this->rethrowIntegrityFailure($exception);
         }
 
@@ -125,24 +126,20 @@ class AcceptApplicationAction
             throw GuardianConflictException::phone((string) $phone);
         }
 
-        $guardian->update($attributes);
+        // The pre-check above found no conflicting owner, but a concurrent transaction can
+        // still win the phone uniquely between that check and this update — the only unique
+        // column this update writes (id_number is never changed here).
+        try {
+            $guardian->update($attributes);
+        } catch (QueryException $exception) {
+            if (! DuplicateKeyViolation::detect($exception)) {
+                $this->rethrowIntegrityFailure($exception);
+            }
 
-        return $guardian;
-    }
-
-    /**
-     * MySQL/MariaDB report a duplicate-key violation as driver error 1062; SQLite (used by
-     * the test suite) reports it as driver error 19 (SQLITE_CONSTRAINT). SQLSTATE 23000 alone
-     * is not specific enough — it is also reported for foreign-key and NOT NULL violations,
-     * which must not be misrouted into a "unique conflict" domain exception.
-     */
-    private function isDuplicateKeyViolation(QueryException $exception): bool
-    {
-        if ((string) $exception->getCode() !== '23000') {
-            return false;
+            throw GuardianConflictException::phone((string) $phone);
         }
 
-        return in_array($exception->errorInfo[1] ?? null, [1062, 19], true);
+        return $guardian;
     }
 
     /**
@@ -183,7 +180,7 @@ class AcceptApplicationAction
         try {
             return Student::create($this->studentAttributes($application, $guardian) + ['civil_number' => $civilNumber]);
         } catch (QueryException $exception) {
-            if (! $this->isDuplicateKeyViolation($exception)) {
+            if (! DuplicateKeyViolation::detect($exception)) {
                 $this->rethrowIntegrityFailure($exception);
             }
 

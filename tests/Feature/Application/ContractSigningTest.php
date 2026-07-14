@@ -67,6 +67,40 @@ it('signs the contract electronically and advances to branch review', function (
         ->and($application->activities()->where('to_state', AwaitingBranchReview::getMorphClass())->exists())->toBeTrue();
 });
 
+it('embeds a signature URL that resolves through the public disk, not the default disk', function () {
+    config(['filesystems.default' => 'local']);
+    // Storage::fake() (called for 'public' in beforeEach) does not preserve the disk's own
+    // 'url' config, so it must be passed back explicitly here or this test cannot distinguish
+    // the 'public' disk's URL shape from the default disk's.
+    Storage::fake('public', ['url' => config('filesystems.disks.public.url')]);
+
+    $application = Application::factory()->awaitingContractSignature()->create();
+
+    $capturedSignatureUrl = null;
+
+    $pdfMock = Mockery::mock(CreatePdfAction::class);
+    $pdfMock->shouldReceive('execute')
+        ->once()
+        ->withArgs(function (string $view, string $path, array $data) use (&$capturedSignatureUrl) {
+            $capturedSignatureUrl = $data['signature'];
+
+            return true;
+        })
+        ->andReturnUsing(function (string $view, string $path) {
+            Storage::disk('public')->put($path, 'pdf-bytes');
+
+            return Storage::disk('public')->url($path);
+        });
+    app()->instance(CreatePdfAction::class, $pdfMock);
+
+    app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signature());
+
+    // Storage::url() on the default ('local') disk resolves through a different serving
+    // route ('/storage/...' with no host) than 'public' ('http://.../storage/...').
+    expect($capturedSignatureUrl)->toStartWith(rtrim(config('app.url'), '/').'/storage/')
+        ->and($capturedSignatureUrl)->not->toStartWith('/storage/');
+});
+
 it('records a staff-uploaded signed copy and advances to branch review', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
     Storage::disk('public')->put('contracts/uploads/signed.pdf', 'signed');
@@ -81,18 +115,40 @@ it('records a staff-uploaded signed copy and advances to branch review', functio
         ->and($application->contract->isSignedOff())->toBeTrue();
 });
 
-it('rejects an uploaded signed copy when the contract is missing', function () {
+it('rejects an uploaded signed copy when the contract is missing, leaving the candidate as an orphan', function () {
     $application = Application::factory()->create(['status' => AwaitingContractSignature::$name]);
     Storage::disk('public')->put('contracts/uploads/x.pdf', 'uploaded');
 
     expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/x.pdf'))
         ->toThrow(ApplicationIncompleteException::class);
+
+    // A distinct failed candidate is not automatically deleted: this action cannot prove it
+    // has exclusive ownership of a file it never wrote itself. Reclaiming it is a separate,
+    // age-threshold cleanup job's concern, not this action's.
+    expect(Storage::disk('public')->exists('contracts/uploads/x.pdf'))->toBeTrue();
 });
 
 it('rejects an upload when the referenced storage path does not exist', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
 
     expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/does-not-exist.pdf'))
+        ->toThrow(ApplicationIncompleteException::class);
+
+    expect($application->fresh()->contract->file_path)->toBeNull()
+        ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
+});
+
+it('rejects signing when the candidate file is deleted between the initial call and locked persistence', function () {
+    $application = Application::factory()->awaitingContractSignature()->create();
+
+    // Simulate a separate process removing the candidate in the window between this action's
+    // initial fail-fast check (before any lock) and the authoritative re-check taken under
+    // the application/contract locks, immediately before persisting.
+    $fakeDisk = Mockery::mock(Cloud::class);
+    $fakeDisk->shouldReceive('exists')->twice()->andReturn(true, false);
+    Storage::shouldReceive('disk')->with('public')->andReturn($fakeDisk);
+
+    expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/vanishing.pdf'))
         ->toThrow(ApplicationIncompleteException::class);
 
     expect($application->fresh()->contract->file_path)->toBeNull()
@@ -172,7 +228,7 @@ it('rejects an oversized signature payload, leaving no artifacts', function () {
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
-it('compensates the uploaded file and rolls back when the upload transaction fails', function () {
+it('rolls back the DB state when the upload transaction fails, leaving the candidate file untouched', function () {
     app()->bind(RecordApplicationActivityAction::class, fn () => new class
     {
         public function handle($application, $fromState, $toState, $notes = null)
@@ -189,7 +245,10 @@ it('compensates the uploaded file and rolls back when the upload transaction fai
 
     $application->refresh();
 
+    // This action never created the candidate file and cannot prove exclusive ownership of
+    // it, so a failure must never delete it — only report the signing failure. It is left as
+    // an orphan for a later age-threshold cleanup job.
     expect($application->status)->toBeInstanceOf(AwaitingContractSignature::class)
         ->and($application->contract->file_path)->toBeNull()
-        ->and(Storage::disk('public')->exists('contracts/uploads/signed.pdf'))->toBeFalse();
+        ->and(Storage::disk('public')->exists('contracts/uploads/signed.pdf'))->toBeTrue();
 });

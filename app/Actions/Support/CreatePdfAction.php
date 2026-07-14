@@ -19,6 +19,10 @@ class CreatePdfAction
             throw new RuntimeException("Failed to write generated PDF to storage path [{$path}].");
         }
 
-        return Storage::url($path);
+        // Must resolve through the same disk the file was actually written to. The default
+        // disk (`local`) resolves URLs through its own local-serving route, which points at a
+        // different root directory and would silently 404 for a file that only exists on
+        // `public`.
+        return Storage::disk('public')->url($path);
     }
 }
