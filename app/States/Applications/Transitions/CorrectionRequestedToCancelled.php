@@ -11,8 +11,8 @@ use App\States\Applications\CorrectionRequested;
  */
 class CorrectionRequestedToCancelled extends CancelApplicationTransition
 {
-    protected function fromStateName(): string
+    protected function fromState(): string
     {
-        return CorrectionRequested::$name;
+        return CorrectionRequested::class;
     }
 }

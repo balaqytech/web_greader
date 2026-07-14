@@ -9,6 +9,7 @@ use App\Models\Guardian;
 use App\Models\Scopes\BranchScope;
 use App\Models\Student;
 use App\Models\StudentContact;
+use App\Models\User;
 use App\States\Applications\Accepted;
 use App\States\Applications\AwaitingBranchReview;
 
@@ -47,16 +48,26 @@ it('updates and links an existing same-branch student on acceptance', function (
         ->and($application->student_id)->toBe($student->id);
 });
 
-it('refuses to accept a student that belongs to another branch', function () {
+it('refuses to accept a student that belongs to another branch, with BranchScope active', function () {
     $branchA = Branch::factory()->create();
     $branchB = Branch::factory()->create();
+
+    // Authenticate a non-super-admin employee bound to branch B so BranchScope is genuinely
+    // active: an ordinary read cannot see the branch-A student.
+    $this->actingAs(User::factory()->create(['branch_id' => $branchB->id]));
+
     $student = makeStudent($branchA, 'CIV-CROSS');
+
+    expect(Student::where('civil_number', 'CIV-CROSS')->exists())->toBeFalse()
+        ->and(Student::withoutGlobalScope(BranchScope::class)->where('civil_number', 'CIV-CROSS')->exists())->toBeTrue();
 
     $application = Application::factory()->awaitingBranchReview()->create([
         'branch_id' => $branchB->id,
         'student_civil_number' => 'CIV-CROSS',
     ]);
 
+    // Acceptance finds the cross-branch student only through the intentional scope bypass,
+    // then refuses to mutate/transfer it.
     expect(fn () => $application->status->transitionTo(Accepted::class))
         ->toThrow(StudentBranchConflictException::class);
 

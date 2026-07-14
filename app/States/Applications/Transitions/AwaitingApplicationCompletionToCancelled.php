@@ -6,8 +6,8 @@ use App\States\Applications\AwaitingApplicationCompletion;
 
 class AwaitingApplicationCompletionToCancelled extends CancelApplicationTransition
 {
-    protected function fromStateName(): string
+    protected function fromState(): string
     {
-        return AwaitingApplicationCompletion::$name;
+        return AwaitingApplicationCompletion::class;
     }
 }

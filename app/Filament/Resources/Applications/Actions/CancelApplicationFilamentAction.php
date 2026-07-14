@@ -8,6 +8,7 @@ use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
+use App\States\Applications\CorrectionRequested;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -43,7 +44,8 @@ class CancelApplicationFilamentAction extends Action
                 && ($record->status instanceof AwaitingRegistrationFee
                     || $record->status instanceof AwaitingApplicationCompletion
                     || $record->status instanceof AwaitingContractSignature
-                    || $record->status instanceof AwaitingBranchReview)
+                    || $record->status instanceof AwaitingBranchReview
+                    || $record->status instanceof CorrectionRequested)
                 && ($record->status->canTransitionTo(Cancelled::class) ?? false)
         );
 

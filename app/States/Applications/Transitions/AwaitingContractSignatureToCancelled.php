@@ -6,8 +6,8 @@ use App\States\Applications\AwaitingContractSignature;
 
 class AwaitingContractSignatureToCancelled extends CancelApplicationTransition
 {
-    protected function fromStateName(): string
+    protected function fromState(): string
     {
-        return AwaitingContractSignature::$name;
+        return AwaitingContractSignature::class;
     }
 }

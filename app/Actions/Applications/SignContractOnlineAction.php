@@ -43,18 +43,19 @@ final class SignContractOnlineAction
         $signaturePath = 'contracts/signatures/'.$filename;
         $pdfPath = 'pdfs/contracts/'.time().'_'.Str::random(8).'.pdf';
 
-        Storage::disk('public')->put($signaturePath, $imageBase64);
-
-        $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
-            'title' => 'test',
-            'contract' => $contract,
-            'signature' => Storage::url($signaturePath),
-        ]);
-
         try {
-            // Persist the signed contract first, then run the guarded transition — the
-            // transition rejects an unsigned contract, so ordering matters. Contract
-            // update, application state, and activity all commit in one transaction.
+            // Write artifacts and persist inside one guarded boundary. Signature storage,
+            // PDF generation, and the database work are all compensated on failure — not
+            // just database failures. The guarded transition locks the row and rejects a
+            // stale state, so a replay cannot overwrite the first signer's artifacts.
+            Storage::disk('public')->put($signaturePath, $imageBase64);
+
+            $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
+                'title' => 'test',
+                'contract' => $contract,
+                'signature' => Storage::url($signaturePath),
+            ]);
+
             DB::transaction(function () use ($applicationContract, $signaturePath, $fileUrl) {
                 $applicationContract->update([
                     'signed_at' => now(),
@@ -69,7 +70,6 @@ final class SignContractOnlineAction
                 );
             });
         } catch (Throwable $e) {
-            // Compensate the artifacts written before the failed database work.
             Storage::disk('public')->delete([$signaturePath, $pdfPath]);
 
             throw $e;

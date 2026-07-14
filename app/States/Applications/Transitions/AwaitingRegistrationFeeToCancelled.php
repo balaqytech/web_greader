@@ -6,8 +6,8 @@ use App\States\Applications\AwaitingRegistrationFee;
 
 class AwaitingRegistrationFeeToCancelled extends CancelApplicationTransition
 {
-    protected function fromStateName(): string
+    protected function fromState(): string
     {
-        return AwaitingRegistrationFee::$name;
+        return AwaitingRegistrationFee::class;
     }
 }

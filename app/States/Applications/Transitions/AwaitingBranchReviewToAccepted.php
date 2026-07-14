@@ -8,15 +8,16 @@ use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\Accepted;
 use App\States\Applications\AwaitingBranchReview;
+use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 /**
- * Baseline atomic acceptance (§3.5, §4.1): guards that the current contract is signed,
- * then upserts guardian/student/contacts, back-links student_id, flips the state, and
- * records the approver — all in one transaction so a failure rolls everything back.
- * The version-aware (highest-version, non-superseded) guard is added with contract
- * versioning in a later phase (commit 15).
+ * Baseline atomic acceptance (§3.5, §4.1). The row is locked and its persisted state
+ * re-verified before writing, so a stale replay cannot repeat acceptance (double-creating
+ * students/guardians). Guards a signed contract, then upserts guardian/student/contacts,
+ * back-links student_id, flips the state, and records the approver in one transaction.
+ * The version-aware guard is added with contract versioning in a later phase.
  */
 class AwaitingBranchReviewToAccepted extends Transition
 {
@@ -28,27 +29,27 @@ class AwaitingBranchReviewToAccepted extends Transition
     public function handle(): Application
     {
         return DB::transaction(function () {
-            $contract = $this->application->contract()->first();
+            $application = LockApplication::inState($this->application, AwaitingBranchReview::class);
+
+            $contract = $application->contract()->first();
 
             if ($contract === null || ! $contract->isSignedOff()) {
                 throw new ApplicationIncompleteException(__('alerts.application.contract_not_signed'));
             }
 
-            $fromState = AwaitingBranchReview::$name;
+            app(AcceptApplicationAction::class)->handle($application);
 
-            app(AcceptApplicationAction::class)->handle($this->application);
-
-            $this->application->status = Accepted::class;
-            $this->application->save();
+            $application->status = Accepted::class;
+            $application->save();
 
             app(RecordApplicationActivityAction::class)->handle(
-                $this->application,
-                $fromState,
+                $application,
+                AwaitingBranchReview::$name,
                 Accepted::$name,
                 $this->notes,
             );
 
-            return $this->application;
+            return $application;
         });
     }
 }

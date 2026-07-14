@@ -29,5 +29,9 @@ return [
         'application_contract_uploaded_by_staff' => 'تم رفع نسخة العقد الموقّعة بواسطة الموظف.',
         'rejection_reason_required' => 'سبب الرفض مطلوب.',
         'cancellation_note_required' => 'سبب الإلغاء مطلوب.',
+
+        // Guardian uniqueness conflicts during acceptance
+        'guardian_phone_conflict' => 'رقم الهاتف :phone مسجّل بالفعل لولي أمر آخر.',
+        'guardian_identity_conflict' => 'رقم الهوية :id_number مسجّل بالفعل لولي أمر آخر.',
     ],
 ];

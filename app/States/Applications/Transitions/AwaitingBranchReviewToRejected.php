@@ -7,13 +7,16 @@ use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\Rejected;
+use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 /**
- * Rejects an application under branch review. A nonblank reason is required (supplied to
- * the transition or already set on the record); there is no default fallback. Reason,
- * state, and activity are persisted in one transaction.
+ * Rejects an application under branch review. The row is locked and its persisted state
+ * re-verified before writing, so a stale replay cannot repeat rejection or duplicate the
+ * activity. A nonblank reason is required (supplied to the transition or already set on the
+ * record); there is no default fallback. Reason, state, and activity persist in one
+ * transaction.
  */
 class AwaitingBranchReviewToRejected extends Transition
 {
@@ -25,26 +28,26 @@ class AwaitingBranchReviewToRejected extends Transition
     public function handle(): Application
     {
         return DB::transaction(function () {
-            $reason = filled($this->reason) ? $this->reason : $this->application->rejection_reason;
+            $application = LockApplication::inState($this->application, AwaitingBranchReview::class);
+
+            $reason = filled($this->reason) ? $this->reason : $application->rejection_reason;
 
             if (blank($reason)) {
                 throw new ApplicationIncompleteException(__('alerts.application.rejection_reason_required'));
             }
 
-            $fromState = AwaitingBranchReview::$name;
-
-            $this->application->rejection_reason = $reason;
-            $this->application->status = Rejected::class;
-            $this->application->save();
+            $application->rejection_reason = $reason;
+            $application->status = Rejected::class;
+            $application->save();
 
             app(RecordApplicationActivityAction::class)->handle(
-                $this->application,
-                $fromState,
+                $application,
+                AwaitingBranchReview::$name,
                 Rejected::$name,
                 $reason,
             );
 
-            return $this->application;
+            return $application;
         });
     }
 }

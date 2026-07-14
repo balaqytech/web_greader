@@ -3,11 +3,13 @@
 namespace App\Actions\Applications;
 
 use App\Enums\GuardianRelationship;
+use App\Exceptions\GuardianConflictException;
 use App\Exceptions\StudentBranchConflictException;
 use App\Models\Application;
 use App\Models\Guardian;
 use App\Models\Scopes\BranchScope;
 use App\Models\Student;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -56,13 +58,40 @@ class AcceptApplicationAction
 
         $guardian = Guardian::where('id_number', $idNumber)->lockForUpdate()->first();
 
+        // Explicit phone-uniqueness conflict: the phone already belongs to a *different*
+        // guardian. Surfaced as a domain error rather than a raw integrity violation.
+        $phoneOwner = Guardian::where('phone', $phone)
+            ->when($guardian, fn ($query) => $query->whereKeyNot($guardian->getKey()))
+            ->lockForUpdate()
+            ->first();
+
+        if ($phoneOwner) {
+            throw GuardianConflictException::phone((string) $phone);
+        }
+
         if ($guardian) {
             $guardian->update($attributes);
 
             return $guardian;
         }
 
-        return Guardian::create($attributes + ['id_number' => $idNumber]);
+        // lockForUpdate does not lock a row that does not exist, so a concurrent insert can
+        // still win the race — convert the resulting unique violation into a domain error
+        // (inside the acceptance transaction, so nothing partial is left behind).
+        try {
+            return Guardian::create($attributes + ['id_number' => $idNumber]);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueViolation($exception)) {
+                throw GuardianConflictException::identity((string) $idNumber);
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function isUniqueViolation(QueryException $exception): bool
+    {
+        return (string) $exception->getCode() === '23000';
     }
 
     private function resolveStudent(Application $application, Guardian $guardian): Student
