@@ -2,7 +2,6 @@
 
 use App\Actions\Leads\CreateLeadWithApplicationAction;
 use App\Exceptions\LeadAlreadyConvertedException;
-use App\Filament\Resources\Applications\Pages\CreateApplication;
 use App\Models\Application;
 use App\Models\Branch;
 use App\Models\Lead;
@@ -11,27 +10,12 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
-
-function superAdminUser(?int $branchId = null): User
-{
-    $user = User::factory()->create(['branch_id' => $branchId]);
-
-    $permission = Permission::firstOrCreate(['name' => 'Create:Application', 'guard_name' => 'web']);
-    $role = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
-    $role->givePermissionTo($permission);
-    $user->assignRole($role);
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-    return $user;
-}
+use Tests\Support\ManualEntryFixtures;
 
 it('allows a branch employee to create an application in their own branch', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
 
@@ -40,14 +24,14 @@ it('allows a branch employee to create an application in their own branch', func
 });
 
 it('rejects a tampered cross-branch request from a branch employee with zero writes', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $otherBranch = Branch::factory()->create();
 
     // The acting user belongs to $otherBranch, but the submitted branch_id targets $branch —
     // a tampered request (client-side branch select was disabled, but the request payload
     // was edited directly).
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($otherBranch->id);
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($otherBranch->id);
 
     expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
         ->toThrow(AuthorizationException::class);
@@ -57,9 +41,9 @@ it('rejects a tampered cross-branch request from a branch employee with zero wri
 });
 
 it('allows a branchless central user to create in any branch', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser(null);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser(null);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
 
@@ -68,10 +52,10 @@ it('allows a branchless central user to create in any branch', function () {
 });
 
 it('allows super_admin to create in a branch other than their own', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $otherBranch = Branch::factory()->create();
-    $data = manualEntryData($branch, $program);
-    $user = superAdminUser($otherBranch->id);
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::superAdminUser($otherBranch->id);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
 
@@ -80,8 +64,8 @@ it('allows super_admin to create in a branch other than their own', function () 
 });
 
 it('rejects a user missing the Create:Application permission entirely, with zero writes', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
     $user = User::factory()->create(['branch_id' => $branch->id]);
 
     expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
@@ -92,7 +76,7 @@ it('rejects a user missing the Create:Application permission entirely, with zero
 });
 
 it('authorizes before any lead lookup, merge, or write', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $otherBranch = Branch::factory()->create();
 
     // A pre-existing lead that would otherwise dedup-match the tampered request, so if
@@ -105,12 +89,12 @@ it('authorizes before any lead lookup, merge, or write', function () {
     ]);
     $originalGuardianName = $existingLead->guardian_name;
 
-    $data = manualEntryData($branch, $program, [
+    $data = ManualEntryFixtures::manualEntryData($branch, $program, [
         'father_phone' => '091234567',
         'father_is_guardian' => true,
         'mother_is_guardian' => false,
     ]);
-    $user = authorizedManualEntryUser($otherBranch->id);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($otherBranch->id);
 
     expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
         ->toThrow(AuthorizationException::class);
@@ -120,7 +104,7 @@ it('authorizes before any lead lookup, merge, or write', function () {
 });
 
 it('detects an already-converted lead even when its application predates a branch reassignment', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $reassignedBranch = Branch::factory()->create();
     $program->branches()->attach($reassignedBranch, ['price' => 100]);
 
@@ -148,13 +132,13 @@ it('detects an already-converted lead even when its application predates a branc
     // BranchScope to the acting user's own branch_id, it would miss the application (whose
     // branch_id is $branch's, not $reassignedBranch's) and let a second, illegal application
     // through for the same lead.
-    $data = manualEntryData($reassignedBranch, $program, [
+    $data = ManualEntryFixtures::manualEntryData($reassignedBranch, $program, [
         'student_name' => $lead->student_name,
         'father_phone' => '091234567',
         'father_is_guardian' => true,
         'mother_is_guardian' => false,
     ]);
-    $user = authorizedManualEntryUser($reassignedBranch->id);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($reassignedBranch->id);
 
     expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
         ->toThrow(LeadAlreadyConvertedException::class);
@@ -163,17 +147,11 @@ it('detects an already-converted lead even when its application predates a branc
 });
 
 it('passes the authenticated Filament user through to the composite action', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    Auth::login(authorizedManualEntryUser($branch->id));
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    Auth::login(ManualEntryFixtures::authorizedManualEntryUser($branch->id));
 
-    $page = new class extends CreateApplication
-    {
-        public function createRecordFromTrait(array $data): Application
-        {
-            return $this->handleRecordCreation($data);
-        }
-    };
+    $page = ManualEntryFixtures::manualEntryPage();
 
     $application = $page->createRecordFromTrait($data);
 
@@ -181,18 +159,12 @@ it('passes the authenticated Filament user through to the composite action', fun
 });
 
 it('surfaces a branch-authorization failure as a field-level validation error on the Filament page', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $otherBranch = Branch::factory()->create();
-    $data = manualEntryData($branch, $program);
-    Auth::login(authorizedManualEntryUser($otherBranch->id));
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    Auth::login(ManualEntryFixtures::authorizedManualEntryUser($otherBranch->id));
 
-    $page = new class extends CreateApplication
-    {
-        public function createRecordFromTrait(array $data): Application
-        {
-            return $this->handleRecordCreation($data);
-        }
-    };
+    $page = ManualEntryFixtures::manualEntryPage();
 
     try {
         $page->createRecordFromTrait($data);

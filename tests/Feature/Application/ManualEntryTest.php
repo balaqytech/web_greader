@@ -4,116 +4,25 @@ use App\Actions\Applications\CreateApplicationAction;
 use App\Actions\Leads\CreateLeadAction;
 use App\Actions\Leads\CreateLeadWithApplicationAction;
 use App\DTOs\Application\CreateApplicationDTO;
-use App\Enums\Gender;
-use App\Enums\GuardianRelationship;
 use App\Enums\ProgramType;
 use App\Enums\Source;
+use App\Exceptions\InvalidSeasonForProgramException;
 use App\Exceptions\LeadAlreadyConvertedException;
 use App\Exceptions\ProgramNotAvailableInBranchException;
-use App\Filament\Resources\Applications\Pages\CreateApplication;
 use App\Models\Affiliate;
 use App\Models\Application;
 use App\Models\Branch;
 use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
-use App\Models\User;
 use App\States\Applications\AwaitingRegistrationFee;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
-
-function createAvailableBranchAndProgram(): array
-{
-    $branch = Branch::factory()->create();
-    $program = Program::factory()->create();
-    $program->branches()->attach($branch, ['price' => 100]);
-
-    return [$branch, $program];
-}
-
-/**
- * Deterministic, always-valid Omani local numbers (8 digits, "91" + an incrementing
- * counter). A prior version used fake()->numerify('9#######'), which could occasionally
- * generate a value starting with the bare "968" country-code prefix — normalize_phone_number()
- * rejects that shape (no leading '+' or '0'), causing a rare, non-deterministic test failure.
- * Starting at 91000000 keeps every generated value far outside the 968xxxxx range for any
- * realistic test-suite call volume.
- */
-function nextDeterministicPhone(): string
-{
-    static $counter = 91000000;
-
-    return (string) $counter++;
-}
-
-/**
- * @return array<string, mixed>
- */
-function manualEntryData(Branch $branch, Program $program, array $overrides = []): array
-{
-    return array_merge([
-        'branch_id' => $branch->id,
-        'program_id' => $program->id,
-
-        'student_name' => 'Student '.fake()->unique()->numerify('####'),
-        'student_gender' => Gender::Male,
-        'student_birth_date' => '2015-01-01',
-        'student_civil_number' => fake()->unique()->numerify('########'),
-        'student_state' => 'Muscat',
-        'student_governorate' => 'Muscat',
-        'student_village' => 'Al Khoud',
-        'student_house_number' => '12',
-        'student_parents_social_status' => 'married',
-        'relationship_with_guardian' => GuardianRelationship::Father,
-
-        'father_name' => 'Father '.fake()->unique()->numerify('####'),
-        'father_phone' => nextDeterministicPhone(),
-        'father_email' => fake()->unique()->safeEmail(),
-        'father_id_number' => fake()->unique()->numerify('########'),
-        'father_occupation' => 'Engineer',
-        'father_work_address' => 'Muscat',
-        'father_work_phone' => nextDeterministicPhone(),
-        'father_is_guardian' => true,
-
-        'mother_name' => 'Mother '.fake()->unique()->numerify('####'),
-        'mother_phone' => nextDeterministicPhone(),
-        'mother_email' => fake()->unique()->safeEmail(),
-        'mother_id_number' => fake()->unique()->numerify('########'),
-        'mother_occupation' => 'Teacher',
-        'mother_work_address' => 'Muscat',
-        'mother_work_phone' => nextDeterministicPhone(),
-        'mother_is_guardian' => false,
-
-        'relative_name' => 'Relative '.fake()->unique()->numerify('####'),
-        'relative_phone' => nextDeterministicPhone(),
-        'relative_email' => fake()->unique()->safeEmail(),
-        'relative_id_number' => fake()->unique()->numerify('########'),
-        'relative_occupation' => 'Driver',
-        'relative_work_address' => 'Muscat',
-        'relative_work_phone' => nextDeterministicPhone(),
-    ], $overrides);
-}
-
-/**
- * A user genuinely authorized to create applications in $branchId (null => central/
- * branchless, full access).
- */
-function authorizedManualEntryUser(?int $branchId = null): User
-{
-    $user = User::factory()->create(['branch_id' => $branchId]);
-
-    $permission = Permission::firstOrCreate(['name' => 'Create:Application', 'guard_name' => 'web']);
-    $user->givePermissionTo($permission);
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-    return $user;
-}
+use Tests\Support\ManualEntryFixtures;
 
 it('creates one lead and one application, linked, in AwaitingRegistrationFee', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
 
@@ -124,9 +33,9 @@ it('creates one lead and one application, linked, in AwaitingRegistrationFee', f
 });
 
 it('agrees on branch, program, season, and source metadata between the lead and the application', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
     $lead = Lead::find($application->lead_id);
@@ -141,9 +50,9 @@ it('agrees on branch, program, season, and source metadata between the lead and 
 });
 
 it('derives the lead guardian from whichever party is marked as guardian', function (string $guardianPrefix, array $flags) {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program, $flags);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program, $flags);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
     $lead = Lead::find($application->lead_id);
@@ -165,9 +74,9 @@ it('rolls back the newly created lead when application creation genuinely fails'
         }
     });
 
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
         ->toThrow(RuntimeException::class, 'forced application failure');
@@ -177,9 +86,9 @@ it('rolls back the newly created lead when application creation genuinely fails'
 });
 
 it('creates nothing and rolls back lead merge updates when deduplication resolves to an already-converted lead', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $firstApplication = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
     $lead = Lead::find($firstApplication->lead_id);
@@ -188,7 +97,7 @@ it('creates nothing and rolls back lead merge updates when deduplication resolve
     // Same guardian phone, program, branch (-> same season) and an exact student-name match
     // resolves to the very same lead via the duplicate resolver's identity fingerprint.
     // Give it a longer father name, which the merge would otherwise prefer and persist.
-    $secondData = manualEntryData($branch, $program, [
+    $secondData = ManualEntryFixtures::manualEntryData($branch, $program, [
         'student_name' => $data['student_name'],
         'father_phone' => $data['father_phone'],
         'father_name' => $data['father_name'].' A Much Longer Guardian Name',
@@ -207,8 +116,8 @@ it('creates neither the lead nor the application when the program is unavailable
     $program = Program::factory()->create();
     // Deliberately not attached to $branch.
 
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
         ->toThrow(ProgramNotAvailableInBranchException::class);
@@ -218,17 +127,11 @@ it('creates neither the lead nor the application when the program is unavailable
 });
 
 it('creates applications through the Filament create page via the composite action', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    Auth::login(authorizedManualEntryUser($branch->id));
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    Auth::login(ManualEntryFixtures::authorizedManualEntryUser($branch->id));
 
-    $page = new class extends CreateApplication
-    {
-        public function createRecordFromTrait(array $data): Application
-        {
-            return $this->handleRecordCreation($data);
-        }
-    };
+    $page = ManualEntryFixtures::manualEntryPage();
 
     $application = $page->createRecordFromTrait($data);
 
@@ -256,7 +159,7 @@ it('never allows constructing a CreateApplicationDTO with a null lead_id', funct
 });
 
 it('preserves an existing website/affiliate lead\'s original attribution and unrelated data through conversion', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $season = Season::current($program->type);
     $affiliate = Affiliate::factory()->create(['code' => 'AFF1']);
 
@@ -275,7 +178,7 @@ it('preserves an existing website/affiliate lead\'s original attribution and unr
         'data' => ['utm_campaign' => 'summer-2026'],
     ]);
 
-    $data = manualEntryData($branch, $program, [
+    $data = ManualEntryFixtures::manualEntryData($branch, $program, [
         // Same guardian phone (normalizes to +96891234567, matching $existingLead->whatsapp)
         // + exact student-name match resolves to $existingLead via the duplicate resolver's
         // identity fingerprint.
@@ -284,7 +187,7 @@ it('preserves an existing website/affiliate lead\'s original attribution and unr
         'father_is_guardian' => true,
         'mother_is_guardian' => false,
     ]);
-    $user = authorizedManualEntryUser($branch->id);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
     $lead = $existingLead->fresh();
@@ -298,15 +201,77 @@ it('preserves an existing website/affiliate lead\'s original attribution and unr
         ->and($application->affiliate_id)->toBe($affiliate->id);
 });
 
-it('never re-resolves the season internally once CreateLeadAction is given one explicitly', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
+it('falls back to the incoming source when a legacy duplicate lead has a null source', function () {
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $season = Season::current($program->type);
 
-    // A season of a *different* program type than $program's. If CreateLeadAction ignored
-    // the explicit $season argument and fell back to resolving Season::current($program->type)
-    // internally, the resulting lead would end up with that (mismatched-type) season instead
-    // — this proves the explicitly supplied season is used as-is, never re-resolved.
-    $otherTypeSeason = Season::factory()->create([
-        'type' => $program->type === ProgramType::Academic ? ProgramType::Summer : ProgramType::Academic,
+    // A historical lead with no recorded source at all (nullable column, pre-dates source
+    // tracking). Merging into it must never dereference a null source.
+    $existingLead = Lead::factory()->create([
+        'whatsapp' => '+96891234568',
+        'student_name' => 'طالب بلا مصدر',
+        'program_id' => $program->id,
+        'branch_id' => $branch->id,
+        'season_id' => $season->id,
+        'source' => null,
+        'data' => [],
+    ]);
+
+    $data = ManualEntryFixtures::manualEntryData($branch, $program, [
+        'father_phone' => '091234568',
+        'student_name' => $existingLead->student_name,
+        'father_is_guardian' => true,
+        'mother_is_guardian' => false,
+    ]);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
+
+    $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
+    $lead = $existingLead->fresh();
+
+    expect($lead->source)->toBe(Source::DASHBOARD)
+        ->and($application->source)->toBe(Source::DASHBOARD);
+});
+
+it('never lets a duplicate submission overwrite an existing lead\'s colliding attribution data keys', function () {
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $season = Season::current($program->type);
+
+    $existingLead = Lead::factory()->create([
+        'whatsapp' => '+96891234569',
+        'student_name' => 'طالب تعارض البيانات',
+        'program_id' => $program->id,
+        'branch_id' => $branch->id,
+        'season_id' => $season->id,
+        'source' => Source::WEBSITE,
+        'data' => ['utm_campaign' => 'original-campaign', 'utm_source' => 'original-source'],
+    ]);
+
+    $lead = app(CreateLeadAction::class)->execute(
+        whatsapp: '091234569',
+        guardian_name: 'Duplicate Guardian',
+        student_name: $existingLead->student_name,
+        program_id: $program->id,
+        branch_id: $branch->id,
+        source: Source::DASHBOARD->value,
+        data: ['utm_campaign' => 'new-attempt-should-be-ignored', 'utm_new_key' => 'should-be-added'],
+        season: $season,
+    );
+
+    expect($lead->id)->toBe($existingLead->id)
+        ->and($lead->data)->toHaveKey('utm_campaign', 'original-campaign')
+        ->and($lead->data)->toHaveKey('utm_source', 'original-source')
+        ->and($lead->data)->toHaveKey('utm_new_key', 'should-be-added');
+});
+
+it('uses an explicitly supplied valid, active, same-type season as-is without substituting a re-resolved one', function () {
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+
+    // A second active season of the *same* program type, distinct from whatever
+    // Season::current($program->type) would resolve on its own — proves the explicitly
+    // supplied season is used verbatim, never silently swapped for an internally re-resolved
+    // one, as long as it is itself valid.
+    $explicitSeason = Season::factory()->create([
+        'type' => $program->type,
         'is_active' => true,
     ]);
 
@@ -317,16 +282,58 @@ it('never re-resolves the season internally once CreateLeadAction is given one e
         program_id: $program->id,
         branch_id: $branch->id,
         source: Source::DASHBOARD->value,
-        season: $otherTypeSeason,
+        season: $explicitSeason,
     );
 
-    expect($lead->season_id)->toBe($otherTypeSeason->id);
+    expect($lead->season_id)->toBe($explicitSeason->id);
+});
+
+it('rejects an explicitly supplied season of the wrong program type with zero writes', function () {
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+
+    $wrongTypeSeason = Season::factory()->create([
+        'type' => $program->type === ProgramType::Academic ? ProgramType::Summer : ProgramType::Academic,
+        'is_active' => true,
+    ]);
+
+    expect(fn () => app(CreateLeadAction::class)->execute(
+        whatsapp: '+96899000002',
+        guardian_name: 'Guardian',
+        student_name: 'Student Wrong Season Type',
+        program_id: $program->id,
+        branch_id: $branch->id,
+        source: Source::DASHBOARD->value,
+        season: $wrongTypeSeason,
+    ))->toThrow(InvalidSeasonForProgramException::class);
+
+    expect(Lead::count())->toBe(0);
+});
+
+it('rejects an explicitly supplied inactive season with zero writes', function () {
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+
+    $inactiveSeason = Season::factory()->create([
+        'type' => $program->type,
+        'is_active' => false,
+    ]);
+
+    expect(fn () => app(CreateLeadAction::class)->execute(
+        whatsapp: '+96899000003',
+        guardian_name: 'Guardian',
+        student_name: 'Student Inactive Season',
+        program_id: $program->id,
+        branch_id: $branch->id,
+        source: Source::DASHBOARD->value,
+        season: $inactiveSeason,
+    ))->toThrow(InvalidSeasonForProgramException::class);
+
+    expect(Lead::count())->toBe(0);
 });
 
 it('never allows the lead and application seasons to diverge through manual entry', function () {
-    [$branch, $program] = createAvailableBranchAndProgram();
-    $data = manualEntryData($branch, $program);
-    $user = authorizedManualEntryUser($branch->id);
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser($branch->id);
 
     $expectedSeason = Season::current($program->type);
 
