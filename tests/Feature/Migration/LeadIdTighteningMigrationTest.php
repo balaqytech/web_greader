@@ -80,6 +80,28 @@ function driftToTier1(): void
 }
 
 /**
+ * A Tier 1 shape (nullable, ON DELETE SET NULL) whose foreign key was also explicitly given
+ * `ON UPDATE RESTRICT`, rather than left at the engine's default — the shape
+ * reconcileViaBlueprint() must recognize and *preserve* the ON UPDATE action of, not
+ * silently replace with SQLite's default `NO ACTION`.
+ */
+function driftToTier1WithRestrictOnUpdate(): void
+{
+    $foreignKey = collect(Schema::getForeignKeys('applications'))
+        ->first(fn (array $fk) => $fk['columns'] === ['lead_id']);
+
+    Schema::table('applications', function (Blueprint $table) use ($foreignKey) {
+        if ($foreignKey !== null) {
+            $table->dropForeign($foreignKey['name'] ?? ['lead_id']);
+        }
+
+        $table->unsignedBigInteger('lead_id')->nullable()->change();
+
+        $table->foreign('lead_id')->references('id')->on('leads')->nullOnDelete()->restrictOnUpdate();
+    });
+}
+
+/**
  * Simulates a prior local run of this migration that dropped the foreign key but was
  * interrupted before re-adding it — leaving the column with no lead_id FK at all, at either
  * nullability.
@@ -174,6 +196,40 @@ it('reconciles a Tier 1 (nullable, SET NULL) schema to the canonical NOT NULL/RE
         ->and(leadIdOnDelete())->toBe('restrict')
         ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
+});
+
+/**
+ * Physical schema coverage, not mocked metadata: a real single-column lead_id foreign key
+ * with ON DELETE SET NULL *and* an explicit ON UPDATE RESTRICT is created, then reconciled.
+ * reconcileViaBlueprint() must preserve that RESTRICT rather than always dropping ON UPDATE
+ * to SQLite's default NO ACTION — SQLite enforces RESTRICT immediately (including for a
+ * deferred constraint), a distinction NO ACTION does not have, so silently downgrading it
+ * would be a real behavior change. Runs on every supported engine (this drift setup uses
+ * only portable Blueprint/foreign-key calls), so there is no engine skip here.
+ */
+it('reconciles a Tier 1 schema whose foreign key already has an explicit ON UPDATE RESTRICT, preserving it', function () {
+    driftToTier1WithRestrictOnUpdate();
+
+    expect(leadIdColumnNullable())->toBeTrue()
+        ->and(leadIdOnDelete())->toBe('set null')
+        ->and(leadIdOnUpdate())->toBe('restrict');
+
+    leadIdMigration()->up();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe('restrict')
+        ->and(hasUniqueLeadIdIndex())->toBeTrue();
+
+    // Running it again must be a no-op: the just-reconciled RESTRICT/RESTRICT shape is
+    // already canonical and must not be touched, let alone downgraded, a second time.
+    leadIdMigration()->up();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe('restrict')
+        ->and(hasUniqueLeadIdIndex())->toBeTrue()
+        ->and(collect(Schema::getForeignKeys('applications'))->filter(fn (array $fk) => in_array('lead_id', $fk['columns'], true)))->toHaveCount(1);
 });
 
 it('is idempotent on an already-canonical (Tier 2) schema, even run repeatedly', function () {

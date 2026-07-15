@@ -46,15 +46,18 @@ use Illuminate\Support\Facades\Schema;
  * "Restrictive" ON UPDATE is deliberately recognized as either schema-inspector value the
  * supported engines report for this shape's restrictive (non-cascading) ON UPDATE behavior:
  * `no action` or `restrict`. The two reconcile paths do not converge on emitting the same one
- * of those, though — MySQL/MariaDB explicitly emits `ON UPDATE RESTRICT` (MariaDB 10.11
- * reports its own default restrictive behavior as `restrict`, not `no action`, so leaving it
- * implicit there would have been reported inconsistently across MySQL-family engines). SQLite
- * deliberately does *not* set an explicit ON UPDATE clause and keeps its existing/default `NO
- * ACTION`: unlike `NO ACTION`, SQLite's `RESTRICT` is enforced immediately even for a deferred
- * constraint, and this migration was never meant to change ON UPDATE behavior on SQLite, only
- * to tighten `lead_id` nullability and its ON DELETE action. The recognizer accepts either
- * value on either engine regardless, so a database left in either state by an older
- * engine/run remains (and stays) canonical.
+ * of those, though — MySQL/MariaDB always explicitly emits `ON UPDATE RESTRICT` (MariaDB
+ * 10.11 reports its own default restrictive behavior as `restrict`, not `no action`, so
+ * leaving it implicit there would have been reported inconsistently across MySQL-family
+ * engines). SQLite instead *preserves* whatever restrictive action the inspected foreign key
+ * already had: an existing `restrict` foreign key is recreated with an explicit `ON UPDATE
+ * RESTRICT`; an existing `no action` foreign key, or the no-FK recovery state, both keep/
+ * default to SQLite's own `NO ACTION`. Unlike `NO ACTION`, SQLite's `RESTRICT` is enforced
+ * immediately even for a deferred constraint — this migration was never meant to change ON
+ * UPDATE behavior on SQLite at all, only to tighten `lead_id`'s nullability and its ON DELETE
+ * action, so whichever recognized action was already there survives the rebuild unchanged.
+ * The recognizer accepts either value on either engine regardless, so a database left in
+ * either state by an older engine/run remains (and stays) canonical.
  *
  * Now that CreateLeadWithApplicationAction guarantees every new application has a lead, this
  * is gated on preflight checks (before any DDL — MySQL/MariaDB DDL auto-commits and cannot be
@@ -375,19 +378,23 @@ return new class extends Migration
      * to the original table intact rather than leaving the database in whatever
      * intermediate state the rebuild had reached.
      *
-     * Deliberately no `->restrictOnUpdate()` here: SQLite distinguishes `NO ACTION` from
-     * `RESTRICT` in a way MySQL/MariaDB effectively don't — `RESTRICT` is enforced
-     * immediately on SQLite, including for a deferred constraint, whereas `NO ACTION` is not.
-     * This migration only tightens `lead_id`'s nullability and ON DELETE action; it was never
-     * meant to change ON UPDATE behavior, so SQLite's existing/default `NO ACTION` is left
-     * exactly as-is.
+     * ON UPDATE is deliberately *preserved*, not always set to `RESTRICT`: SQLite
+     * distinguishes `NO ACTION` from `RESTRICT` in a way MySQL/MariaDB effectively don't —
+     * `RESTRICT` is enforced immediately on SQLite, including for a deferred constraint,
+     * whereas `NO ACTION` is not. This migration only tightens `lead_id`'s nullability and ON
+     * DELETE action; it was never meant to change ON UPDATE behavior. An existing recognized
+     * `restrict` foreign key (assertKnownRecoverableShape() already refused anything else) is
+     * recreated with `->restrictOnUpdate()` so that explicit behavior survives the rebuild; an
+     * existing `no action` foreign key, or the no-FK recovery state, both keep/default to
+     * SQLite's own `NO ACTION`.
      */
     private function reconcileViaBlueprint(): void
     {
         $foreignKeys = $this->leadIdForeignKeys();
+        $existingOnUpdate = $foreignKeys[0]['on_update'] ?? null;
 
-        DB::transaction(function () use ($foreignKeys) {
-            Schema::table('applications', function (Blueprint $table) use ($foreignKeys) {
+        DB::transaction(function () use ($foreignKeys, $existingOnUpdate) {
+            Schema::table('applications', function (Blueprint $table) use ($foreignKeys, $existingOnUpdate) {
                 if ($foreignKeys !== []) {
                     // MySQL/MariaDB name their foreign keys and require the exact name to
                     // drop one; SQLite never names them, so dropForeign() must be given the
@@ -398,7 +405,11 @@ return new class extends Migration
 
                 $table->unsignedBigInteger('lead_id')->nullable(false)->change();
 
-                $table->foreign('lead_id')->references('id')->on('leads')->restrictOnDelete();
+                $foreignKey = $table->foreign('lead_id')->references('id')->on('leads')->restrictOnDelete();
+
+                if ($existingOnUpdate === 'restrict') {
+                    $foreignKey->restrictOnUpdate();
+                }
             });
         });
     }
