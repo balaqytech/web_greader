@@ -2,7 +2,6 @@
 
 use App\Models\Application;
 use App\Models\Branch;
-use App\Models\Guardian;
 use App\Models\Lead;
 use App\Models\ReadingAssessmentFormSubmission;
 use App\Models\Scopes\BranchScope;
@@ -36,27 +35,6 @@ function superAdminUser(): User
     return $user;
 }
 
-/**
- * Built directly rather than via Student::factory()/GuardianFactory: those factories hit a
- * fake()->state() call with no ar_SA provider (this app's configured APP_FAKER_LOCALE) and a
- * `relationship` column GuardianFactory sets that the guardians table doesn't have —
- * pre-existing factory gaps unrelated to tenancy. Every field used here beyond the two
- * required ones (guardians.name/phone, students.guardian_id/branch_id/name) is nullable.
- */
-function createStudentForBranch(int $branchId): Student
-{
-    $guardian = Guardian::create([
-        'name' => 'Guardian '.fake()->unique()->numerify('####'),
-        'phone' => fake()->unique()->numerify('0#########'),
-    ]);
-
-    return Student::create([
-        'guardian_id' => $guardian->id,
-        'branch_id' => $branchId,
-        'name' => 'Student '.fake()->unique()->numerify('####'),
-    ]);
-}
-
 function createReadingAssessmentFormSubmission(int $branchId, string $whatsapp): ReadingAssessmentFormSubmission
 {
     return ReadingAssessmentFormSubmission::create([
@@ -79,8 +57,8 @@ it('lets a branch user see only their own branch\'s records, for every currently
     $leadA = Lead::factory()->create(['branch_id' => $branchA->id]);
     Lead::factory()->create(['branch_id' => $branchB->id]);
 
-    $studentA = createStudentForBranch($branchA->id);
-    createStudentForBranch($branchB->id);
+    $studentA = Student::factory()->create(['branch_id' => $branchA->id]);
+    Student::factory()->create(['branch_id' => $branchB->id]);
 
     $submissionA = createReadingAssessmentFormSubmission($branchA->id, '0501110001');
     createReadingAssessmentFormSubmission($branchB->id, '0501110002');
@@ -236,12 +214,17 @@ it('seeds the Shield permission foundation idempotently, resetting central_finan
     $financeUser->assignRole($financeRole);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+    // Primes Spatie's permission cache with the pre-reseed state before reseeding below.
     expect($financeUser->can('ViewAllBranches:Lead'))->toBeTrue();
 
     $this->seed(ShieldPermissionSeeder::class);
     $this->seed(ShieldPermissionSeeder::class);
 
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    // Deliberately no forgetCachedPermissions() call here: ShieldPermissionSeeder must clear
+    // Spatie's permission cache itself (before and after syncing), so the primed cache above
+    // never leaks a stale result into the assertions below. If either of the seeder's own
+    // cache-clearing calls were removed, this test must fail rather than pass because this
+    // test happened to clear the cache for it.
     $financeUser = $financeUser->fresh();
 
     $intendedFinancePermissions = [
@@ -287,4 +270,25 @@ it('grants super_admin every permission the foundation seeder creates, including
 
     expect($user->can('VerifyBankTransfer:Payment'))->toBeTrue()
         ->and($user->can('Refund:Payment'))->toBeTrue();
+});
+
+it('grants super_admin every pre-existing web permission too, but never a same-named permission on another guard', function () {
+    // Simulates a permission ShieldSeeder already generated for an existing resource before
+    // this seeder ever runs — super_admin's sync must cover it, not only the permissions
+    // this seeder itself creates.
+    $preExistingPermission = Permission::firstOrCreate(['name' => 'ViewAny:Lead', 'guard_name' => 'web']);
+
+    // Same name, different guard — must never leak into a web-guard role's permission set.
+    $affiliateGuardPermission = Permission::firstOrCreate(['name' => 'ViewAny:Lead', 'guard_name' => 'affiliate']);
+
+    $this->seed(ShieldPermissionSeeder::class);
+
+    $user = superAdminUser();
+
+    expect($user->can($preExistingPermission->name))->toBeTrue();
+
+    $superAdminRole = Role::where('name', 'super_admin')->where('guard_name', 'web')->firstOrFail();
+
+    expect($superAdminRole->permissions->pluck('id'))->not->toContain($affiliateGuardPermission->id)
+        ->and($superAdminRole->permissions->pluck('guard_name')->unique()->all())->toBe(['web']);
 });

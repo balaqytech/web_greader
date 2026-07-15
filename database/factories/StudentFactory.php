@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\Gender;
+use App\Enums\GuardianRelationship;
 use App\Models\Branch;
 use App\Models\Guardian;
 use App\Models\Student;
@@ -18,7 +19,6 @@ class StudentFactory extends Factory
      */
     public function definition(): array
     {
-
         return [
             'guardian_id' => Guardian::factory(),
             'branch_id' => Branch::factory(),
@@ -26,40 +26,15 @@ class StudentFactory extends Factory
             'gender' => fake()->randomElement(Gender::cases()),
             'birth_date' => fake()->date(),
             'civil_number' => fake()->unique()->numerify('########'),
+            // fake()->state() has no ar_SA provider (this app's configured
+            // APP_FAKER_LOCALE); city() is locale-safe and used the same way elsewhere in
+            // this factory for governorate/village.
             'state' => fake()->city(),
             'governorate' => fake()->city(),
             'village' => fake()->city(),
             'house_number' => fake()->buildingNumber(),
             'parents_social_status' => fake()->word(),
-            'father_data' => [
-                'name' => fake()->name('male'),
-                'phone' => fake()->phoneNumber(),
-                'email' => fake()->safeEmail(),
-                'id_number' => fake()->numerify('########'),
-                'occupation' => fake()->jobTitle(),
-                'work_address' => fake()->address(),
-                'work_phone' => fake()->phoneNumber(),
-                'is_guardian' => true,
-            ],
-            'mother_data' => [
-                'name' => fake()->name('female'),
-                'phone' => fake()->phoneNumber(),
-                'email' => fake()->safeEmail(),
-                'id_number' => fake()->numerify('########'),
-                'occupation' => fake()->jobTitle(),
-                'work_address' => fake()->address(),
-                'work_phone' => fake()->phoneNumber(),
-                'is_guardian' => false,
-            ],
-            'relative_data' => [
-                'name' => fake()->name(),
-                'phone' => fake()->phoneNumber(),
-                'email' => fake()->safeEmail(),
-                'id_number' => fake()->numerify('########'),
-                'occupation' => fake()->jobTitle(),
-                'work_address' => fake()->address(),
-                'work_phone' => fake()->phoneNumber(),
-            ],
+            'relationship_with_guardian' => fake()->randomElement(GuardianRelationship::cases()),
         ];
     }
 }
