@@ -17,8 +17,8 @@ Route::apiResource('branches', BranchController::class)->only(['index', 'show'])
 Route::apiResource('programs', ProgramController::class)->only(['index', 'show']);
 
 Route::get('leads/counts', [LeadController::class, 'counts']);
-Route::apiResource('leads', LeadController::class)->only(['index', 'store']);
-Route::post('leads/{lead}/transition', [LeadController::class, 'transition']);
+Route::get('leads', [LeadController::class, 'index'])->middleware('auth:sanctum')->name('leads.index');
+Route::post('leads', [LeadController::class, 'store'])->name('leads.store');
 
 Route::apiResource(
     'reading-assessment-form-submissions',
