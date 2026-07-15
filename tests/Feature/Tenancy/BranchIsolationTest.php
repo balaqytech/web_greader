@@ -199,25 +199,12 @@ it('requires ViewAllBranches:Application for a branchless user to create in any 
     expect(Gate::forUser($user)->allows('create', [Application::class, $branch]))->toBeTrue();
 });
 
-it('seeds the Shield permission foundation idempotently, granting central_finance only its intended cross-branch permission', function () {
-    $this->seed(ShieldPermissionSeeder::class);
-    $this->seed(ShieldPermissionSeeder::class);
-
-    $financeRole = Role::where('name', 'central_finance')->where('guard_name', 'web')->firstOrFail();
-
-    expect($financeRole->permissions->pluck('name')->sort()->values()->all())->toBe([
-        'Refund:Payment',
-        'VerifyBankTransfer:Payment',
-        'View:Payment',
-        'ViewAllBranches:Payment',
-        'ViewAny:Payment',
-    ]);
-
-    expect(Role::where('name', 'branch_staff')->where('guard_name', 'web')->count())->toBe(1)
-        ->and(Role::where('name', 'branch_manager')->where('guard_name', 'web')->count())->toBe(1)
-        ->and(Role::where('name', 'central_finance')->where('guard_name', 'web')->count())->toBe(1);
-
-    foreach ([
+/**
+ * @return list<string>
+ */
+function shieldPermissionFoundationPermissionNames(): array
+{
+    return [
         'ViewAllBranches:Application',
         'ViewAllBranches:Lead',
         'ViewAllBranches:Student',
@@ -228,7 +215,76 @@ it('seeds the Shield permission foundation idempotently, granting central_financ
         'View:Payment',
         'VerifyBankTransfer:Payment',
         'Refund:Payment',
-    ] as $permissionName) {
+    ];
+}
+
+it('seeds the Shield permission foundation idempotently, resetting central_finance to only its intended cross-branch permission on reseed', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    $financeRole = Role::where('name', 'central_finance')->where('guard_name', 'web')->firstOrFail();
+
+    // Simulates drift between seeder runs (e.g. a manual admin grant): an unrelated
+    // permission attached directly to the role must not survive a reseed — central_finance's
+    // permission set is fully owned by this seeder, not additive.
+    $unrelatedPermission = Permission::firstOrCreate(['name' => 'ViewAllBranches:Lead', 'guard_name' => 'web']);
+    $financeRole->givePermissionTo($unrelatedPermission);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    // A real user, not just the role's own permissions() relation, so the check below goes
+    // through Spatie's actual permission-resolution API.
+    $financeUser = User::factory()->create();
+    $financeUser->assignRole($financeRole);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect($financeUser->can('ViewAllBranches:Lead'))->toBeTrue();
+
+    $this->seed(ShieldPermissionSeeder::class);
+    $this->seed(ShieldPermissionSeeder::class);
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $financeUser = $financeUser->fresh();
+
+    $intendedFinancePermissions = [
+        'Refund:Payment',
+        'VerifyBankTransfer:Payment',
+        'View:Payment',
+        'ViewAllBranches:Payment',
+        'ViewAny:Payment',
+    ];
+
+    expect($financeUser->can('ViewAllBranches:Lead'))->toBeFalse();
+
+    foreach ($intendedFinancePermissions as $permissionName) {
+        expect($financeUser->can($permissionName))->toBeTrue();
+    }
+
+    expect($financeUser->getAllPermissions()->pluck('name')->sort()->values()->all())
+        ->toBe(collect($intendedFinancePermissions)->sort()->values()->all());
+
+    expect(Role::where('name', 'branch_staff')->where('guard_name', 'web')->count())->toBe(1)
+        ->and(Role::where('name', 'branch_manager')->where('guard_name', 'web')->count())->toBe(1)
+        ->and(Role::where('name', 'central_finance')->where('guard_name', 'web')->count())->toBe(1);
+
+    foreach (shieldPermissionFoundationPermissionNames() as $permissionName) {
         expect(Permission::where('name', $permissionName)->where('guard_name', 'web')->count())->toBe(1);
     }
+});
+
+/**
+ * config/filament-shield.php has super_admin.define_via_gate = false, so Shield does not
+ * register a Gate::before/after interception for it — super_admin must genuinely hold every
+ * permission to be unrestricted. Checked through a real user via Spatie's own can()/
+ * getAllPermissions() API, not by asserting the role's raw permissions() relationship.
+ */
+it('grants super_admin every permission the foundation seeder creates, including the finance permissions', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    $user = superAdminUser();
+
+    foreach (shieldPermissionFoundationPermissionNames() as $permissionName) {
+        expect($user->can($permissionName))->toBeTrue();
+    }
+
+    expect($user->can('VerifyBankTransfer:Payment'))->toBeTrue()
+        ->and($user->can('Refund:Payment'))->toBeTrue();
 });

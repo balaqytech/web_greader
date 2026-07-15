@@ -19,6 +19,13 @@ use Spatie\Permission\PermissionRegistrar;
  * `central_finance` receives exactly its five finance permissions via syncPermissions(), so
  * re-running this seeder can never leave it with anything model-scoped for
  * Application/Lead/Student/document/assessment models.
+ *
+ * `config/filament-shield.php` has `super_admin.define_via_gate = false`, so — unlike the
+ * `intercept_gate` mode — `super_admin` is a real role that must actually hold every
+ * permission to be unrestricted; it does not bypass Gate checks implicitly. This seeder
+ * syncs `super_admin` to every `web`-guard permission that exists once this seeder's own
+ * permissions have been created, so it always includes them (and anything `ShieldSeeder`
+ * generated) without needing its own hardcoded, driftable list.
  */
 class ShieldPermissionSeeder extends Seeder
 {
@@ -78,6 +85,17 @@ class ShieldPermissionSeeder extends Seeder
             'ViewAllBranches:Payment',
             ...self::FINANCE_PERMISSIONS,
         ]);
+
+        // firstOrCreate rather than assumed-to-exist: this seeder must remain correct even
+        // if it is ever run standalone (e.g. in tests) without ShieldSeeder first.
+        $superAdmin = $roleModel::firstOrCreate([
+            'name' => 'super_admin',
+            'guard_name' => 'web',
+        ]);
+
+        $superAdmin->syncPermissions(
+            $permissionModel::where('guard_name', 'web')->pluck('name')->all()
+        );
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 

@@ -38,6 +38,34 @@ it('allows a real Sanctum bearer token to access the lead index and receive the 
         ->assertJsonPath('data.0.student_name', $lead->student_name);
 });
 
+it('excludes another branch\'s lead — its ID and PII — from a branch user\'s bearer-token response', function () {
+    $ownBranch = Branch::factory()->create();
+    $otherBranch = Branch::factory()->create();
+
+    $user = User::factory()->create(['branch_id' => $ownBranch->id]);
+    $token = $user->createToken('test-token')->plainTextToken;
+
+    $ownLead = Lead::factory()->create(['branch_id' => $ownBranch->id]);
+    $otherLead = Lead::factory()->create([
+        'branch_id' => $otherBranch->id,
+        'guardian_name' => 'Other Branch Guardian',
+        'student_name' => 'Other Branch Student',
+        'whatsapp' => '+96899987654',
+    ]);
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/leads');
+
+    $response->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $ownLead->id)
+        ->assertJsonMissing(['id' => $otherLead->id]);
+
+    $response->assertDontSee($otherLead->guardian_name, escape: false)
+        ->assertDontSee($otherLead->student_name, escape: false)
+        ->assertDontSee($otherLead->whatsapp, escape: false);
+});
+
 it('returns 404 for the removed lead transition route', function () {
     $lead = Lead::factory()->create();
 
