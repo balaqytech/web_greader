@@ -39,8 +39,17 @@ use Illuminate\Support\Facades\Schema;
  * their child-column list, not exact equality, so a composite foreign key that merely
  * includes lead_id is still found — and then refused, since this migration only ever
  * drops/re-adds a single-column constraint. A lead_id foreign key that exists but targets
- * anything other than `leads.id`, has an unrecognized `ON UPDATE` action, or more than one
- * relevant foreign key, is refused before any DDL runs rather than guessed at.
+ * anything other than `leads.id`, has an ON UPDATE action other than restrictive (see
+ * isRestrictiveOnUpdateAction()), or more than one relevant foreign key, is refused before any
+ * DDL runs rather than guessed at.
+ *
+ * "Restrictive" ON UPDATE is deliberately recognized as either schema-inspector value the
+ * supported engines report for an unspecified/default ON UPDATE clause on this shape:
+ * `no action` (SQLite, and MySQL as observed) or `restrict` (MariaDB 10.11, which reports its
+ * own default restrictive behavior under that name rather than `no action`). Both reconcile
+ * paths now emit an explicit `ON UPDATE RESTRICT` going forward, but the recognizer still
+ * accepts either value so a database left in either state by an older engine/run remains
+ * (and stays) canonical.
  *
  * Now that CreateLeadWithApplicationAction guarantees every new application has a lead, this
  * is gated on preflight checks (before any DDL — MySQL/MariaDB DDL auto-commits and cannot be
@@ -123,12 +132,25 @@ return new class extends Migration
         if ($foreignKey['columns'] !== ['lead_id']
             || $foreignKey['foreign_table'] !== 'leads'
             || $foreignKey['foreign_columns'] !== ['id']
-            || $foreignKey['on_update'] !== 'no action'
+            || ! $this->isRestrictiveOnUpdateAction($foreignKey['on_update'])
             || $foreignKey['on_delete'] !== 'restrict') {
             return false;
         }
 
         return $this->hasUniqueLeadIdIndex();
+    }
+
+    /**
+     * The single source of truth for what counts as "restrictive" ON UPDATE behavior across
+     * this migration's supported engines — used identically by isCanonical() and
+     * assertKnownRecoverableShape() so their definitions can never diverge. `no action` and
+     * `restrict` are treated as equivalent here (see the class docblock for why); anything
+     * else — `cascade`, `set null`, or any other/unknown value — is a behavior-changing
+     * action and is never accepted.
+     */
+    private function isRestrictiveOnUpdateAction(string $onUpdate): bool
+    {
+        return in_array($onUpdate, ['no action', 'restrict'], true);
     }
 
     private function assertNoNullLeadIds(): void
@@ -179,10 +201,10 @@ return new class extends Migration
      * This migration only knows how to reconcile the documented tiers and the recoverable
      * no-FK states. Anything else — no unique index at all, a composite foreign key that
      * merely includes `lead_id` among other columns, more than one relevant foreign key, a
-     * lead_id foreign key that targets something other than `leads.id`, an unrecognized
-     * `ON UPDATE` action, or a nullability/on-delete combination that is neither Tier 1 nor a
-     * recoverable no-FK state — is outside that scope: fail clearly rather than guess and
-     * risk building the wrong constraint set.
+     * lead_id foreign key that targets something other than `leads.id`, a non-restrictive
+     * `ON UPDATE` action (see isRestrictiveOnUpdateAction()), or a nullability/on-delete
+     * combination that is neither Tier 1 nor a recoverable no-FK state — is outside that
+     * scope: fail clearly rather than guess and risk building the wrong constraint set.
      */
     private function assertKnownRecoverableShape(): void
     {
@@ -247,9 +269,9 @@ return new class extends Migration
             );
         }
 
-        if ($foreignKey['on_update'] !== 'no action') {
+        if (! $this->isRestrictiveOnUpdateAction($foreignKey['on_update'])) {
             throw new RuntimeException(
-                'applications.lead_id has a foreign key to leads.id with an unrecognized ON UPDATE '.
+                'applications.lead_id has a foreign key to leads.id with a non-restrictive ON UPDATE '.
                 "action ({$foreignKey['on_update']}). Refusing to silently replace an unexpected ON ".
                 'UPDATE behavior; manual intervention is required on this database.'
             );
@@ -303,7 +325,7 @@ return new class extends Migration
         $clauses[] = 'ADD CONSTRAINT '.$this->quoteIdentifier($this->newForeignKeyName($existingName))
             .' FOREIGN KEY ('.$this->quoteIdentifier('lead_id').') '
             .'REFERENCES '.$this->quoteIdentifier('leads').' ('.$this->quoteIdentifier('id').') '
-            .'ON DELETE RESTRICT';
+            .'ON DELETE RESTRICT ON UPDATE RESTRICT';
 
         try {
             DB::statement('ALTER TABLE '.$this->quoteIdentifier('applications').' '.implode(', ', $clauses));
@@ -364,7 +386,7 @@ return new class extends Migration
 
                 $table->unsignedBigInteger('lead_id')->nullable(false)->change();
 
-                $table->foreign('lead_id')->references('id')->on('leads')->restrictOnDelete();
+                $table->foreign('lead_id')->references('id')->on('leads')->restrictOnDelete()->restrictOnUpdate();
             });
         });
     }

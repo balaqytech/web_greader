@@ -370,7 +370,7 @@ it('rejects more than one relevant lead_id foreign key, before any DDL', functio
     expect(fn () => leadIdMigration()->up())->toThrow(RuntimeException::class);
 });
 
-it('rejects a lead_id foreign key to leads.id with an unexpected ON UPDATE action rather than silently replacing it', function () {
+it('rejects a lead_id foreign key to leads.id with a non-restrictive ON UPDATE action rather than silently replacing it', function () {
     stubLeadIdForeignKeys([[
         'name' => 'applications_lead_id_foreign',
         'columns' => ['lead_id'],
@@ -382,6 +382,59 @@ it('rejects a lead_id foreign key to leads.id with an unexpected ON UPDATE actio
     ]]);
 
     expect(fn () => leadIdMigration()->up())->toThrow(RuntimeException::class);
+});
+
+/**
+ * "Restrictive" ON UPDATE is recognized as either `no action` or `restrict` — both engines
+ * this migration supports report one or the other for the same, unmodified restrictive
+ * behavior (SQLite/MySQL historically report `no action` for an unspecified ON UPDATE
+ * clause; MariaDB 10.11 reports its own default restrictive behavior as `restrict`). Both
+ * values must be recognized as already canonical (a no-op), via the same
+ * isRestrictiveOnUpdateAction() helper isCanonical() and assertKnownRecoverableShape() both
+ * call, so their definitions can never diverge.
+ */
+it('recognizes a lead_id foreign key with ON UPDATE "no action" as already canonical', function () {
+    stubLeadIdForeignKeys([[
+        'name' => 'applications_lead_id_foreign',
+        'columns' => ['lead_id'],
+        'foreign_schema' => 'main',
+        'foreign_table' => 'leads',
+        'foreign_columns' => ['id'],
+        'on_update' => 'no action',
+        'on_delete' => 'restrict',
+    ]]);
+
+    // isCanonical() short-circuits to a no-op; if "no action" were not recognized as
+    // restrictive, this would instead fall through to the preflight/DDL path and (since the
+    // stubbed Schema facade only answers getColumns/getIndexes/getForeignKeys) blow up on
+    // the first unstubbed Schema call the DDL path makes.
+    expect(fn () => leadIdMigration()->up())->not->toThrow(Throwable::class);
+});
+
+it('recognizes a lead_id foreign key with ON UPDATE "restrict" (the MariaDB 10.11 default) as already canonical', function () {
+    stubLeadIdForeignKeys([[
+        'name' => 'applications_lead_id_foreign',
+        'columns' => ['lead_id'],
+        'foreign_schema' => 'main',
+        'foreign_table' => 'leads',
+        'foreign_columns' => ['id'],
+        'on_update' => 'restrict',
+        'on_delete' => 'restrict',
+    ]]);
+
+    expect(fn () => leadIdMigration()->up())->not->toThrow(Throwable::class);
+});
+
+it('reconciles a Tier 1 schema and recognizes the resulting shape as canonical on a second run, an idempotent no-op', function () {
+    driftToTier1();
+
+    leadIdMigration()->up();
+    leadIdMigration()->up();
+
+    expect(leadIdColumnNullable())->toBeFalse()
+        ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(hasUniqueLeadIdIndex())->toBeTrue()
+        ->and(collect(Schema::getForeignKeys('applications'))->filter(fn (array $fk) => in_array('lead_id', $fk['columns'], true)))->toHaveCount(1);
 });
 
 /**
