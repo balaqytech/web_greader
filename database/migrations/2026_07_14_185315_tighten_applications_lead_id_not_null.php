@@ -44,12 +44,17 @@ use Illuminate\Support\Facades\Schema;
  * DDL runs rather than guessed at.
  *
  * "Restrictive" ON UPDATE is deliberately recognized as either schema-inspector value the
- * supported engines report for an unspecified/default ON UPDATE clause on this shape:
- * `no action` (SQLite, and MySQL as observed) or `restrict` (MariaDB 10.11, which reports its
- * own default restrictive behavior under that name rather than `no action`). Both reconcile
- * paths now emit an explicit `ON UPDATE RESTRICT` going forward, but the recognizer still
- * accepts either value so a database left in either state by an older engine/run remains
- * (and stays) canonical.
+ * supported engines report for this shape's restrictive (non-cascading) ON UPDATE behavior:
+ * `no action` or `restrict`. The two reconcile paths do not converge on emitting the same one
+ * of those, though — MySQL/MariaDB explicitly emits `ON UPDATE RESTRICT` (MariaDB 10.11
+ * reports its own default restrictive behavior as `restrict`, not `no action`, so leaving it
+ * implicit there would have been reported inconsistently across MySQL-family engines). SQLite
+ * deliberately does *not* set an explicit ON UPDATE clause and keeps its existing/default `NO
+ * ACTION`: unlike `NO ACTION`, SQLite's `RESTRICT` is enforced immediately even for a deferred
+ * constraint, and this migration was never meant to change ON UPDATE behavior on SQLite, only
+ * to tighten `lead_id` nullability and its ON DELETE action. The recognizer accepts either
+ * value on either engine regardless, so a database left in either state by an older
+ * engine/run remains (and stays) canonical.
  *
  * Now that CreateLeadWithApplicationAction guarantees every new application has a lead, this
  * is gated on preflight checks (before any DDL — MySQL/MariaDB DDL auto-commits and cannot be
@@ -369,6 +374,13 @@ return new class extends Migration
      * here, explicitly, so a failure partway through the rebuild (e.g. mid-copy) rolls back
      * to the original table intact rather than leaving the database in whatever
      * intermediate state the rebuild had reached.
+     *
+     * Deliberately no `->restrictOnUpdate()` here: SQLite distinguishes `NO ACTION` from
+     * `RESTRICT` in a way MySQL/MariaDB effectively don't — `RESTRICT` is enforced
+     * immediately on SQLite, including for a deferred constraint, whereas `NO ACTION` is not.
+     * This migration only tightens `lead_id`'s nullability and ON DELETE action; it was never
+     * meant to change ON UPDATE behavior, so SQLite's existing/default `NO ACTION` is left
+     * exactly as-is.
      */
     private function reconcileViaBlueprint(): void
     {
@@ -386,7 +398,7 @@ return new class extends Migration
 
                 $table->unsignedBigInteger('lead_id')->nullable(false)->change();
 
-                $table->foreign('lead_id')->references('id')->on('leads')->restrictOnDelete()->restrictOnUpdate();
+                $table->foreign('lead_id')->references('id')->on('leads')->restrictOnDelete();
             });
         });
     }

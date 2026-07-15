@@ -25,6 +25,31 @@ function leadIdOnDelete(): ?string
         ->first(fn (array $fk) => $fk['columns'] === ['lead_id'])['on_delete'] ?? null;
 }
 
+function leadIdOnUpdate(): ?string
+{
+    return collect(Schema::getForeignKeys('applications'))
+        ->first(fn (array $fk) => $fk['columns'] === ['lead_id'])['on_update'] ?? null;
+}
+
+/**
+ * The two reconcile paths deliberately do not converge on the same schema-inspector value
+ * for ON UPDATE: reconcileMySql() explicitly emits `ON UPDATE RESTRICT`, while
+ * reconcileViaBlueprint() (SQLite) leaves ON UPDATE unset and keeps the engine's existing/
+ * default `NO ACTION` — SQLite enforces `RESTRICT` immediately, including for a deferred
+ * constraint, unlike `NO ACTION`, and this migration was never meant to change ON UPDATE
+ * behavior on SQLite. This asserts the real, engine-specific value a fresh reconciliation
+ * actually produces, not just that isRestrictiveOnUpdateAction() would accept it.
+ */
+function expectedReconciledOnUpdate(): string
+{
+    return DB::connection()->getDriverName() === 'sqlite' ? 'no action' : 'restrict';
+}
+
+function isSqliteConnection(): bool
+{
+    return DB::connection()->getDriverName() === 'sqlite';
+}
+
 function hasUniqueLeadIdIndex(): bool
 {
     return collect(Schema::getIndexes('applications'))
@@ -133,6 +158,7 @@ function stubLeadIdForeignKeys(array $foreignKeys): void
 it('starts canonical (NOT NULL, unique, RESTRICT) once RefreshDatabase has migrated', function () {
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
 });
 
@@ -146,6 +172,7 @@ it('reconciles a Tier 1 (nullable, SET NULL) schema to the canonical NOT NULL/RE
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
 });
 
@@ -157,19 +184,24 @@ it('is idempotent on an already-canonical (Tier 2) schema, even run repeatedly',
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue()
         ->and(collect(Schema::getForeignKeys('applications'))->filter(fn (array $fk) => $fk['columns'] === ['lead_id']))->toHaveCount(1);
 });
 
 /**
- * SQLite's `.change()` compiles to several separate statements (create a __temp__ table,
- * copy rows into it, drop the original table, rename the temp table into place, recreate
- * indexes) — not one atomic operation. Without an explicit transaction, a failure between
- * the `drop table` and the rename would permanently destroy the original "applications"
- * table and its data. This forces exactly that failure — after the original table has
- * already been dropped, mid-rebuild — and proves the explicit `DB::transaction()` wrapping
- * reconcileViaBlueprint() rolls the whole rebuild back, leaving the original table, its
- * data, its (pre-reconciliation) FK shape, and its unique index completely intact.
+ * SQLite-only: SQLite's `.change()` compiles to several separate statements (create a
+ * __temp__ table, copy rows into it, drop the original table, rename the temp table into
+ * place, recreate indexes) — not one atomic operation. Without an explicit transaction, a
+ * failure between the `drop table` and the rename would permanently destroy the original
+ * "applications" table and its data. This forces exactly that failure — after the original
+ * table has already been dropped, mid-rebuild — and proves the explicit `DB::transaction()`
+ * wrapping reconcileViaBlueprint() rolls the whole rebuild back, leaving the original table,
+ * its data, its (pre-reconciliation) FK shape, and its unique index completely intact. This
+ * table-rebuild strategy (and its `drop table` statement to force the failure on) is specific
+ * to reconcileViaBlueprint(), which only ever runs on sqlite — reconcileMySql() issues a
+ * single `ALTER TABLE` instead, so there is nothing equivalent to rebuild-rollback-test on
+ * MySQL/MariaDB.
  */
 it('rolls back the entire SQLite table rebuild when a failure is forced after the original table is dropped', function () {
     driftToNoFk(nullable: true);
@@ -210,8 +242,9 @@ it('rolls back the entire SQLite table rebuild when a failure is forced after th
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe('no action')
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
-});
+})->skip(fn () => ! isSqliteConnection(), 'SQLite-only: exercises reconcileViaBlueprint()\'s full-table rebuild, which only runs on sqlite — MySQL/MariaDB reconcile via a single ALTER TABLE with no equivalent rebuild sequence to interrupt.');
 
 it('aborts before any DDL when NULL lead_id rows exist, leaving the schema shape intact', function () {
     driftToTier1();
@@ -270,6 +303,7 @@ it('recovers from a nullable, no-FK state left by a prior interrupted attempt', 
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
 });
 
@@ -283,6 +317,7 @@ it('recovers from a NOT NULL, no-FK state left by a prior interrupted attempt', 
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
 });
 
@@ -433,17 +468,18 @@ it('reconciles a Tier 1 schema and recognizes the resulting shape as canonical o
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue()
         ->and(collect(Schema::getForeignKeys('applications'))->filter(fn (array $fk) => in_array('lead_id', $fk['columns'], true)))->toHaveCount(1);
 });
 
 /**
- * reconcileMySql() emits MySQL-specific `ALTER TABLE ... MODIFY ...` syntax that SQLite
- * cannot parse, so invoking it directly against the sqlite test connection always throws —
- * deterministically reaching its catch block without needing a real MySQL/MariaDB
- * connection. That is exploited here purely to exercise the catch-and-recheck behavior: a
- * NULL lead_id row created *after* the normal preflight (simulating a write racing it) must
- * surface as the same actionable domain exception the preflight itself would have thrown.
+ * reconcileMySql()'s ALTER attempts to set lead_id NOT NULL while a NULL row still exists —
+ * a genuine constraint violation on *any* SQL engine, not something that depends on
+ * MySQL-specific syntax being invalid elsewhere. That makes this test deterministic on both
+ * sqlite and mysql/mariadb: a NULL lead_id row created *after* the normal preflight
+ * (simulating a write racing it) must surface as the same actionable domain exception the
+ * preflight itself would have thrown, regardless of which engine's ALTER statement failed.
  */
 it('surfaces an actionable domain exception when a write races the MySQL reconciliation and inserts a NULL lead_id row', function () {
     driftToTier1();
@@ -463,6 +499,15 @@ it('surfaces an actionable domain exception when a write races the MySQL reconci
         ->and(leadIdOnDelete())->toBe('set null');
 });
 
+/**
+ * SQLite-only: reconcileMySql() emits MySQL-specific `ALTER TABLE ... MODIFY ...` syntax
+ * that only fails here because sqlite cannot parse it — on real MySQL/MariaDB the exact same
+ * statement is valid and legitimately succeeds (that's the whole point of reconcileMySql()).
+ * Deliberately expecting valid MySQL/MariaDB DDL to fail there would be testing a bug, not a
+ * behavior; this proves the catch-and-recheck block's "no race found, rethrow the original
+ * exception" branch using sqlite's real (syntax) failure as a stand-in for "the ALTER failed
+ * for some engine-level reason other than the NULL/orphan race" more generally.
+ */
 it('rethrows the original database exception from a failed MySQL reconciliation when no race is found', function () {
     driftToTier1();
 
@@ -472,7 +517,7 @@ it('rethrows the original database exception from a failed MySQL reconciliation 
 
     expect(fn () => $reconcileMySql->invoke($migration))
         ->toThrow(QueryException::class);
-});
+})->skip(fn () => ! isSqliteConnection(), 'SQLite-only: relies on sqlite rejecting valid MySQL/MariaDB ALTER syntax to force a non-race failure; the same statement legitimately succeeds on MySQL/MariaDB.');
 
 it('preserves schema shape after any deliberately failing reconciliation attempt', function () {
     driftToNoFk(nullable: true);
@@ -492,5 +537,6 @@ it('preserves schema shape after any deliberately failing reconciliation attempt
 
     expect(leadIdColumnNullable())->toBeFalse()
         ->and(leadIdOnDelete())->toBe('restrict')
+        ->and(leadIdOnUpdate())->toBe(expectedReconciledOnUpdate())
         ->and(hasUniqueLeadIdIndex())->toBeTrue();
 });
