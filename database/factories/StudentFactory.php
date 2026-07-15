@@ -26,7 +26,7 @@ class StudentFactory extends Factory
             'gender' => fake()->randomElement(Gender::cases()),
             'birth_date' => fake()->date(),
             'civil_number' => fake()->unique()->numerify('########'),
-            'state' => fake()->state(),
+            'state' => fake()->city(),
             'governorate' => fake()->city(),
             'village' => fake()->city(),
             'house_number' => fake()->buildingNumber(),

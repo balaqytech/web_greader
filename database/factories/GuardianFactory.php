@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\GuardianRelationship;
 use App\Models\Guardian;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -24,28 +23,6 @@ class GuardianFactory extends Factory
             'occupation' => fake()->jobTitle(),
             'work_address' => fake()->address(),
             'work_phone' => fake()->phoneNumber(),
-            'relationship' => fake()->randomElement(GuardianRelationship::cases()),
         ];
-    }
-
-    public function father(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'relationship' => GuardianRelationship::Father,
-        ]);
-    }
-
-    public function mother(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'relationship' => GuardianRelationship::Mother,
-        ]);
-    }
-
-    public function relative(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'relationship' => GuardianRelationship::Relative,
-        ]);
     }
 }
