@@ -37,6 +37,11 @@ it('creates multiple guardian and student factory records without collisions', f
 
     expect($guardians)->toHaveCount(5)
         ->and($guardians->pluck('id')->unique())->toHaveCount(5)
+        ->and($guardians->pluck('phone')->unique())->toHaveCount(5)
+        ->and($guardians->pluck('id_number')->unique())->toHaveCount(5)
         ->and($students)->toHaveCount(5)
-        ->and($students->pluck('id')->unique())->toHaveCount(5);
+        ->and($students->pluck('id')->unique())->toHaveCount(5)
+        ->and($students->pluck('civil_number')->unique())->toHaveCount(5)
+        ->and($students->pluck('branch.name')->unique())->toHaveCount(5)
+        ->and($students->pluck('guardian.phone')->unique())->toHaveCount(5);
 });

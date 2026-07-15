@@ -220,11 +220,10 @@ it('seeds the Shield permission foundation idempotently, resetting central_finan
     $this->seed(ShieldPermissionSeeder::class);
     $this->seed(ShieldPermissionSeeder::class);
 
-    // Deliberately no forgetCachedPermissions() call here: ShieldPermissionSeeder must clear
-    // Spatie's permission cache itself (before and after syncing), so the primed cache above
-    // never leaks a stale result into the assertions below. If either of the seeder's own
-    // cache-clearing calls were removed, this test must fail rather than pass because this
-    // test happened to clear the cache for it.
+    // Deliberately no forgetCachedPermissions() call here: the assertions below rely on the
+    // reseed itself (via syncPermissions(), which invalidates Spatie's permission cache) to
+    // make the primed cache above stale, so a fresh user reflects central_finance's
+    // post-reseed permission set rather than the primed pre-reseed one.
     $financeUser = $financeUser->fresh();
 
     $intendedFinancePermissions = [

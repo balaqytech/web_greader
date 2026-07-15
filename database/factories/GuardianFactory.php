@@ -17,7 +17,7 @@ class GuardianFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'phone' => fake()->phoneNumber(),
+            'phone' => fake()->unique()->phoneNumber(),
             'email' => fake()->safeEmail(),
             'id_number' => fake()->unique()->numerify('########'),
             'occupation' => fake()->jobTitle(),
