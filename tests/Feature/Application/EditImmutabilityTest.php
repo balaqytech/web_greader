@@ -8,15 +8,18 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * A user who genuinely holds the Update:Application permission — so the tests exercise the
- * state guard, not the ordinary permission check.
+ * A user who genuinely holds the Update:Application permission and cross-branch access to
+ * every application — so the tests exercise the state guard in isolation, not the ordinary
+ * permission check or branch-ownership check.
  */
 function authorizedApplicationEditor(): User
 {
     $user = User::factory()->create(['branch_id' => null]);
 
-    $permission = Permission::firstOrCreate(['name' => 'Update:Application', 'guard_name' => 'web']);
-    $user->givePermissionTo($permission);
+    $user->givePermissionTo([
+        Permission::firstOrCreate(['name' => 'Update:Application', 'guard_name' => 'web']),
+        Permission::firstOrCreate(['name' => 'ViewAllBranches:Application', 'guard_name' => 'web']),
+    ]);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     return $user;

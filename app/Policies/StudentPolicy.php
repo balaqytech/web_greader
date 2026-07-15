@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Student;
+use App\Support\Authorization\BranchAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class StudentPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Student');
@@ -19,7 +20,8 @@ class StudentPolicy
 
     public function view(AuthUser $authUser, Student $student): bool
     {
-        return $authUser->can('View:Student');
+        return $authUser->can('View:Student')
+            && BranchAccess::canAccessBranch($authUser, Student::class, $student->branch_id);
     }
 
     public function create(AuthUser $authUser): bool
@@ -29,12 +31,13 @@ class StudentPolicy
 
     public function update(AuthUser $authUser, Student $student): bool
     {
-        return $authUser->can('Update:Student');
+        return $authUser->can('Update:Student')
+            && BranchAccess::canAccessBranch($authUser, Student::class, $student->branch_id);
     }
 
     public function delete(AuthUser $authUser, Student $student): bool
     {
-        return $authUser->can('Delete:Student');
+        return $authUser->can('Delete:Student')
+            && BranchAccess::canAccessBranch($authUser, Student::class, $student->branch_id);
     }
-
 }

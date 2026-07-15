@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Branch;
 use App\Models\Lead;
 use App\Models\User;
 
@@ -20,10 +21,13 @@ it('rejects an unauthenticated GET to the lead index with 401 and exposes no lea
 });
 
 it('allows a real Sanctum bearer token to access the lead index and receive the existing LeadResource response', function () {
-    $user = User::factory()->create();
+    // BranchScope now restricts a branch-scoped user to their own branch, so the bearer
+    // user must belong to the same branch as the lead it expects to see.
+    $branch = Branch::factory()->create();
+    $user = User::factory()->create(['branch_id' => $branch->id]);
     $token = $user->createToken('test-token')->plainTextToken;
 
-    $lead = Lead::factory()->create();
+    $lead = Lead::factory()->create(['branch_id' => $branch->id]);
 
     $response = $this->withHeader('Authorization', "Bearer {$token}")
         ->getJson('/api/v1/leads');

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             ShieldSeeder::class,
+            ShieldPermissionSeeder::class,
             ProgramSeeder::class,
         ]);
 

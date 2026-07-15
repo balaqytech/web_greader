@@ -10,6 +10,8 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\ManualEntryFixtures;
 
 it('allows a branch employee to create an application in their own branch', function () {
@@ -40,10 +42,28 @@ it('rejects a tampered cross-branch request from a branch employee with zero wri
         ->and(Application::count())->toBe(0);
 });
 
-it('allows a branchless central user to create in any branch', function () {
+it('denies a branchless user holding only Create:Application, with zero writes', function () {
+    // Branchless no longer implies "any branch": without super_admin or
+    // ViewAllBranches:Application, a branchless user has no branch to be authorized in.
     [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
     $data = ManualEntryFixtures::manualEntryData($branch, $program);
     $user = ManualEntryFixtures::authorizedManualEntryUser(null);
+
+    expect(fn () => app(CreateLeadWithApplicationAction::class)->execute($data, $user))
+        ->toThrow(AuthorizationException::class);
+
+    expect(Lead::count())->toBe(0)
+        ->and(Application::count())->toBe(0);
+});
+
+it('allows a branchless central user with ViewAllBranches:Application to create in any branch', function () {
+    [$branch, $program] = ManualEntryFixtures::createAvailableBranchAndProgram();
+    $data = ManualEntryFixtures::manualEntryData($branch, $program);
+    $user = ManualEntryFixtures::authorizedManualEntryUser(null);
+
+    $permission = Permission::firstOrCreate(['name' => 'ViewAllBranches:Application', 'guard_name' => 'web']);
+    $user->givePermissionTo($permission);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     $application = app(CreateLeadWithApplicationAction::class)->execute($data, $user);
 

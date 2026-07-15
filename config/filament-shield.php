@@ -237,6 +237,16 @@ return [
         'Reject:Affiliate' => 'Reject Affiliate',
         'Close:Season' => 'Close Season',
         'Open:Season' => 'Open Season',
+        'ViewAllBranches:Application' => 'View All Branches (Application)',
+        'ViewAllBranches:Lead' => 'View All Branches (Lead)',
+        'ViewAllBranches:Student' => 'View All Branches (Student)',
+        'ViewAllBranches:ReadingAssessmentFormSubmission' => 'View All Branches (Reading Assessment Form Submission)',
+        'ViewAllBranches:Payment' => 'View All Branches (Payment)',
+        'ViewAllBranches:ApplicationDocument' => 'View All Branches (Application Document)',
+        'ViewAny:Payment' => 'View Any Payment',
+        'View:Payment' => 'View Payment',
+        'VerifyBankTransfer:Payment' => 'Verify Bank Transfer (Payment)',
+        'Refund:Payment' => 'Refund Payment',
     ],
 
     /*

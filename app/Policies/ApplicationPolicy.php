@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\Branch;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingRegistrationFee;
+use App\Support\Authorization\BranchAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Foundation\Auth\User as AuthUser;
@@ -23,7 +24,8 @@ class ApplicationPolicy
 
     public function view(AuthUser $authUser, Application $application): bool
     {
-        return $authUser->can('View:Application');
+        return $authUser->can('View:Application')
+            && BranchAccess::canAccessBranch($authUser, Application::class, $application->branch_id);
     }
 
     /**
@@ -41,32 +43,15 @@ class ApplicationPolicy
             return true;
         }
 
-        return $this->canActInBranch($authUser, $branch)
+        return BranchAccess::canAccessBranch($authUser, Application::class, $branch->id)
             ? true
             : Response::deny(__('exceptions.branch_not_authorized', ['branch' => $branch->name]));
-    }
-
-    /**
-     * Central (branchless) users and `super_admin` may create in any branch; a branch-scoped
-     * employee may only create within their own branch, regardless of what a tampered request
-     * claims.
-     */
-    private function canActInBranch(AuthUser $authUser, Branch $branch): bool
-    {
-        if ($authUser->hasRole('super_admin')) {
-            return true;
-        }
-
-        if ($authUser->branch_id === null) {
-            return true;
-        }
-
-        return $authUser->branch_id === $branch->id;
     }
 
     public function update(AuthUser $authUser, Application $application): bool
     {
         return $authUser->can('Update:Application')
+            && BranchAccess::canAccessBranch($authUser, Application::class, $application->branch_id)
             && $this->isEditableState($application);
     }
 
@@ -84,6 +69,7 @@ class ApplicationPolicy
 
     public function delete(AuthUser $authUser, Application $application): bool
     {
-        return $authUser->can('Delete:Application');
+        return $authUser->can('Delete:Application')
+            && BranchAccess::canAccessBranch($authUser, Application::class, $application->branch_id);
     }
 }

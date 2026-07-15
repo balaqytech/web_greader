@@ -9,11 +9,25 @@ use App\Models\Season;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
+/**
+ * These tests exercise cross-branch listing/filtering, not tenancy itself (see
+ * tests/Feature/Tenancy/BranchIsolationTest.php for that), so the acting user is granted
+ * the model-specific cross-branch permission explicitly rather than relying on a null
+ * branch_id — BranchScope no longer treats a branchless user as seeing every branch.
+ */
 beforeEach(function () {
-    $this->actingAs(User::factory()->create(), 'sanctum');
+    $user = User::factory()->create();
+
+    $permission = Permission::firstOrCreate(['name' => 'ViewAllBranches:Lead', 'guard_name' => 'web']);
+    $user->givePermissionTo($permission);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $this->actingAs($user, 'sanctum');
 });
 
 it('filters leads by an exact value in the data JSON field', function () {
