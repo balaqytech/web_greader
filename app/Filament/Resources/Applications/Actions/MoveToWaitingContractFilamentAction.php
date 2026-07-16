@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingContractSignature;
@@ -9,9 +10,12 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 class MoveToWaitingContractFilamentAction extends Action
 {
+    use RefreshesApplicationRecord;
+
     public static function getDefaultName(): ?string
     {
         return 'move_to_waiting_contract';
@@ -45,11 +49,13 @@ class MoveToWaitingContractFilamentAction extends Action
                 && ($record->status->canTransitionTo(AwaitingContractSignature::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record, array $data, ?Component $livewire) {
             Gate::authorize('generateContract', $record);
 
             try {
-                $record->status->transitionTo(AwaitingContractSignature::class, $data['notes']);
+                $fresh = $record->status->transitionTo(AwaitingContractSignature::class, $data['notes']);
+
+                $this->refreshLivewireRecord($fresh, $livewire);
 
                 Notification::make()
                     ->title(__('admin.application.actions.move_to_waiting_contract_success'))

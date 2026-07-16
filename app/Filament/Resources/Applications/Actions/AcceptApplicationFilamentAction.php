@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\Accepted;
 use App\States\Applications\AwaitingBranchReview;
@@ -9,9 +10,12 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 class AcceptApplicationFilamentAction extends Action
 {
+    use RefreshesApplicationRecord;
+
     public static function getDefaultName(): ?string
     {
         return 'accept_application';
@@ -42,11 +46,13 @@ class AcceptApplicationFilamentAction extends Action
                 && ($record->status->canTransitionTo(Accepted::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record, array $data, ?Component $livewire) {
             Gate::authorize('accept', $record);
 
             try {
-                $record->status->transitionTo(Accepted::class, $data['notes']);
+                $fresh = $record->status->transitionTo(Accepted::class, $data['notes']);
+
+                $this->refreshLivewireRecord($fresh, $livewire);
 
                 Notification::make()
                     ->title(__('admin.application.actions.accept_success'))

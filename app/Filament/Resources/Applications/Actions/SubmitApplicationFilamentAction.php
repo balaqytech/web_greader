@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingRegistrationFee;
@@ -9,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 /**
  * Advances an application off the registration-fee gate. The driving transition
@@ -18,6 +20,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class SubmitApplicationFilamentAction extends Action
 {
+    use RefreshesApplicationRecord;
+
     public static function getDefaultName(): ?string
     {
         return 'submit_application';
@@ -49,14 +53,16 @@ class SubmitApplicationFilamentAction extends Action
                 && ($record->status->canTransitionTo(AwaitingApplicationCompletion::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record, array $data, ?Component $livewire) {
             Gate::authorize('update', $record);
 
             try {
-                $record->status->transitionTo(
+                $fresh = $record->status->transitionTo(
                     AwaitingApplicationCompletion::class,
                     $data['notes']
                 );
+
+                $this->refreshLivewireRecord($fresh, $livewire);
 
                 Notification::make()
                     ->title(__('admin.application.actions.submit_success'))

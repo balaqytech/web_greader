@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\Rejected;
@@ -9,9 +10,12 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 class RejectApplicationFilamentAction extends Action
 {
+    use RefreshesApplicationRecord;
+
     public static function getDefaultName(): ?string
     {
         return 'reject_application';
@@ -42,11 +46,13 @@ class RejectApplicationFilamentAction extends Action
                 && ($record->status->canTransitionTo(Rejected::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record, array $data, ?Component $livewire) {
             Gate::authorize('reject', $record);
 
             try {
-                $record->status->transitionTo(Rejected::class, $data['rejection_reason']);
+                $fresh = $record->status->transitionTo(Rejected::class, $data['rejection_reason']);
+
+                $this->refreshLivewireRecord($fresh, $livewire);
 
                 Notification::make()
                     ->title(__('admin.application.actions.reject_success'))

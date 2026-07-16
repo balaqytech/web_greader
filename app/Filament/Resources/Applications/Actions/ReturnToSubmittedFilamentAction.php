@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingContractSignature;
@@ -9,9 +10,12 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 class ReturnToSubmittedFilamentAction extends Action
 {
+    use RefreshesApplicationRecord;
+
     public static function getDefaultName(): ?string
     {
         return 'return_to_submitted';
@@ -41,11 +45,13 @@ class ReturnToSubmittedFilamentAction extends Action
                 && ($record->status->canTransitionTo(AwaitingApplicationCompletion::class) ?? false)
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record, array $data, ?Component $livewire) {
             Gate::authorize('reopen', $record);
 
             try {
-                $record->status->transitionTo(AwaitingApplicationCompletion::class, $data['notes']);
+                $fresh = $record->status->transitionTo(AwaitingApplicationCompletion::class, $data['notes']);
+
+                $this->refreshLivewireRecord($fresh, $livewire);
 
                 Notification::make()
                     ->title(__('admin.application.actions.return_to_submitted_success'))

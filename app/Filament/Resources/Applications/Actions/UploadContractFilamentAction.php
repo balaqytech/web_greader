@@ -3,15 +3,19 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Actions\Applications\UploadSignedContractAction;
+use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 class UploadContractFilamentAction extends Action
 {
+    use RefreshesApplicationRecord;
+
     public static function getDefaultName(): ?string
     {
         return 'upload_contract';
@@ -42,11 +46,13 @@ class UploadContractFilamentAction extends Action
             fn (?Application $record): bool => $record?->status instanceof AwaitingContractSignature
         );
 
-        $this->action(function (Application $record, array $data) {
+        $this->action(function (Application $record, array $data, ?Component $livewire) {
             Gate::authorize('uploadSignedContract', $record);
 
             try {
-                app(UploadSignedContractAction::class)->execute($record, $data['contract_file']);
+                $fresh = app(UploadSignedContractAction::class)->execute($record, $data['contract_file']);
+
+                $this->refreshLivewireRecord($fresh, $livewire);
 
                 Notification::make()
                     ->title(__('admin.application.actions.upload_signed_contract_success'))
