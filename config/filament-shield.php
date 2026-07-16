@@ -247,6 +247,12 @@ return [
         'View:Payment' => 'View Payment',
         'VerifyBankTransfer:Payment' => 'Verify Bank Transfer (Payment)',
         'Refund:Payment' => 'Refund Payment',
+        'Access:Panel' => 'Access Panel',
+        'GenerateContract:Application' => 'Generate Contract (Application)',
+        'UploadSignedContract:Application' => 'Upload Signed Contract (Application)',
+        'Accept:Application' => 'Accept Application',
+        'Reject:Application' => 'Reject Application',
+        'Cancel:Application' => 'Cancel Application',
     ],
 
     /*

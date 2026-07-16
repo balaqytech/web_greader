@@ -17,6 +17,8 @@ class OpenContractLinkFilamentAction extends Action
     {
         parent::setUp();
 
+        $this->authorize('view');
+
         $this->label(__('admin.application.actions.open_contract_link'));
         $this->icon('heroicon-o-arrow-top-right-on-square');
         $this->color('gray');

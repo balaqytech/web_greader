@@ -8,6 +8,7 @@ use App\States\Applications\Rejected;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 class RejectApplicationFilamentAction extends Action
 {
@@ -19,6 +20,8 @@ class RejectApplicationFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('reject');
 
         $this->label(__('admin.application.actions.reject'));
         $this->icon('heroicon-o-x-circle');
@@ -40,6 +43,8 @@ class RejectApplicationFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('reject', $record);
+
             try {
                 $record->status->transitionTo(Rejected::class, $data['rejection_reason']);
 

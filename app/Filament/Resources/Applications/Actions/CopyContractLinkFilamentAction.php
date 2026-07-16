@@ -19,6 +19,8 @@ class CopyContractLinkFilamentAction extends Action
     {
         parent::setUp();
 
+        $this->authorize('view');
+
         $this->label(__('admin.application.actions.copy_contract_link'));
         $this->icon('heroicon-o-link');
         $this->color('gray');

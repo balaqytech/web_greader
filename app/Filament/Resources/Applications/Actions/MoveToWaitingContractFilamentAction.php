@@ -8,6 +8,7 @@ use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 class MoveToWaitingContractFilamentAction extends Action
 {
@@ -19,6 +20,8 @@ class MoveToWaitingContractFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('generateContract');
 
         $this->label(__('admin.application.actions.move_to_waiting_contract'));
         $this->icon('heroicon-o-paper-airplane');
@@ -43,6 +46,8 @@ class MoveToWaitingContractFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('generateContract', $record);
+
             try {
                 $record->status->transitionTo(AwaitingContractSignature::class, $data['notes']);
 

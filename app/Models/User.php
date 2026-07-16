@@ -20,12 +20,13 @@ use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password', 'branch_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser, Auditable
+class User extends Authenticatable implements Auditable, FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable, HasApiTokens;
-    use \OwenIt\Auditing\Auditable;
+    use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
+
     use HasRoles;
+    use \OwenIt\Auditing\Auditable;
 
     /**
      * Get the attributes that should be cast.
@@ -53,12 +54,30 @@ class User extends Authenticatable implements FilamentUser, Auditable
         return Str::of($this->name)
             ->explode(' ')
             ->take(2)
-            ->map(fn($word) => Str::substr($word, 0, 1))
+            ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
     }
 
+    /**
+     * `admin` panel entry is granted to holders of an operational role — `super_admin`,
+     * `branch_staff`, `branch_manager`, `central_finance`, or Shield's `panel_user` — or to
+     * anyone explicitly granted the `Access:Panel` permission (the escape hatch for roles
+     * that don't otherwise warrant blanket membership, e.g. a future `service_fasih` grant).
+     * Roleless users and unrelated roles are denied. Unknown future panels are always denied
+     * here; each new panel must opt itself in explicitly.
+     */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        if ($panel->getId() !== 'admin') {
+            return false;
+        }
+
+        return $this->hasAnyRole([
+            'super_admin',
+            'branch_staff',
+            'branch_manager',
+            'central_finance',
+            'panel_user',
+        ]) || $this->can('Access:Panel');
     }
 }

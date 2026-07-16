@@ -8,6 +8,7 @@ use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 class UploadContractFilamentAction extends Action
 {
@@ -19,6 +20,8 @@ class UploadContractFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('uploadSignedContract');
 
         $this->label(__('admin.application.actions.upload_signed_contract'));
         $this->icon('heroicon-o-arrow-up-tray');
@@ -40,6 +43,8 @@ class UploadContractFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('uploadSignedContract', $record);
+
             try {
                 app(UploadSignedContractAction::class)->execute($record, $data['contract_file']);
 

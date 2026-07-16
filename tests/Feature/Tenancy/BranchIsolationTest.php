@@ -253,6 +253,79 @@ it('seeds the Shield permission foundation idempotently, resetting central_finan
 });
 
 /**
+ * @return list<string>
+ */
+function branchApplicationPermissionNames(): array
+{
+    return [
+        'ViewAny:Application',
+        'View:Application',
+        'Create:Application',
+        'Update:Application',
+        'GenerateContract:Application',
+        'UploadSignedContract:Application',
+        'Accept:Application',
+        'Reject:Application',
+        'Cancel:Application',
+    ];
+}
+
+it('grants branch_staff and branch_manager exactly the approved-workflow Application permission matrix, with no cross-branch permission and no raw delete', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    foreach (['branch_staff', 'branch_manager'] as $roleName) {
+        $role = Role::where('name', $roleName)->where('guard_name', 'web')->firstOrFail();
+
+        expect($role->permissions->pluck('name')->sort()->values()->all())
+            ->toBe(collect(branchApplicationPermissionNames())->sort()->values()->all());
+    }
+});
+
+it('resets branch_staff and branch_manager to exactly their intended matrix on reseed, dropping any drift', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    $branchStaff = Role::where('name', 'branch_staff')->where('guard_name', 'web')->firstOrFail();
+
+    $unrelatedPermission = Permission::firstOrCreate(['name' => 'Delete:Application', 'guard_name' => 'web']);
+    $branchStaff->givePermissionTo($unrelatedPermission);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect($branchStaff->fresh()->permissions->pluck('name')->all())->toContain('Delete:Application');
+
+    $this->seed(ShieldPermissionSeeder::class);
+    $this->seed(ShieldPermissionSeeder::class);
+
+    expect($branchStaff->fresh()->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(collect(branchApplicationPermissionNames())->sort()->values()->all());
+});
+
+it('creates Access:Panel and the full Application permission matrix, including Delete:Application as a real but unassigned permission', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    expect(Permission::where('name', 'Access:Panel')->where('guard_name', 'web')->count())->toBe(1)
+        ->and(Permission::where('name', 'Delete:Application')->where('guard_name', 'web')->count())->toBe(1);
+
+    foreach (['branch_staff', 'branch_manager'] as $roleName) {
+        $role = Role::where('name', $roleName)->where('guard_name', 'web')->firstOrFail();
+
+        expect($role->permissions->pluck('name')->all())->not->toContain('Delete:Application');
+    }
+});
+
+it('grants super_admin Access:Panel and the full Application permission matrix including Delete:Application', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    $user = superAdminUser();
+
+    expect($user->can('Access:Panel'))->toBeTrue()
+        ->and($user->can('Delete:Application'))->toBeTrue();
+
+    foreach (branchApplicationPermissionNames() as $permissionName) {
+        expect($user->can($permissionName))->toBeTrue();
+    }
+});
+
+/**
  * config/filament-shield.php has super_admin.define_via_gate = false, so Shield does not
  * register a Gate::before/after interception for it — super_admin must genuinely hold every
  * permission to be unrestricted. Checked through a real user via Spatie's own can()/

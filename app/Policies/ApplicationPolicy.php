@@ -50,8 +50,7 @@ class ApplicationPolicy
 
     public function update(AuthUser $authUser, Application $application): bool
     {
-        return $authUser->can('Update:Application')
-            && BranchAccess::canAccessBranch($authUser, Application::class, $application->branch_id)
+        return $this->authorizeForBranch($authUser, $application, 'Update:Application')
             && $this->isEditableState($application);
     }
 
@@ -69,7 +68,48 @@ class ApplicationPolicy
 
     public function delete(AuthUser $authUser, Application $application): bool
     {
-        return $authUser->can('Delete:Application')
+        return $this->authorizeForBranch($authUser, $application, 'Delete:Application');
+    }
+
+    public function generateContract(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'GenerateContract:Application');
+    }
+
+    public function uploadSignedContract(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'UploadSignedContract:Application');
+    }
+
+    /**
+     * Reopens signature-stage data entry (AwaitingContractSignature back to
+     * AwaitingApplicationCompletion) — gated by the same `Update:Application` permission as
+     * ordinary edits, since it's a data-correction action rather than a distinct workflow
+     * step of its own.
+     */
+    public function reopen(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'Update:Application');
+    }
+
+    public function accept(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'Accept:Application');
+    }
+
+    public function reject(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'Reject:Application');
+    }
+
+    public function cancel(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'Cancel:Application');
+    }
+
+    private function authorizeForBranch(AuthUser $authUser, Application $application, string $permission): bool
+    {
+        return $authUser->can($permission)
             && BranchAccess::canAccessBranch($authUser, Application::class, $application->branch_id);
     }
 }

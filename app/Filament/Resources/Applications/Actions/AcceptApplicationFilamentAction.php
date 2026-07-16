@@ -8,6 +8,7 @@ use App\States\Applications\AwaitingBranchReview;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 class AcceptApplicationFilamentAction extends Action
 {
@@ -19,6 +20,8 @@ class AcceptApplicationFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('accept');
 
         $this->label(__('admin.application.actions.accept'));
         $this->icon('heroicon-o-check-circle');
@@ -40,6 +43,8 @@ class AcceptApplicationFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('accept', $record);
+
             try {
                 $record->status->transitionTo(Accepted::class, $data['notes']);
 

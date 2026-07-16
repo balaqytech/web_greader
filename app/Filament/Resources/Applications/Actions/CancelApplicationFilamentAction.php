@@ -12,6 +12,7 @@ use App\States\Applications\CorrectionRequested;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 class CancelApplicationFilamentAction extends Action
 {
@@ -23,6 +24,8 @@ class CancelApplicationFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('cancel');
 
         $this->label(__('admin.application.actions.cancel'));
         $this->icon('heroicon-o-x-mark');
@@ -50,6 +53,8 @@ class CancelApplicationFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('cancel', $record);
+
             try {
                 $record->status->transitionTo(Cancelled::class, $data['notes']);
 

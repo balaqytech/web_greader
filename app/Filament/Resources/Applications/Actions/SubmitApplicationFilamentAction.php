@@ -8,6 +8,7 @@ use App\States\Applications\AwaitingRegistrationFee;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Advances an application off the registration-fee gate. The driving transition
@@ -25,6 +26,8 @@ class SubmitApplicationFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('update');
 
         $this->label(__('admin.application.actions.submit'));
         $this->icon('heroicon-o-paper-airplane');
@@ -47,6 +50,8 @@ class SubmitApplicationFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('update', $record);
+
             try {
                 $record->status->transitionTo(
                     AwaitingApplicationCompletion::class,

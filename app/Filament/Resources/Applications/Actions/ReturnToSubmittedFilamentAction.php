@@ -8,6 +8,7 @@ use App\States\Applications\AwaitingContractSignature;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 
 class ReturnToSubmittedFilamentAction extends Action
 {
@@ -19,6 +20,8 @@ class ReturnToSubmittedFilamentAction extends Action
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->authorize('reopen');
 
         $this->label(__('admin.application.actions.return_to_submitted'));
         $this->icon('heroicon-o-arrow-uturn-left');
@@ -39,6 +42,8 @@ class ReturnToSubmittedFilamentAction extends Action
         );
 
         $this->action(function (Application $record, array $data) {
+            Gate::authorize('reopen', $record);
+
             try {
                 $record->status->transitionTo(AwaitingApplicationCompletion::class, $data['notes']);
 
