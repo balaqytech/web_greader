@@ -154,3 +154,25 @@ it('denies creating an attempt without Create:Payment even in the user\'s own br
 
     expect(Gate::forUser($user)->allows('create', [Payment::class, $application]))->toBeFalse();
 });
+
+it('allows uploading a receipt for a pending bank transfer in the user\'s own branch', function () {
+    $branch = Branch::factory()->create();
+    $user = paymentPolicyUser(['Update:Payment'], $branch);
+
+    expect(Gate::forUser($user)->allows('uploadReceipt', paymentInBranch($branch, 'bankTransfer')))->toBeTrue();
+});
+
+it('denies uploading a receipt for a non-bank-transfer or non-pending attempt', function (string $factoryState) {
+    $branch = Branch::factory()->create();
+    $user = paymentPolicyUser(['Update:Payment'], $branch);
+
+    expect(Gate::forUser($user)->allows('uploadReceipt', paymentInBranch($branch, $factoryState)))->toBeFalse();
+})->with(['thawani', 'cash', 'awaitingVerification', 'paid']);
+
+it('denies uploading a receipt without Update:Payment or in another branch', function () {
+    $branch = Branch::factory()->create();
+
+    expect(Gate::forUser(paymentPolicyUser([], $branch))->allows('uploadReceipt', paymentInBranch($branch, 'bankTransfer')))->toBeFalse()
+        ->and(Gate::forUser(paymentPolicyUser(['Update:Payment'], Branch::factory()->create()))
+            ->allows('uploadReceipt', paymentInBranch($branch, 'bankTransfer')))->toBeFalse();
+});

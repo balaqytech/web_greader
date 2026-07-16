@@ -23,6 +23,7 @@ return [
         'guardians' => 'أولياء الأمور',
         'bot_contacts' => 'سجل تفاعلات فصيح',
         'payment_settings' => 'إعدادات المدفوعات',
+        'payments' => 'المدفوعات',
     ],
     'payment' => [
         'label' => 'دفعة',
@@ -69,8 +70,10 @@ return [
             'upload_receipt_failed' => 'تعذّر رفع الإيصال',
             'verify_bank_transfer' => 'التحقق من التحويل البنكي',
             'verify_bank_transfer_success' => 'تم قبول التحويل البنكي وتسوية الدفعة.',
+            'verify_bank_transfer_failed' => 'تعذّر التحقق من التحويل البنكي',
             'reject_bank_transfer' => 'رفض التحويل البنكي',
             'reject_bank_transfer_success' => 'تم رفض التحويل البنكي.',
+            'reject_bank_transfer_failed' => 'تعذّر رفض التحويل البنكي',
             'reject_reason' => 'سبب الرفض',
             'confirm_cash' => 'تأكيد الاستلام النقدي',
             'confirm_cash_success' => 'تم تأكيد استلام الدفعة النقدية.',

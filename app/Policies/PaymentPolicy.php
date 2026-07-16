@@ -48,6 +48,18 @@ class PaymentPolicy
     }
 
     /**
+     * Uploading a bank receipt from the branch side. Only meaningful for a bank transfer that
+     * is still pending — a terminal or already-verifying attempt must not have its evidence
+     * replaced.
+     */
+    public function uploadReceipt(AuthUser $authUser, Payment $payment): bool
+    {
+        return $this->authorizeForBranch($authUser, $payment, 'Update:Payment')
+            && $payment->method === PaymentMethod::BANK_TRANSFER
+            && $payment->status instanceof Pending;
+    }
+
+    /**
      * Verifying or rejecting a bank receipt is one decision with two outcomes, so both are
      * gated by the same permission. Only meaningful for a bank transfer that is actually
      * awaiting verification — permitting it on any other method or state would be a way to
