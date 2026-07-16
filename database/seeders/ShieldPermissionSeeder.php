@@ -134,6 +134,20 @@ class ShieldPermissionSeeder extends Seeder
     ];
 
     /**
+     * What branch staff/managers need for their own-branch payment workflow: initiating an
+     * attempt and uploading a bank receipt. No `Delete:Payment` — a payment is financial
+     * evidence — and no `ViewAllBranches:Payment`, which stays central-finance-only.
+     *
+     * @var list<string>
+     */
+    private const BRANCH_PAYMENT_PERMISSIONS = [
+        'ViewAny:Payment',
+        'View:Payment',
+        'Create:Payment',
+        'Update:Payment',
+    ];
+
+    /**
      * @var list<string>
      */
     private const ROLES = ['branch_staff', 'branch_manager', 'central_finance'];
@@ -151,6 +165,7 @@ class ShieldPermissionSeeder extends Seeder
             ...self::UNASSIGNED_PAYMENT_PERMISSIONS,
             ...self::PANEL_PERMISSIONS,
             ...self::APPLICATION_PERMISSIONS,
+            ...self::BRANCH_PAYMENT_PERMISSIONS,
         ] as $permission) {
             $permissionModel::firstOrCreate([
                 'name' => $permission,
@@ -185,13 +200,19 @@ class ShieldPermissionSeeder extends Seeder
             ->where('guard_name', 'web')
             ->firstOrFail();
 
-        $branchStaff->syncPermissions(self::BRANCH_APPLICATION_PERMISSIONS);
+        $branchStaff->syncPermissions([
+            ...self::BRANCH_APPLICATION_PERMISSIONS,
+            ...self::BRANCH_PAYMENT_PERMISSIONS,
+        ]);
 
         $branchManager = $roleModel::where('name', 'branch_manager')
             ->where('guard_name', 'web')
             ->firstOrFail();
 
-        $branchManager->syncPermissions(self::BRANCH_APPLICATION_PERMISSIONS);
+        $branchManager->syncPermissions([
+            ...self::BRANCH_APPLICATION_PERMISSIONS,
+            ...self::BRANCH_PAYMENT_PERMISSIONS,
+        ]);
 
         // firstOrCreate rather than assumed-to-exist: this seeder must remain correct even
         // if it is ever run standalone (e.g. in tests) without ShieldSeeder first.

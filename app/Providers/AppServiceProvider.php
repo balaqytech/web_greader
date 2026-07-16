@@ -6,9 +6,12 @@ use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentGatewayManager;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Opcodes\LogViewer\Facades\LogViewer;
@@ -50,6 +53,22 @@ class AppServiceProvider extends ServiceProvider
         LogViewer::auth(fn ($request) => Auth::check());
 
         FilamentShield::prohibitDestructiveCommands(app()->isProduction());
+
+        $this->configurePaymentRateLimiter();
+    }
+
+    /**
+     * 5/minute, per token — not per IP, since a single service integration behind one IP must
+     * not be able to starve another's abusive traffic into looking like a shared limit, and a
+     * token id cannot be spoofed the way an IP or a body field can.
+     */
+    protected function configurePaymentRateLimiter(): void
+    {
+        RateLimiter::for('payments', function (Request $request) {
+            $key = $request->user()?->currentAccessToken()?->getKey() ?? $request->ip();
+
+            return Limit::perMinute(5)->by('payments:'.$key);
+        });
     }
 
     /**

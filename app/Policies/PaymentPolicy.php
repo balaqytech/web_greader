@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\PaymentMethod;
+use App\Models\Application;
 use App\Models\Payment;
 use App\States\Payments\AwaitingVerification;
 use App\States\Payments\Pending;
@@ -34,6 +35,16 @@ class PaymentPolicy
     public function view(AuthUser $authUser, Payment $payment): bool
     {
         return $this->authorizeForBranch($authUser, $payment, 'View:Payment');
+    }
+
+    /**
+     * Initiating an attempt (staff or chatbot) happens before any Payment row exists, so this
+     * is checked against the *application* it would belong to rather than a payment instance.
+     */
+    public function create(AuthUser $authUser, Application $application): bool
+    {
+        return $authUser->can('Create:Payment')
+            && BranchAccess::canAccessBranch($authUser, Payment::class, $application->branch_id);
     }
 
     /**

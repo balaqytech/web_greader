@@ -127,3 +127,30 @@ it('denies confirming cash on a non-cash or already-settled attempt', function (
 
     expect(Gate::forUser($user)->allows('confirmCash', paymentInBranch($branch, $factoryState)))->toBeFalse();
 })->with(['bankTransfer', 'awaitingVerification', 'paid', 'failed', 'rejected', 'expired']);
+
+/**
+ * Initiation is checked against the application it would belong to — no Payment row exists
+ * yet at this point.
+ */
+it('allows creating an attempt in the user\'s own branch with Create:Payment', function () {
+    $branch = Branch::factory()->create();
+    $user = paymentPolicyUser(['Create:Payment'], $branch);
+    $application = Application::factory()->create(['branch_id' => $branch->id]);
+
+    expect(Gate::forUser($user)->allows('create', [Payment::class, $application]))->toBeTrue();
+});
+
+it('denies creating an attempt in another branch', function () {
+    $user = paymentPolicyUser(['Create:Payment'], Branch::factory()->create());
+    $application = Application::factory()->create(['branch_id' => Branch::factory()->create()->id]);
+
+    expect(Gate::forUser($user)->allows('create', [Payment::class, $application]))->toBeFalse();
+});
+
+it('denies creating an attempt without Create:Payment even in the user\'s own branch', function () {
+    $branch = Branch::factory()->create();
+    $user = paymentPolicyUser([], $branch);
+    $application = Application::factory()->create(['branch_id' => $branch->id]);
+
+    expect(Gate::forUser($user)->allows('create', [Payment::class, $application]))->toBeFalse();
+});

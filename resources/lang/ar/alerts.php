@@ -20,6 +20,11 @@ return [
         'return_paid' => 'تم تأكيد سداد رسوم التسجيل.',
         'return_failed' => 'لم تكتمل عملية الدفع. يمكنك المحاولة مرة أخرى.',
         'return_unavailable' => 'تعذر التحقق من حالة الدفع الآن. سيتم تحديثها تلقائياً عند توفر البوابة.',
+        'not_found' => 'لم يتم العثور على النتيجة.',
+        'idempotency_key_required' => 'رأس Idempotency-Key مطلوب.',
+        'provider_unavailable' => 'تعذر إنشاء عملية الدفع حالياً. حاول مرة أخرى لاحقاً.',
+        'receipt_upload_not_eligible' => 'لا يمكن رفع الإيصال لهذه العملية.',
+        'bank_transfer_not_awaiting_verification' => 'هذا التحويل البنكي ليس بانتظار التحقق.',
     ],
     'application' => [
         'transitioned_to_submitted' => 'تم اكمال بيانات الطلب بنجاح',

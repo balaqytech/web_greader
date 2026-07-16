@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Applications\Pages;
 use App\Filament\Resources\Applications\Actions\AcceptApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\CancelApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\CopyContractLinkFilamentAction;
+use App\Filament\Resources\Applications\Actions\InitiatePaymentFilamentAction;
 use App\Filament\Resources\Applications\Actions\MoveToWaitingContractFilamentAction;
 use App\Filament\Resources\Applications\Actions\OpenContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\RejectApplicationFilamentAction;
@@ -39,6 +40,7 @@ class ViewApplication extends ViewRecord
             // unregistered; registering it in the payments phase would have turned it into a
             // one-click way to skip paying. The gate is now crossed solely by a paid
             // registration-fee payment.
+            InitiatePaymentFilamentAction::make(),
             MoveToWaitingContractFilamentAction::make(),
             ActionGroup::make([
                 OpenContractLinkFilamentAction::make(),

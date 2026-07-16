@@ -333,6 +333,21 @@ function branchApplicationPermissionNames(): array
     ];
 }
 
+/**
+ * What branch_staff/branch_manager need for their own-branch payment workflow: initiating an
+ * attempt and uploading a bank receipt. No delete (a payment is financial evidence) and no
+ * cross-branch permission (that stays central-finance-only).
+ */
+function branchPaymentPermissionNames(): array
+{
+    return [
+        'ViewAny:Payment',
+        'View:Payment',
+        'Create:Payment',
+        'Update:Payment',
+    ];
+}
+
 it('grants branch_staff and branch_manager exactly the approved-workflow Application permission matrix, with no cross-branch permission and no raw delete', function () {
     $this->seed(ShieldPermissionSeeder::class);
 
@@ -340,7 +355,7 @@ it('grants branch_staff and branch_manager exactly the approved-workflow Applica
         $role = Role::where('name', $roleName)->where('guard_name', 'web')->firstOrFail();
 
         expect($role->permissions->pluck('name')->sort()->values()->all())
-            ->toBe(collect(branchApplicationPermissionNames())->sort()->values()->all());
+            ->toBe(collect([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames()])->sort()->values()->all());
     }
 });
 
@@ -359,7 +374,7 @@ it('resets branch_staff and branch_manager to exactly their intended matrix on r
     $this->seed(ShieldPermissionSeeder::class);
 
     expect($branchStaff->fresh()->permissions->pluck('name')->sort()->values()->all())
-        ->toBe(collect(branchApplicationPermissionNames())->sort()->values()->all());
+        ->toBe(collect([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames()])->sort()->values()->all());
 });
 
 it('creates Access:Panel and the full Application permission matrix, including Delete:Application as a real but unassigned permission', function () {
@@ -383,7 +398,7 @@ it('grants super_admin Access:Panel and the full Application permission matrix i
     expect($user->can('Access:Panel'))->toBeTrue()
         ->and($user->can('Delete:Application'))->toBeTrue();
 
-    foreach (branchApplicationPermissionNames() as $permissionName) {
+    foreach ([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames()] as $permissionName) {
         expect($user->can($permissionName))->toBeTrue();
     }
 });
