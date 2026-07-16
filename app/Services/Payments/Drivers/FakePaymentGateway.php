@@ -62,6 +62,7 @@ class FakePaymentGateway implements PaymentGateway
             outcome: $outcome,
             amount: $amount ?? $existing?->amount,
             clientReference: $existing?->clientReference,
+            currency: $existing?->currency ?? 'OMR',
             payload: ['session_id' => $sessionId, 'payment_status' => $outcome->value],
         );
     }
@@ -77,6 +78,7 @@ class FakePaymentGateway implements PaymentGateway
             outcome: ProviderPaymentOutcome::UNPAID,
             amount: $request->amount,
             clientReference: $request->clientReference,
+            currency: 'OMR',
             payload: ['session_id' => $sessionId, 'payment_status' => 'unpaid'],
         );
 

@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Support\Payments;
 
 use App\Enums\PaymentPurpose;
+use App\Exceptions\InvalidSettlementEvidenceException;
 use App\Models\Payment;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Payments\Failed;
 use App\States\Payments\Paid;
+use App\Support\Payments\Evidence\BankTransferVerificationEvidence;
+use App\Support\Payments\Evidence\CashSettlementEvidence;
+use App\Support\Payments\Evidence\PaymentSettlementEvidence;
+use App\Support\Payments\Evidence\ThawaniSettlementEvidence;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -17,7 +22,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Shared by every route to Paid (provider retrieval, bank verification, cash confirmation)
  * so the double-charge rule and the fee-gate advance cannot be implemented three subtly
- * different ways.
+ * different ways. Every route must supply typed `PaymentSettlementEvidence` matching the
+ * payment's own method — this is what makes an evidence-free or wrong-method settlement
+ * impossible rather than merely undocumented.
  *
  * Callers must already hold the application and payment locks (pass a `LockedPayment`) and
  * must already be inside a transaction. Marking the payment and advancing the application
@@ -33,16 +40,18 @@ class SettleRegistrationFee
      * second successful charge is detected. Callers must read the returned state rather than
      * assume success.
      *
-     * @param  array<string, mixed>|null  $providerPayload  Sanitised provider evidence.
+     * @throws InvalidSettlementEvidenceException
      */
-    public function settle(LockedPayment $locked, ?array $providerPayload = null, ?string $notes = null): Payment
+    public function settle(LockedPayment $locked, PaymentSettlementEvidence $evidence, ?string $activityNotes = null): Payment
     {
         $payment = $locked->payment;
         $application = $locked->application;
 
-        if ($providerPayload !== null) {
-            $payment->provider_payload = $providerPayload;
+        if ($evidence->method() !== $payment->method) {
+            throw InvalidSettlementEvidenceException::methodMismatch($payment, $evidence);
         }
+
+        $this->applyEvidence($payment, $evidence);
 
         $alreadyPaid = $this->existingPaidFee($payment);
 
@@ -57,10 +66,48 @@ class SettleRegistrationFee
         // applications were grandfathered past the fee without a payment record, and a fee
         // settled against one of them must not drag it backwards or advance it twice.
         if ($application->status instanceof AwaitingRegistrationFee) {
-            $application->status->transitionTo(AwaitingApplicationCompletion::class, $payment, $notes);
+            $application->status->transitionTo(AwaitingApplicationCompletion::class, $payment, $activityNotes);
         }
 
         return $payment;
+    }
+
+    /**
+     * Stamps the evidence appropriate to each method onto the payment row before it is marked
+     * paid, so the audit trail always shows *why* a payment was believed to have settled.
+     */
+    private function applyEvidence(Payment $payment, PaymentSettlementEvidence $evidence): void
+    {
+        match (true) {
+            $evidence instanceof ThawaniSettlementEvidence => $this->applyThawaniEvidence($payment, $evidence),
+            $evidence instanceof CashSettlementEvidence => $this->applyCashEvidence($payment, $evidence),
+            $evidence instanceof BankTransferVerificationEvidence => $this->applyBankTransferEvidence($payment, $evidence),
+            default => throw InvalidSettlementEvidenceException::methodMismatch($payment, $evidence),
+        };
+    }
+
+    private function applyThawaniEvidence(Payment $payment, ThawaniSettlementEvidence $evidence): void
+    {
+        // Recovered attempts (found by client reference because the initiation call never
+        // came back with a session id) are persisted here rather than left null, so every
+        // later lookup — reconciliation included — can address this attempt by session id.
+        $payment->provider_session_id ??= $evidence->sessionId;
+        $payment->provider_payload = $evidence->payload;
+        $payment->verified_at = now();
+    }
+
+    private function applyCashEvidence(Payment $payment, CashSettlementEvidence $evidence): void
+    {
+        $payment->cash_reference = $evidence->reference;
+        $payment->cash_notes = $evidence->notes;
+        $payment->verified_by = $evidence->confirmedBy->getKey();
+        $payment->verified_at = now();
+    }
+
+    private function applyBankTransferEvidence(Payment $payment, BankTransferVerificationEvidence $evidence): void
+    {
+        $payment->verified_by = $evidence->verifiedBy->getKey();
+        $payment->verified_at = now();
     }
 
     /**
@@ -79,17 +126,16 @@ class SettleRegistrationFee
     }
 
     /**
-     * The application was already paid for, and the provider has now reported a second
-     * successful charge. This should be impossible — one active attempt per application is
-     * enforced by the application lock — so reaching here means real money may have been
-     * taken twice.
+     * The application was already paid for, and a second successful charge has now been
+     * reported. This should be impossible — one active attempt per application is enforced by
+     * the application lock — so reaching here means real money may have been taken twice.
      *
      * We refuse to advance the application twice, and we do NOT silently mark this attempt
      * paid, which would leave two paid rows and no signal that anything was wrong. The
-     * losing attempt is failed with an explicit reason, its provider evidence is preserved
-     * for whoever reconciles it, and it is reported loudly. This deliberately does not throw:
-     * the money situation needs a human, and an exception here would roll back the very
-     * evidence they need.
+     * losing attempt is failed with an explicit reason, its evidence is preserved for whoever
+     * reconciles it, and it is reported loudly. This deliberately does not throw: the money
+     * situation needs a human, and an exception here would roll back the very evidence they
+     * need.
      */
     private function refuseDoubleCharge(Payment $payment, Payment $winner): Payment
     {

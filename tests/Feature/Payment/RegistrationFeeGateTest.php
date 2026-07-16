@@ -15,7 +15,24 @@ use App\States\Payments\Expired;
 use App\States\Payments\Failed;
 use App\States\Payments\Paid;
 use App\States\Payments\Pending;
+use App\Support\Payments\Evidence\ThawaniSettlementEvidence;
 use Illuminate\Support\Facades\Log;
+
+/**
+ * Builds evidence that trivially matches a Thawani payment's own snapshotted identity —
+ * these tests exercise the transition layer, which trusts evidence an authorized caller has
+ * already validated (see `ResolvePaymentFromProviderAction` for where that validation lives).
+ */
+function thawaniEvidence(Payment $payment, array $payload = []): ThawaniSettlementEvidence
+{
+    return new ThawaniSettlementEvidence(
+        sessionId: $payment->provider_session_id ?? 'sess_test_'.$payment->reference,
+        clientReference: $payment->reference,
+        amount: $payment->money(),
+        currency: $payment->currency,
+        payload: $payload,
+    );
+}
 
 /**
  * The registration-fee gate: the single rule that an application only advances when its fee
@@ -25,7 +42,7 @@ it('advances an application when its fee payment is settled', function () {
     $application = Application::factory()->awaitingRegistrationFee()->create();
     $payment = Payment::factory()->forApplication($application)->pending()->create();
 
-    $settled = $payment->status->transitionTo(Paid::class);
+    $settled = $payment->status->transitionTo(Paid::class, thawaniEvidence($payment));
 
     expect($settled->status)->toBeInstanceOf(Paid::class)
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingApplicationCompletion::class);
@@ -35,7 +52,7 @@ it('records the fee settlement as application activity', function () {
     $application = Application::factory()->awaitingRegistrationFee()->create();
     $payment = Payment::factory()->forApplication($application)->pending()->create();
 
-    $payment->status->transitionTo(Paid::class);
+    $payment->status->transitionTo(Paid::class, thawaniEvidence($payment));
 
     $activity = ApplicationActivity::where('application_id', $application->id)
         ->where('to_state', AwaitingApplicationCompletion::$name)
@@ -136,7 +153,7 @@ it('settles the payment and advances the application atomically', function () {
     $application = Application::factory()->awaitingRegistrationFee()->create();
     $payment = Payment::factory()->forApplication($application)->pending()->create();
 
-    $payment->status->transitionTo(Paid::class);
+    $payment->status->transitionTo(Paid::class, thawaniEvidence($payment));
 
     // Never a paid fee sitting against an application still waiting for it.
     expect($payment->fresh()->isPaid())->toBeTrue()
@@ -151,7 +168,7 @@ it('settles a payment without touching an application already past the gate', fu
     $application = Application::factory()->awaitingApplicationCompletion()->create();
     $payment = Payment::factory()->forApplication($application)->pending()->create();
 
-    $settled = $payment->status->transitionTo(Paid::class);
+    $settled = $payment->status->transitionTo(Paid::class, thawaniEvidence($payment));
 
     expect($settled->status)->toBeInstanceOf(Paid::class)
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingApplicationCompletion::class);
@@ -168,10 +185,10 @@ it('refuses a second successful charge, failing the loser instead of advancing t
     $winner = Payment::factory()->forApplication($application)->pending()->create();
     $loser = Payment::factory()->forApplication($application)->pending()->create();
 
-    $winner->status->transitionTo(Paid::class);
+    $winner->status->transitionTo(Paid::class, thawaniEvidence($winner));
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingApplicationCompletion::class);
 
-    $result = $loser->status->transitionTo(Paid::class);
+    $result = $loser->status->transitionTo(Paid::class, thawaniEvidence($loser));
 
     expect($result->status)->toBeInstanceOf(Failed::class)
         ->and($result->failure_reason)->toContain($winner->reference)
@@ -185,12 +202,12 @@ it('preserves the losing attempt\'s provider evidence for reconciliation', funct
     $winner = Payment::factory()->forApplication($application)->pending()->create();
     $loser = Payment::factory()->forApplication($application)->pending()->create();
 
-    $winner->status->transitionTo(Paid::class);
+    $winner->status->transitionTo(Paid::class, thawaniEvidence($winner));
 
-    $evidence = ['session_id' => 'sess_double', 'payment_status' => 'paid'];
-    $result = $loser->status->transitionTo(Paid::class, $evidence);
+    $payload = ['session_id' => 'sess_double', 'payment_status' => 'paid'];
+    $result = $loser->status->transitionTo(Paid::class, thawaniEvidence($loser, $payload));
 
-    expect($result->fresh()->provider_payload)->toBe($evidence)
+    expect($result->fresh()->provider_payload)->toBe($payload)
         ->and($result->fresh()->status)->toBeInstanceOf(Failed::class);
 });
 
@@ -201,8 +218,8 @@ it('does not advance the application a second time on a double charge', function
     $winner = Payment::factory()->forApplication($application)->pending()->create();
     $loser = Payment::factory()->forApplication($application)->pending()->create();
 
-    $winner->status->transitionTo(Paid::class);
-    $loser->status->transitionTo(Paid::class);
+    $winner->status->transitionTo(Paid::class, thawaniEvidence($winner));
+    $loser->status->transitionTo(Paid::class, thawaniEvidence($loser));
 
     expect(ApplicationActivity::where('application_id', $application->id)
         ->where('to_state', AwaitingApplicationCompletion::$name)
@@ -239,7 +256,7 @@ it('permits a fresh attempt after a failed one, and that attempt can settle the 
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingRegistrationFee::class);
 
     $retry = Payment::factory()->forApplication($application)->pending()->create();
-    $retry->status->transitionTo(Paid::class);
+    $retry->status->transitionTo(Paid::class, thawaniEvidence($retry));
 
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingApplicationCompletion::class)
         ->and(Payment::query()->where('application_id', $application->id)->count())->toBe(2);
@@ -265,7 +282,7 @@ it('keeps the registration-fee purpose on settled payments', function () {
     $application = Application::factory()->awaitingRegistrationFee()->create();
     $payment = Payment::factory()->forApplication($application)->pending()->create();
 
-    $payment->status->transitionTo(Paid::class);
+    $payment->status->transitionTo(Paid::class, thawaniEvidence($payment));
 
     expect($payment->fresh()->purpose)->toBe(PaymentPurpose::REGISTRATION_FEE);
 });

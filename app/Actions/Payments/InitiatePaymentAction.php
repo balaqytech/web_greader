@@ -19,6 +19,7 @@ use App\States\Payments\Failed;
 use App\States\Payments\Pending;
 use App\Support\Payments\LockPayment;
 use App\Support\Settings\PaymentSettings;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -69,6 +70,7 @@ class InitiatePaymentAction
             throw PaymentInitiationException::methodUnavailable($dto->method);
         }
 
+        // Fast path: a pure repeat need not take the application lock at all.
         if ($dto->idempotencyKey !== null) {
             $replay = $this->replayOf($dto);
 
@@ -80,6 +82,18 @@ class InitiatePaymentAction
         $payment = DB::transaction(function () use ($dto, $fee): Payment {
             $application = LockPayment::application($dto->application);
 
+            // Rechecked under the application lock: two concurrent identical requests race
+            // to here, and the loser — now unblocked after the winner committed — must find
+            // and return the winner's row rather than trip the "attempt already active" guard
+            // against its own replay.
+            if ($dto->idempotencyKey !== null) {
+                $replay = $this->replayOf($dto);
+
+                if ($replay !== null) {
+                    return $replay;
+                }
+            }
+
             if (! $application->status instanceof AwaitingRegistrationFee) {
                 throw PaymentInitiationException::notAwaitingFee($application);
             }
@@ -90,25 +104,42 @@ class InitiatePaymentAction
                 throw PaymentInitiationException::attemptAlreadyActive($active);
             }
 
-            return Payment::create([
-                'application_id' => $application->getKey(),
-                // Denormalised from the *locked* application, never from the request.
-                'branch_id' => $application->branch_id,
-                'purpose' => PaymentPurpose::REGISTRATION_FEE,
-                'method' => $dto->method,
-                'status' => Pending::$name,
-                // Snapshotted now. Changing the fee later must not alter what this attempt
-                // was for.
-                'amount' => $fee->value,
-                'currency' => 'OMR',
-                'idempotency_key' => $dto->idempotencyKey,
-                'request_hash' => $dto->requestHash,
-                'created_by' => $dto->actor?->getKey(),
-            ]);
+            try {
+                return Payment::create([
+                    'application_id' => $application->getKey(),
+                    // Denormalised from the *locked* application, never from the request.
+                    'branch_id' => $application->branch_id,
+                    'purpose' => PaymentPurpose::REGISTRATION_FEE,
+                    'method' => $dto->method,
+                    'status' => Pending::$name,
+                    // Snapshotted now. Changing the fee later must not alter what this
+                    // attempt was for.
+                    'amount' => $fee->value,
+                    'currency' => 'OMR',
+                    'idempotency_key' => $dto->idempotencyKey,
+                    'request_hash' => $dto->requestHash,
+                    'created_by' => $dto->actor?->getKey(),
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                // Defensive backstop: the idempotency-key unique constraint was hit despite
+                // the recheck above. Resolve it the same way rather than let a raw database
+                // exception surface as an unrelated server error.
+                $replay = $dto->idempotencyKey !== null ? $this->replayOf($dto) : null;
+
+                if ($replay !== null) {
+                    return $replay;
+                }
+
+                throw $e;
+            }
         }, attempts: 3);
 
-        // Committed. Only now is the network touched.
-        if ($dto->method === PaymentMethod::THAWANI) {
+        // Committed. Only now is the network touched — and only for a row this request
+        // genuinely created. A replay (fast-path or recheck-under-lock) returns an existing
+        // row, which either already has a checkout session or is another request's job to
+        // open; opening a second session for the same attempt would be a duplicate call for
+        // no reason, not a double charge, but still wrong.
+        if ($dto->method === PaymentMethod::THAWANI && $payment->wasRecentlyCreated) {
             $this->openCheckout($payment, $dto);
         }
 

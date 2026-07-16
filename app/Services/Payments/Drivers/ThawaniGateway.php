@@ -225,6 +225,7 @@ class ThawaniGateway implements PaymentGateway
             outcome: $this->outcome($data),
             amount: $this->amount($data),
             clientReference: is_string($data['client_reference_id'] ?? null) ? $data['client_reference_id'] : null,
+            currency: is_string($data['currency'] ?? null) ? strtoupper($data['currency']) : null,
             payload: $this->sanitize($data),
         );
     }

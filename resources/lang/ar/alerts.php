@@ -12,6 +12,7 @@ return [
         'not_awaiting_fee' => 'هذا الطلب ليس بانتظار سداد رسوم التسجيل.',
         'attempt_already_active' => 'توجد عملية دفع قيد التنفيذ لهذا الطلب بالفعل.',
         'idempotency_key_reused' => 'تم استخدام مفتاح المعالجة هذا لطلب مختلف.',
+        'idempotency_requires_hash' => 'يجب إرسال مفتاح المعالجة وبصمة الطلب معاً، أو عدم إرسال أي منهما.',
         'method_unavailable' => 'طريقة الدفع :method غير متاحة حالياً.',
         'provider_declined' => 'رفضت بوابة الدفع هذه العملية.',
         'checkout_cancelled' => 'تم إلغاء عملية الدفع.',

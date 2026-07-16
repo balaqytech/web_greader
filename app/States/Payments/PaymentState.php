@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\States\Payments;
 
+use App\States\Payments\Transitions\AwaitingVerificationToPaid;
+use App\States\Payments\Transitions\AwaitingVerificationToRejected;
+use App\States\Payments\Transitions\PendingToAwaitingVerification;
 use App\States\Payments\Transitions\PendingToExpired;
 use App\States\Payments\Transitions\PendingToFailed;
 use App\States\Payments\Transitions\PendingToPaid;
@@ -45,7 +48,10 @@ abstract class PaymentState extends State implements HasColor, HasLabel
             ->default(Pending::class)
             ->allowTransition(Pending::class, Paid::class, PendingToPaid::class)
             ->allowTransition(Pending::class, Failed::class, PendingToFailed::class)
-            ->allowTransition(Pending::class, Expired::class, PendingToExpired::class);
+            ->allowTransition(Pending::class, Expired::class, PendingToExpired::class)
+            ->allowTransition(Pending::class, AwaitingVerification::class, PendingToAwaitingVerification::class)
+            ->allowTransition(AwaitingVerification::class, Paid::class, AwaitingVerificationToPaid::class)
+            ->allowTransition(AwaitingVerification::class, Rejected::class, AwaitingVerificationToRejected::class);
     }
 
     /**

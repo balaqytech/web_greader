@@ -57,4 +57,14 @@ class PaymentInitiationException extends Exception
     {
         return new self(__('alerts.payment.idempotency_key_reused'));
     }
+
+    /**
+     * A request supplied one of `idempotencyKey`/`requestHash` without the other. A key with
+     * no hash could never detect a conflicting reuse; a hash with no key has nothing to key
+     * on — so a caller must supply both together or neither.
+     */
+    public static function idempotencyRequiresHash(): self
+    {
+        return new self(__('alerts.payment.idempotency_requires_hash'));
+    }
 }

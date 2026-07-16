@@ -28,6 +28,7 @@ final readonly class ProviderSessionStatusDTO
         public ProviderPaymentOutcome $outcome,
         public ?OmrAmount $amount = null,
         public ?string $clientReference = null,
+        public ?string $currency = null,
         public array $payload = [],
     ) {}
 
