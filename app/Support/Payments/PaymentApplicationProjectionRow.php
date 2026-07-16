@@ -13,6 +13,7 @@ namespace App\Support\Payments;
 final readonly class PaymentApplicationProjectionRow
 {
     public function __construct(
+        public string $paymentReference,
         public string $applicationReference,
         public string $studentName,
         public string $programName,

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Payments\Tables;
 
 use App\Filament\Resources\Payments\Actions\ConfirmCashFilamentAction;
+use App\Filament\Resources\Payments\Actions\DownloadReceiptFilamentAction;
 use App\Filament\Resources\Payments\Actions\RejectBankTransferFilamentAction;
 use App\Filament\Resources\Payments\Actions\UploadReceiptFilamentAction;
 use App\Filament\Resources\Payments\Actions\VerifyBankTransferFilamentAction;
 use App\Models\Payment;
+use App\Support\Payments\PaymentApplicationProjection;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -19,17 +21,22 @@ class PaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['application', 'branch']))
             ->columns([
                 TextColumn::make('reference')
                     ->label(__('admin.payment.reference'))
                     ->searchable(),
-                TextColumn::make('application.ref_no')
+                TextColumn::make(PaymentApplicationProjection::APPLICATION_REFERENCE)
                     ->label(__('admin.payment.application'))
-                    ->searchable(),
-                TextColumn::make('branch.name')
+                    ->placeholder('-'),
+                TextColumn::make(PaymentApplicationProjection::STUDENT_NAME)
+                    ->label(__('admin.application.student_name'))
+                    ->placeholder('-'),
+                TextColumn::make(PaymentApplicationProjection::PROGRAM_NAME)
+                    ->label(__('admin.application.program'))
+                    ->placeholder('-'),
+                TextColumn::make(PaymentApplicationProjection::BRANCH_NAME)
                     ->label(__('admin.payment.branch'))
-                    ->searchable(),
+                    ->placeholder('-'),
                 TextColumn::make('method')
                     ->label(__('admin.payment.method'))
                     ->badge(),
@@ -68,6 +75,7 @@ class PaymentsTable
             ])
             ->recordActions([
                 ViewAction::make(),
+                DownloadReceiptFilamentAction::make(),
                 UploadReceiptFilamentAction::make(),
                 VerifyBankTransferFilamentAction::make(),
                 RejectBankTransferFilamentAction::make(),

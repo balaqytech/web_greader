@@ -53,24 +53,19 @@ use Tests\Support\CleanupAggregator;
  *   application's own `DB_*` variables.
  * - Strict opt-in parsing: unset/empty disables (skip); a handful of recognized values enable;
  *   anything else throws rather than silently skipping a typo.
- * - The target database name must end in `_test`; refused otherwise.
- * - This test *does* issue `CREATE DATABASE IF NOT EXISTS` for the dedicated `_test` schema
- *   (unlike the lock probe, which only ever touches a throwaway table) — provisioning a
- *   disposable schema and migrating the real application schema onto it is the only way to
- *   exercise the real settlement path end-to-end. It never touches any database whose name
- *   does not end in `_test`, and never issues `DROP DATABASE` on anything else.
+ * - The configured name is only a namespace ending in `_test`; each run derives a fresh,
+ *   random child schema from it.
+ * - The child is created without `IF NOT EXISTS` and dropped only after this process created
+ *   it, so no pre-existing database can be claimed or deleted.
  * - Tagged `integration`.
  *
  * The target engine here is whatever MySQL/MariaDB-compatible server the dedicated
  * `PAYMENT_CONCURRENCY_TEST_DB_*` variables point at; the server version is printed to stderr
  * so a run is traceable to a real, identifiable engine instance rather than asserted blindly.
  *
- * To opt in locally (provision the schema and a least-privilege user yourself — this test
- * will not create either):
- *   CREATE DATABASE greader_payment_concurrency_test;
- *   CREATE USER 'greader_pc_test'@'127.0.0.1' IDENTIFIED BY 'change-me';
- *   GRANT ALL PRIVILEGES ON greader_payment_concurrency_test.* TO 'greader_pc_test'@'127.0.0.1';
- * then:
+ * To opt in locally, use a dedicated test-server account allowed to create and drop only
+ * disposable schemas. The configured database value is a namespace and is never used or
+ * deleted directly:
  *   PAYMENT_CONCURRENCY_TEST_ENABLED=true PAYMENT_CONCURRENCY_TEST_DB_HOST=127.0.0.1 \
  *   PAYMENT_CONCURRENCY_TEST_DB_PORT=3306 \
  *   PAYMENT_CONCURRENCY_TEST_DB_DATABASE=greader_payment_concurrency_test \
@@ -136,14 +131,21 @@ function paymentConcurrencyConnectionConfig(): array
         );
     }
 
-    if (! str_ends_with($database, '_test')) {
+    if (! is_string($database) || preg_match('/^[A-Za-z0-9_]+_test$/', $database) !== 1 || strlen($database) > 40) {
         throw new RuntimeException(
-            "PAYMENT_CONCURRENCY_TEST_DB_DATABASE [{$database}] does not end in `_test`. Refusing to run ".
-            'against a database that is not unambiguously a dedicated test schema.'
+            "PAYMENT_CONCURRENCY_TEST_DB_DATABASE [{$database}] must contain only letters, numbers, and underscores, "
+            .'end in `_test`, and be at most 40 characters.'
         );
     }
 
     return compact('host', 'port', 'database', 'username', 'password');
+}
+
+function paymentConcurrencyRunDatabaseName(string $namespace): string
+{
+    $prefix = substr($namespace, 0, -5);
+
+    return $prefix.'_run_'.bin2hex(random_bytes(8)).'_test';
 }
 
 it('disables the probe for unset and recognized false PAYMENT_CONCURRENCY_TEST_ENABLED values', function (mixed $raw) {
@@ -168,6 +170,17 @@ it('enables the probe for recognized true PAYMENT_CONCURRENCY_TEST_ENABLED value
     '"on"' => ['on'],
 ]);
 
+it('derives a unique disposable child schema without targeting the configured namespace', function () {
+    $first = paymentConcurrencyRunDatabaseName('greader_payment_test');
+    $second = paymentConcurrencyRunDatabaseName('greader_payment_test');
+
+    expect($first)->not->toBe('greader_payment_test')
+        ->and($second)->not->toBe('greader_payment_test')
+        ->and($first)->not->toBe($second)
+        ->and($first)->toEndWith('_test')
+        ->and($second)->toEndWith('_test');
+});
+
 it('fails loudly on an unrecognized PAYMENT_CONCURRENCY_TEST_ENABLED value instead of silently disabling', function (string $raw) {
     expect(fn () => parsePaymentConcurrencyOptIn($raw))->toThrow(RuntimeException::class);
 })->with([
@@ -175,6 +188,16 @@ it('fails loudly on an unrecognized PAYMENT_CONCURRENCY_TEST_ENABLED value inste
     'numeric but not 0/1' => ['2'],
     'whitespace-only' => ['   '],
 ]);
+
+it('refuses the concurrency worker without its separate test-process opt in', function () {
+    $this->artisan('payments:concurrency-worker', [
+        'reference' => 'not-a-payment',
+        'sessionId' => 'not-a-session',
+        'amount' => '25.000',
+        'currency' => 'OMR',
+    ])->expectsOutputToContain('disabled outside an explicitly opted-in testing process')
+        ->assertFailed();
+});
 
 it('settles exactly one of two genuinely concurrent OS-process attempts on the same payment, and safely fails the loser', function () {
     if (! paymentConcurrencyOptedIn()) {
@@ -186,6 +209,7 @@ it('settles exactly one of two genuinely concurrent OS-process attempts on the s
     }
 
     $config = paymentConcurrencyConnectionConfig();
+    $config['database'] = paymentConcurrencyRunDatabaseName($config['database']);
     $connectionName = 'payment_concurrency_test';
 
     config(["database.connections.{$connectionName}_admin" => [
@@ -203,8 +227,15 @@ it('settles exactly one of two genuinely concurrent OS-process attempts on the s
     $connection = null;
 
     try {
+        $existing = DB::connection("{$connectionName}_admin")
+            ->selectOne('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?', [$config['database']]);
+
+        if ($existing !== null) {
+            throw new RuntimeException("Refusing to reuse pre-existing schema [{$config['database']}].");
+        }
+
         DB::connection("{$connectionName}_admin")
-            ->statement("CREATE DATABASE IF NOT EXISTS `{$config['database']}`");
+            ->statement("CREATE DATABASE `{$config['database']}`");
         $databaseCreated = true;
         DB::purge("{$connectionName}_admin");
 
@@ -316,6 +347,8 @@ it('settles exactly one of two genuinely concurrent OS-process attempts on the s
                 'DB_DATABASE' => $config['database'],
                 'DB_USERNAME' => $config['username'],
                 'DB_PASSWORD' => $config['password'],
+                'APP_ENV' => 'testing',
+                'PAYMENT_CONCURRENCY_TEST_WORKER_ENABLED' => 'true',
             ]),
             fn (mixed $value): bool => is_scalar($value),
         );

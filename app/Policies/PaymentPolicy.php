@@ -59,6 +59,13 @@ class PaymentPolicy
             && $payment->status instanceof Pending;
     }
 
+    public function viewReceipt(AuthUser $authUser, Payment $payment): bool
+    {
+        return is_string($payment->receipt_path)
+            && $payment->receipt_path !== ''
+            && $this->authorizeForBranch($authUser, $payment, 'View:Payment');
+    }
+
     /**
      * Verifying or rejecting a bank receipt is one decision with two outcomes, so both are
      * gated by the same permission. Only meaningful for a bank transfer that is actually

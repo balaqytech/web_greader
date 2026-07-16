@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDTO;
 use App\Enums\PaymentMethod;
+use App\Exceptions\InvalidSettlementEvidenceException;
 use App\Exceptions\PaymentGatewayException;
 use App\Exceptions\PaymentInitiationException;
 use App\Exceptions\StalePaymentStateException;
@@ -20,26 +21,14 @@ use App\Models\Payment;
 use App\Models\Scopes\BranchScope;
 use App\States\Payments\AwaitingVerification;
 use App\States\Payments\Pending;
+use App\Support\Payments\PaymentReceiptStorage;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
-/**
- * The chatbot/guardian-facing payment surface. Every response is built from `PaymentResource`,
- * so nothing here can leak a provider payload, an internal id, a settings value beyond the
- * bank instructions, or any application/guardian PII beyond what the caller already supplied.
- *
- * Deliberately narrow: cash is staff-only and has no route here (see
- * `PaymentMethod::isAvailableToChatbot()`), and every action is behind its own Sanctum ability
- * plus a named 5/min-per-token limiter (see `routes/api.php` and the `payments` rate limiter).
- *
- * A caller must always supply the application's own reference *and* its guardian phone
- * together. Getting either wrong answers with the same generic 404 — a mismatch never
- * distinguishes "no such application" from "wrong phone", which is what makes the pair
- * un-probeable.
- */
 class PaymentController extends Controller
 {
     public function initiateThawani(InitiateThawaniPaymentRequest $request, InitiatePaymentAction $action): JsonResponse
@@ -52,8 +41,11 @@ class PaymentController extends Controller
         return $this->initiate($request, $action, PaymentMethod::BANK_TRANSFER);
     }
 
-    public function uploadReceipt(UploadBankReceiptRequest $request, string $payment): JsonResponse
-    {
+    public function uploadReceipt(
+        UploadBankReceiptRequest $request,
+        string $payment,
+        PaymentReceiptStorage $receipts,
+    ): JsonResponse {
         $application = $this->matchingApplication($request);
 
         if ($application === null) {
@@ -69,13 +61,42 @@ class PaymentController extends Controller
             return $this->notFound();
         }
 
+        $rawKey = $request->header('Idempotency-Key');
+
+        if (! $this->validRawIdempotencyKey($rawKey)) {
+            return $this->conflict(__('alerts.payment.idempotency_key_required'));
+        }
+
+        $uploadedFile = $request->file('receipt');
+        $realPath = $uploadedFile?->getRealPath();
+        $fileHash = is_string($realPath) ? hash_file('sha256', $realPath) : false;
+
+        if (! is_string($fileHash)) {
+            return $this->conflict(__('alerts.payment.receipt_upload_not_eligible'));
+        }
+
+        $idempotencyKey = InitiatePaymentAction::namespacedKey($rawKey, $this->tokenPrincipal($request));
+        $requestHash = hash('sha256', json_encode([
+            'application_reference' => $application->ref_no,
+            'payment_reference' => $record->reference,
+            'file_sha256' => $fileHash,
+        ], JSON_THROW_ON_ERROR));
+
+        try {
+            if (($replay = $this->receiptReplay($record, $idempotencyKey, $requestHash)) !== null) {
+                return (new PaymentResource($replay))->response();
+            }
+        } catch (PaymentInitiationException $e) {
+            return $this->conflict($e->getMessage());
+        }
+
         if ($record->method !== PaymentMethod::BANK_TRANSFER || ! $record->status instanceof Pending) {
             return $this->conflict(__('alerts.payment.receipt_upload_not_eligible'));
         }
 
-        $stored = Storage::disk('local')->putFile('receipts', $request->file('receipt'));
+        $stored = Storage::disk('local')->putFile('receipts', $uploadedFile);
 
-        if ($stored === false || ! Storage::disk('local')->exists($stored)) {
+        if ($stored === false || ! $receipts->exists($stored)) {
             Log::error('A bank-transfer receipt upload was not persisted by the storage driver.', [
                 'payment_reference' => $record->reference,
             ]);
@@ -84,14 +105,22 @@ class PaymentController extends Controller
         }
 
         try {
-            $updated = $record->status->transitionTo(AwaitingVerification::class, $stored);
-        } catch (StalePaymentStateException) {
-            // The attempt was resolved by someone else between the lookup above and the
-            // transition's own lock re-verification. The just-written file belongs to no
-            // persisted payment now, so it is safe — and correct — to remove it: nothing
-            // references it, and this compensating delete can never touch a file a
-            // successful transition already attached to a payment.
-            Storage::disk('local')->delete($stored);
+            $updated = $record->status->transitionTo(
+                AwaitingVerification::class,
+                $stored,
+                $idempotencyKey,
+                $requestHash,
+            );
+        } catch (StalePaymentStateException|InvalidSettlementEvidenceException|UniqueConstraintViolationException|InvalidArgumentException) {
+            $receipts->deleteIfUnreferenced($stored);
+
+            try {
+                if (($replay = $this->receiptReplay($record, $idempotencyKey, $requestHash)) !== null) {
+                    return (new PaymentResource($replay))->response();
+                }
+            } catch (PaymentInitiationException $e) {
+                return $this->conflict($e->getMessage());
+            }
 
             return $this->conflict(__('alerts.payment.receipt_upload_not_eligible'));
         }
@@ -113,18 +142,15 @@ class PaymentController extends Controller
 
         $rawKey = $request->header('Idempotency-Key');
 
-        if (! is_string($rawKey) || trim($rawKey) === '') {
+        if (! $this->validRawIdempotencyKey($rawKey)) {
             return $this->conflict(__('alerts.payment.idempotency_key_required'));
         }
-
-        $token = $request->user()?->currentAccessToken();
-        $principal = 'token:'.($token?->getKey() ?? 'unknown');
 
         $dto = new InitiatePaymentDTO(
             application: $application,
             method: $method,
             actor: null,
-            idempotencyKey: InitiatePaymentAction::namespacedKey($rawKey, $principal),
+            idempotencyKey: InitiatePaymentAction::namespacedKey($rawKey, $this->tokenPrincipal($request)),
             requestHash: hash('sha256', json_encode([
                 'application_reference' => $application->ref_no,
                 'method' => $method->value,
@@ -136,10 +162,6 @@ class PaymentController extends Controller
         } catch (PaymentInitiationException $e) {
             return $this->conflict($e->getMessage());
         } catch (PaymentGatewayException $e) {
-            // The attempt was already created (and, for a final rejection, already failed) by
-            // InitiatePaymentAction before this was thrown — there is nothing left to roll
-            // back, and the caller is told the same generic conflict rather than the
-            // provider's own message.
             Log::warning('Payment initiation via the API could not reach or use the provider.', [
                 'application_reference' => $application->ref_no,
                 'retryable' => $e->retryable,
@@ -151,11 +173,6 @@ class PaymentController extends Controller
         return (new PaymentResource($payment))->response();
     }
 
-    /**
-     * Resolves the application by its own reference, and refuses it unless the supplied
-     * guardian phone matches — normalised the same way on both sides so a caller who read the
-     * number off a different format cannot be refused by formatting alone.
-     */
     private function matchingApplication(Request $request): ?Application
     {
         $reference = (string) $request->input('application_reference');
@@ -176,6 +193,38 @@ class PaymentController extends Controller
         }
 
         return $matches ? $application : null;
+    }
+
+    private function tokenPrincipal(Request $request): string
+    {
+        return 'token:'.($request->user()?->currentAccessToken()?->getKey() ?? 'unknown');
+    }
+
+    private function validRawIdempotencyKey(mixed $key): bool
+    {
+        return is_string($key) && trim($key) !== '' && mb_strlen($key) <= 128;
+    }
+
+    /**
+     * @throws PaymentInitiationException
+     */
+    private function receiptReplay(Payment $expected, string $key, string $requestHash): ?Payment
+    {
+        $existing = Payment::withoutGlobalScope(BranchScope::class)
+            ->where('receipt_idempotency_key', $key)
+            ->first();
+
+        if ($existing === null) {
+            return null;
+        }
+
+        if (! $existing->is($expected)
+            || ! is_string($existing->receipt_request_hash)
+            || ! hash_equals($existing->receipt_request_hash, $requestHash)) {
+            throw PaymentInitiationException::idempotencyKeyReused();
+        }
+
+        return $existing;
     }
 
     private function notFound(): JsonResponse

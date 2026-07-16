@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ContractSigningController;
+use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\PaymentReturnController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::get('/contract/{token}', [ContractSigningController::class, 'show'])->name('contract.show');
 Route::post('/contract/{token}', [ContractSigningController::class, 'sign'])->name('contract.sign');
+
+Route::get('/payments/{payment}/receipt', PaymentReceiptController::class)
+    ->middleware('auth')
+    ->name('payments.receipt.download');
 
 /*
  * Where Thawani returns the guardian's browser after checkout. Public by necessity — they

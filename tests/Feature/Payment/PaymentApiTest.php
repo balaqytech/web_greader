@@ -12,9 +12,12 @@ use App\Support\Money\OmrAmount;
 use App\Support\Settings\PaymentSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
+    Storage::fake('local');
+
     app(PaymentSettings::class)->setRegistrationFee(OmrAmount::fromString('25.000'));
     app(PaymentSettings::class)->setBankTransferInstructions('IBAN OM00 TEST');
 
@@ -179,6 +182,7 @@ it('uploads a bank receipt and moves the attempt to awaiting verification', func
 
     $response = test()->withHeader('Authorization', 'Bearer '.$this->token)
         ->withHeader('Accept', 'application/json')
+        ->withHeader('Idempotency-Key', 'receipt-1')
         ->post("/api/v1/payments/{$payment->reference}/receipt", [
             'application_reference' => $application->ref_no,
             'guardian_phone' => '99123456',
@@ -190,12 +194,65 @@ it('uploads a bank receipt and moves the attempt to awaiting verification', func
         ->and($payment->fresh()->receipt_path)->not->toBeNull();
 });
 
+it('requires an idempotency key for receipt uploads', function () {
+    $application = paymentApiApplication();
+    $payment = Payment::factory()->forApplication($application)->bankTransfer()->pending()->create();
+
+    test()->withHeader('Authorization', 'Bearer '.$this->token)
+        ->withHeader('Accept', 'application/json')
+        ->post("/api/v1/payments/{$payment->reference}/receipt", [
+            'application_reference' => $application->ref_no,
+            'guardian_phone' => '99123456',
+            'receipt' => UploadedFile::fake()->create('receipt.pdf', 100, 'application/pdf'),
+        ])->assertStatus(409);
+});
+
+it('replays an identical receipt upload without storing another file', function () {
+    $application = paymentApiApplication();
+    $payment = Payment::factory()->forApplication($application)->bankTransfer()->pending()->create();
+    $request = fn () => test()->withHeader('Authorization', 'Bearer '.$this->token)
+        ->withHeader('Accept', 'application/json')
+        ->withHeader('Idempotency-Key', 'same-receipt')
+        ->post("/api/v1/payments/{$payment->reference}/receipt", [
+            'application_reference' => $application->ref_no,
+            'guardian_phone' => '99123456',
+            'receipt' => UploadedFile::fake()->createWithContent('receipt.pdf', "%PDF-1.4\nsame receipt"),
+        ]);
+
+    $first = $request()->assertOk();
+    $path = $payment->fresh()->receipt_path;
+    $second = $request()->assertOk();
+
+    expect($second->json('data.reference'))->toBe($first->json('data.reference'))
+        ->and($payment->fresh()->receipt_path)->toBe($path)
+        ->and(Storage::disk('local')->allFiles('receipts'))->toHaveCount(1);
+});
+
+it('rejects a receipt idempotency key reused with different file content', function () {
+    $application = paymentApiApplication();
+    $payment = Payment::factory()->forApplication($application)->bankTransfer()->pending()->create();
+    $request = fn (string $content) => test()->withHeader('Authorization', 'Bearer '.$this->token)
+        ->withHeader('Accept', 'application/json')
+        ->withHeader('Idempotency-Key', 'changed-receipt')
+        ->post("/api/v1/payments/{$payment->reference}/receipt", [
+            'application_reference' => $application->ref_no,
+            'guardian_phone' => '99123456',
+            'receipt' => UploadedFile::fake()->createWithContent('receipt.pdf', "%PDF-1.4\n{$content}"),
+        ]);
+
+    $request('first')->assertOk();
+    $request('second')->assertStatus(409);
+
+    expect(Storage::disk('local')->allFiles('receipts'))->toHaveCount(1);
+});
+
 it('refuses a receipt upload for a payment that is not an eligible pending bank transfer', function () {
     $application = paymentApiApplication();
     $payment = Payment::factory()->forApplication($application)->thawani()->pending()->create();
 
     test()->withHeader('Authorization', 'Bearer '.$this->token)
         ->withHeader('Accept', 'application/json')
+        ->withHeader('Idempotency-Key', 'receipt-2')
         ->post("/api/v1/payments/{$payment->reference}/receipt", [
             'application_reference' => $application->ref_no,
             'guardian_phone' => '99123456',
@@ -209,6 +266,7 @@ it('rejects a receipt over the size limit or of the wrong type', function () {
 
     test()->withHeader('Authorization', 'Bearer '.$this->token)
         ->withHeader('Accept', 'application/json')
+        ->withHeader('Idempotency-Key', 'receipt-3')
         ->post("/api/v1/payments/{$payment->reference}/receipt", [
             'application_reference' => $application->ref_no,
             'guardian_phone' => '99123456',
@@ -217,6 +275,7 @@ it('rejects a receipt over the size limit or of the wrong type', function () {
 
     test()->withHeader('Authorization', 'Bearer '.$this->token)
         ->withHeader('Accept', 'application/json')
+        ->withHeader('Idempotency-Key', 'receipt-4')
         ->post("/api/v1/payments/{$payment->reference}/receipt", [
             'application_reference' => $application->ref_no,
             'guardian_phone' => '99123456',

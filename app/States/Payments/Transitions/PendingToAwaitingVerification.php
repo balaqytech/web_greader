@@ -32,12 +32,18 @@ class PendingToAwaitingVerification extends Transition
     public function __construct(
         public Payment $payment,
         public ?string $receiptPath = null,
+        public ?string $idempotencyKey = null,
+        public ?string $requestHash = null,
     ) {}
 
     public function handle(): Payment
     {
         if ($this->receiptPath === null || trim($this->receiptPath) === '') {
             throw new InvalidArgumentException('A bank-transfer receipt upload must supply a stored receipt path.');
+        }
+
+        if (($this->idempotencyKey === null) !== ($this->requestHash === null)) {
+            throw new InvalidArgumentException('Receipt idempotency key and request hash must be supplied together.');
         }
 
         return DB::transaction(function () {
@@ -49,6 +55,8 @@ class PendingToAwaitingVerification extends Transition
             }
 
             $payment->receipt_path = $this->receiptPath;
+            $payment->receipt_idempotency_key = $this->idempotencyKey;
+            $payment->receipt_request_hash = $this->requestHash;
             $payment->status = AwaitingVerification::class;
             $payment->save();
 

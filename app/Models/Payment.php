@@ -60,6 +60,8 @@ use Spatie\ModelStates\HasStates;
     'provider_expires_at',
     'provider_payload',
     'receipt_path',
+    'receipt_idempotency_key',
+    'receipt_request_hash',
     'failure_reason',
     'rejection_reason',
     'verified_by',
@@ -120,6 +122,17 @@ class Payment extends Model
     public function isPaid(): bool
     {
         return $this->status instanceof Paid;
+    }
+
+    public function safeCheckoutUrl(): ?string
+    {
+        $url = $this->provider_checkout_url;
+
+        if (! is_string($url) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return null;
+        }
+
+        return strtolower((string) parse_url($url, PHP_URL_SCHEME)) === 'https' ? $url : null;
     }
 
     /**

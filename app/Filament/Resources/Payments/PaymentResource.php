@@ -9,9 +9,11 @@ use App\Filament\Resources\Payments\Pages\ViewPayment;
 use App\Filament\Resources\Payments\Schemas\PaymentInfolist;
 use App\Filament\Resources\Payments\Tables\PaymentsTable;
 use App\Models\Payment;
+use App\Support\Payments\PaymentApplicationProjection;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Read-only by design: a Payment row is never hand-edited. It is created only by
@@ -49,6 +51,14 @@ class PaymentResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return app(PaymentApplicationProjection::class)->apply(
+            parent::getEloquentQuery(),
+            allowScopedBranchUser: true,
+        );
     }
 
     public static function infolist(Schema $schema): Schema

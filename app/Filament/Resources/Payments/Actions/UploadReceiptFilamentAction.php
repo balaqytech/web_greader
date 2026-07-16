@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Payments\Actions;
 
-use App\Exceptions\StalePaymentStateException;
 use App\Models\Payment;
 use App\States\Payments\AwaitingVerification;
+use App\Support\Payments\PaymentReceiptStorage;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 /**
  * The branch-side counterpart to the API's receipt upload — same eligibility (a pending bank
@@ -49,20 +50,36 @@ class UploadReceiptFilamentAction extends Action
         $this->action(function (Payment $record, array $data) {
             Gate::authorize('uploadReceipt', $record);
 
-            try {
-                $record->status->transitionTo(AwaitingVerification::class, $data['receipt']);
+            $path = $data['receipt'] ?? null;
+            $receipts = app(PaymentReceiptStorage::class);
 
+            if (! is_string($path) || ! $receipts->exists($path)) {
                 Notification::make()
-                    ->title(__('admin.payment.actions.upload_receipt_success'))
-                    ->success()
+                    ->title(__('admin.payment.actions.upload_receipt_failed'))
+                    ->danger()
                     ->send();
-            } catch (StalePaymentStateException $e) {
+
+                return;
+            }
+
+            try {
+                $record->status->transitionTo(AwaitingVerification::class, $path);
+            } catch (Throwable $e) {
+                $receipts->deleteIfUnreferenced($path);
+
                 Notification::make()
                     ->title(__('admin.payment.actions.upload_receipt_failed'))
                     ->body($e->getMessage())
                     ->danger()
                     ->send();
+
+                return;
             }
+
+            Notification::make()
+                ->title(__('admin.payment.actions.upload_receipt_success'))
+                ->success()
+                ->send();
         });
     }
 }

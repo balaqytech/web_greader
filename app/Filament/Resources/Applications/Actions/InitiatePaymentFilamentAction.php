@@ -70,10 +70,23 @@ class InitiatePaymentFilamentAction extends Action
                     actor: Auth::user(),
                 ));
 
-                Notification::make()
+                $notification = Notification::make()
                     ->title(__('admin.payment.actions.initiate_success', ['reference' => $payment->reference]))
-                    ->success()
-                    ->send();
+                    ->success();
+
+                if (($checkoutUrl = $payment->safeCheckoutUrl()) !== null) {
+                    $notification
+                        ->body($checkoutUrl)
+                        ->persistent()
+                        ->actions([
+                            Action::make('open_checkout')
+                                ->label(__('admin.payment.actions.open_checkout'))
+                                ->button()
+                                ->url($checkoutUrl, shouldOpenInNewTab: true),
+                        ]);
+                }
+
+                $notification->send();
             } catch (PaymentInitiationException|PaymentGatewayException $e) {
                 Notification::make()
                     ->title(__('admin.payment.actions.initiate_failed'))

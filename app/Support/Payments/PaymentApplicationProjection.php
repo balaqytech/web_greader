@@ -4,84 +4,97 @@ declare(strict_types=1);
 
 namespace App\Support\Payments;
 
-use App\Models\Application;
 use App\Models\Payment;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * The only way central finance sees application context alongside a payment, without ever
- * being granted `ViewAllBranches:Application` or an unscoped `Application` query of its own.
+ * Projects an allowlisted application context through already-authorized payment rows.
  *
- * The application ids this reads are derived exclusively from Payment rows the current
- * principal can already see — the query below is `Payment`'s own `BranchScope`-filtered view
- * (which inspects the authenticated user, exactly as every other payment query in this
- * project does), never `withoutGlobalScopes()`. There is deliberately no parameter for an
- * application id or a target user: accepting one would turn this from a projection *through*
- * an authorized payment view into a second, looser door into Application data.
- *
- * Returns plain rows — reference, student name, program, branch, fee amount — never the
- * `Application` model itself, and never reached via `$payment->application`, so a consumer
- * cannot pull in a field this projection did not choose to expose.
+ * Application ids are always derived from `payments.application_id`. The projection never
+ * accepts an arbitrary application id and never returns an Application model, so central
+ * finance gains the context needed to verify a payment without gaining general application
+ * access.
  */
 class PaymentApplicationProjection
 {
+    public const APPLICATION_REFERENCE = 'projected_application_reference';
+
+    public const STUDENT_NAME = 'projected_student_name';
+
+    public const PROGRAM_NAME = 'projected_program_name';
+
+    public const BRANCH_NAME = 'projected_branch_name';
+
+    /**
+     * Adds scalar subqueries to an existing BranchScope-filtered Payment query.
+     */
+    public function apply(Builder $payments, bool $allowScopedBranchUser = false): Builder
+    {
+        $this->authorize(Auth::user(), $allowScopedBranchUser);
+
+        $connection = $payments->getModel()->getConnection();
+
+        return $payments->addSelect([
+            self::APPLICATION_REFERENCE => $connection->table('applications')
+                ->select('ref_no')
+                ->whereColumn('applications.id', 'payments.application_id')
+                ->limit(1),
+            self::STUDENT_NAME => $connection->table('applications')
+                ->select('student_name')
+                ->whereColumn('applications.id', 'payments.application_id')
+                ->limit(1),
+            self::PROGRAM_NAME => $connection->table('applications')
+                ->join('programs', 'programs.id', '=', 'applications.program_id')
+                ->select('programs.name')
+                ->whereColumn('applications.id', 'payments.application_id')
+                ->limit(1),
+            self::BRANCH_NAME => $connection->table('applications')
+                ->join('branches', 'branches.id', '=', 'applications.branch_id')
+                ->select('branches.name')
+                ->whereColumn('applications.id', 'payments.application_id')
+                ->limit(1),
+        ]);
+    }
+
     /**
      * @return Collection<int, PaymentApplicationProjectionRow>
-     *
-     * @throws AuthorizationException
      */
     public function current(): Collection
     {
-        $this->authorize(Auth::user());
-
-        // BranchScope already applied via the authenticated principal — this is exactly the
-        // set of payments the caller is allowed to see, nothing wider.
-        $payments = Payment::query()
-            ->forRegistrationFee()
-            ->get(['id', 'application_id', 'amount', 'currency']);
-
-        $latestPerApplication = $payments
-            ->groupBy('application_id')
-            ->map(fn (Collection $group): Payment => $group->sortByDesc('id')->first());
-
-        $applications = Application::withoutGlobalScopes()
-            ->whereIn('id', $latestPerApplication->keys())
-            ->with(['program', 'branch'])
+        return $this->apply(Payment::query()->forRegistrationFee())
             ->get()
-            ->keyBy('id');
-
-        return $latestPerApplication
-            ->map(function (Payment $payment) use ($applications): ?PaymentApplicationProjectionRow {
-                $application = $applications->get($payment->application_id);
-
-                if ($application === null) {
-                    return null;
-                }
-
-                return new PaymentApplicationProjectionRow(
-                    applicationReference: (string) $application->ref_no,
-                    studentName: (string) $application->student_name,
-                    programName: (string) ($application->program?->name ?? ''),
-                    branchName: (string) ($application->branch?->name ?? ''),
-                    feeAmount: (string) $payment->amount,
-                    currency: (string) $payment->currency,
-                );
-            })
-            ->filter()
+            ->map(fn (Payment $payment): PaymentApplicationProjectionRow => new PaymentApplicationProjectionRow(
+                paymentReference: (string) $payment->reference,
+                applicationReference: (string) $payment->getAttribute(self::APPLICATION_REFERENCE),
+                studentName: (string) $payment->getAttribute(self::STUDENT_NAME),
+                programName: (string) $payment->getAttribute(self::PROGRAM_NAME),
+                branchName: (string) $payment->getAttribute(self::BRANCH_NAME),
+                feeAmount: (string) $payment->amount,
+                currency: (string) $payment->currency,
+            ))
             ->values();
     }
 
     /**
-     * @throws AuthorizationException
+     * Cross-branch projection keeps the approved conjunction. Ordinary branch users can use
+     * the same projection for their already-scoped rows when they hold View:Payment.
      */
-    private function authorize(?AuthUser $user): void
+    private function authorize(?AuthUser $user, bool $allowScopedBranchUser = false): void
     {
-        $canProject = $user !== null
-            && $user->can('ViewAllBranches:Payment')
-            && ($user->can('View:Payment') || $user->can('VerifyBankTransfer:Payment'));
+        if ($user === null) {
+            throw new AuthorizationException('This user is not authorized to project application data through payments.');
+        }
+
+        $canRead = $user->can('View:Payment') || $user->can('VerifyBankTransfer:Payment');
+        $canProject = $user->can('ViewAllBranches:Payment') && $canRead;
+
+        if ($allowScopedBranchUser && ! $user->can('ViewAllBranches:Payment')) {
+            $canProject = $user->can('View:Payment');
+        }
 
         if (! $canProject) {
             throw new AuthorizationException('This user is not authorized to project application data through payments.');

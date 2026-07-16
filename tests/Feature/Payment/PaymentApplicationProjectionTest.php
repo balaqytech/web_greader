@@ -88,7 +88,7 @@ it('never exposes a raw Application model, only the projected row', function () 
         ->and($rows->first())->toBeInstanceOf(PaymentApplicationProjectionRow::class);
 });
 
-it('shows only one row per application even with multiple payment attempts', function () {
+it('projects each authorized payment attempt without collapsing payment history', function () {
     $user = projectionUser(['ViewAllBranches:Payment', 'View:Payment']);
     test()->actingAs($user);
 
@@ -98,6 +98,8 @@ it('shows only one row per application even with multiple payment attempts', fun
 
     $rows = app(PaymentApplicationProjection::class)->current();
 
-    expect($rows)->toHaveCount(1)
-        ->and($rows->first()->feeAmount)->toBe('25.000');
+    expect($rows)->toHaveCount(2)
+        ->and($rows->pluck('paymentReference')->all())->toEqualCanonicalizing(
+            Payment::query()->pluck('reference')->all()
+        );
 });

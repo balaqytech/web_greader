@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Services\Payments\PaymentGateway;
 use App\Support\Money\OmrAmount;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -43,6 +44,12 @@ class PaymentConcurrencyWorkerCommand extends Command
 
     public function handle(): int
     {
+        if (! $this->isExplicitlyEnabledForTestDatabase()) {
+            $this->line('ERROR:the concurrency worker is disabled outside an explicitly opted-in testing process on a *_test database');
+
+            return self::FAILURE;
+        }
+
         $payment = Payment::withoutGlobalScopes()
             ->where('reference', $this->argument('reference'))
             ->first();
@@ -100,5 +107,19 @@ class PaymentConcurrencyWorkerCommand extends Command
 
             return self::FAILURE;
         }
+    }
+
+    private function isExplicitlyEnabledForTestDatabase(): bool
+    {
+        $enabled = filter_var(
+            env('PAYMENT_CONCURRENCY_TEST_WORKER_ENABLED'),
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE,
+        );
+        $database = (string) DB::connection()->getDatabaseName();
+
+        return app()->environment('testing')
+            && $enabled === true
+            && preg_match('/^[A-Za-z0-9_]+_test$/', $database) === 1;
     }
 }

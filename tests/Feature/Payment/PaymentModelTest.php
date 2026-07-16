@@ -251,6 +251,19 @@ it('allows many attempts without an idempotency key', function () {
     expect(Payment::query()->whereNull('idempotency_key')->count())->toBe(3);
 });
 
+it('exposes only valid HTTPS checkout URLs to staff surfaces', function () {
+    $payment = Payment::factory()->make();
+
+    $payment->provider_checkout_url = 'https://checkout.thawani.om/pay/session';
+    expect($payment->safeCheckoutUrl())->toBe('https://checkout.thawani.om/pay/session');
+
+    $payment->provider_checkout_url = 'http://checkout.thawani.om/pay/session';
+    expect($payment->safeCheckoutUrl())->toBeNull();
+
+    $payment->provider_checkout_url = 'javascript:alert(1)';
+    expect($payment->safeCheckoutUrl())->toBeNull();
+});
+
 /**
  * A payment is evidence that money changed hands; deleting the application it belongs to
  * must fail loudly rather than silently cascade the record away.
