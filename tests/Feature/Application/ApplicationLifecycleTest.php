@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\ApplicationIncompleteException;
+use App\Exceptions\UnpaidRegistrationFeeException;
 use App\Models\Application;
 use App\States\Applications\Accepted;
 use App\States\Applications\AwaitingApplicationCompletion;
@@ -11,7 +12,6 @@ use App\States\Applications\Cancelled;
 use App\States\Applications\CorrectionRequested;
 use App\States\Applications\Rejected;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Spatie\ModelStates\Exceptions\TransitionNotFound;
 
 uses(RefreshDatabase::class);
 
@@ -123,13 +123,23 @@ it('cancels from correction requested with a note', function () {
     expect($application->fresh()->status)->toBeInstanceOf(Cancelled::class);
 });
 
-it('does not register the payment-gated fee transition in Phase 0', function () {
+/**
+ * The fee gate is registered as of the payments phase, so it is no longer "unreachable" —
+ * but it is still uncrossable without a paid registration-fee payment. The protection moved
+ * from "the edge does not exist" to "the edge demands proof of payment"; this asserts the
+ * replacement rather than dropping the guarantee.
+ *
+ * See tests/Feature/Payment/RegistrationFeeGateTest.php for the full gate behaviour.
+ */
+it('registers the fee transition but refuses to cross it without a payment', function () {
     $application = Application::factory()->awaitingRegistrationFee()->create();
 
-    expect($application->status->canTransitionTo(AwaitingApplicationCompletion::class))->toBeFalse();
+    expect($application->status->canTransitionTo(AwaitingApplicationCompletion::class))->toBeTrue();
 
     expect(fn () => $application->status->transitionTo(AwaitingApplicationCompletion::class))
-        ->toThrow(TransitionNotFound::class);
+        ->toThrow(UnpaidRegistrationFeeException::class);
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingRegistrationFee::class);
 });
 
 it('does not register the correction transitions in Phase 0', function () {

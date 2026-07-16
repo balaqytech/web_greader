@@ -9,7 +9,6 @@ use App\Filament\Resources\Applications\Actions\MoveToWaitingContractFilamentAct
 use App\Filament\Resources\Applications\Actions\OpenContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\RejectApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\ReturnToSubmittedFilamentAction;
-use App\Filament\Resources\Applications\Actions\SubmitApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\UploadContractFilamentAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
@@ -34,7 +33,12 @@ class ViewApplication extends ViewRecord
                     fn (Application $record): bool => $record->status instanceof AwaitingRegistrationFee
                         || $record->status instanceof AwaitingApplicationCompletion
                 ),
-            SubmitApplicationFilamentAction::make(),
+            // No action advances the fee gate. SubmitApplicationFilamentAction used to sit
+            // here and did exactly that, gated only by `Update:Application` — a permission
+            // every branch staffer holds. It was inert only because the transition was
+            // unregistered; registering it in the payments phase would have turned it into a
+            // one-click way to skip paying. The gate is now crossed solely by a paid
+            // registration-fee payment.
             MoveToWaitingContractFilamentAction::make(),
             ActionGroup::make([
                 OpenContractLinkFilamentAction::make(),

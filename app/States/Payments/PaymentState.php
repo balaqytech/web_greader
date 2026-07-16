@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\States\Payments;
 
+use App\States\Payments\Transitions\PendingToExpired;
+use App\States\Payments\Transitions\PendingToFailed;
+use App\States\Payments\Transitions\PendingToPaid;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 use Spatie\ModelStates\State;
@@ -39,7 +42,10 @@ abstract class PaymentState extends State implements HasColor, HasLabel
     public static function config(): StateConfig
     {
         return parent::config()
-            ->default(Pending::class);
+            ->default(Pending::class)
+            ->allowTransition(Pending::class, Paid::class, PendingToPaid::class)
+            ->allowTransition(Pending::class, Failed::class, PendingToFailed::class)
+            ->allowTransition(Pending::class, Expired::class, PendingToExpired::class);
     }
 
     /**

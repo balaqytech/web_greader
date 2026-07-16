@@ -363,8 +363,8 @@ it('lets branch_staff accept an application through the real Filament action pur
 it('wires each custom action\'s authorize() call to the expected record-aware policy ability, independent of the action\'s own visibility state', function (string $actionName, string $ability, ?string $permission) {
     $branch = Branch::factory()->create();
 
-    // AwaitingApplicationCompletion so the 'update' ability (submit_application) also passes
-    // its own isEditableState() check, with a contract attached regardless so
+    // AwaitingApplicationCompletion so the 'update'-family abilities also pass their own
+    // isEditableState() check, with a contract attached regardless so
     // CopyContractLinkFilamentAction's schema — which dereferences $record->contract
     // unconditionally when Filament resolves/mounts the action — can be built without a
     // null-contract crash. getAction() below resolves the action (and its schema) regardless of
@@ -402,7 +402,11 @@ it('wires each custom action\'s authorize() call to the expected record-aware po
     'cancel_application maps to the cancel ability' => ['cancel_application', 'cancel', 'Cancel:Application'],
     'move_to_waiting_contract maps to the generateContract ability' => ['move_to_waiting_contract', 'generateContract', 'GenerateContract:Application'],
     'return_to_submitted maps to the reopen ability' => ['return_to_submitted', 'reopen', 'Update:Application'],
-    'submit_application maps to the update ability' => ['submit_application', 'update', 'Update:Application'],
+    // submit_application is deliberately absent: the action was removed. It advanced an
+    // application past the registration-fee gate on nothing but `Update:Application`, a
+    // permission every branch staffer holds, and was inert only because the transition was
+    // unregistered. The fee gate is now crossed solely by a paid registration-fee payment —
+    // see tests/Feature/Payment/RegistrationFeeGateTest.php.
     'upload_contract maps to the uploadSignedContract ability' => ['upload_contract', 'uploadSignedContract', 'UploadSignedContract:Application'],
     'open_contract_link maps to the view ability, already satisfied by baseline page access' => ['open_contract_link', 'view', null],
     'copy_contract_link maps to the view ability, already satisfied by baseline page access' => ['copy_contract_link', 'view', null],

@@ -4,6 +4,22 @@ return [
     'reading_assessment_form_submissions' => [
         'already_exists' => 'تم إرسال هذا النموذج من قبل بالفعل',
     ],
+    'payment' => [
+        'fee_settled' => 'تم سداد رسوم التسجيل (:reference).',
+        'double_charge_needs_reconciliation' => 'تم استلام عملية دفع ناجحة ثانية بينما كانت الرسوم مسددة بالفعل عبر العملية :reference. لم يتم تقدّم الطلب مرتين، وتحتاج هذه العملية إلى مطابقة يدوية — قد يكون قد تم خصم المبلغ مرتين.',
+        'fee_not_configured' => 'لا يمكن إنشاء عملية دفع قبل ضبط رسوم التسجيل.',
+        'bank_transfer_not_configured' => 'خيار التحويل البنكي غير متاح حتى يتم ضبط تعليمات التحويل.',
+        'not_awaiting_fee' => 'هذا الطلب ليس بانتظار سداد رسوم التسجيل.',
+        'attempt_already_active' => 'توجد عملية دفع قيد التنفيذ لهذا الطلب بالفعل.',
+        'idempotency_key_reused' => 'تم استخدام مفتاح المعالجة هذا لطلب مختلف.',
+        'method_unavailable' => 'طريقة الدفع :method غير متاحة حالياً.',
+        'provider_declined' => 'رفضت بوابة الدفع هذه العملية.',
+        'checkout_cancelled' => 'تم إلغاء عملية الدفع.',
+        'return_pending' => 'لم يتم تأكيد الدفع بعد. سيتم تحديث حالة الطلب فور تأكيد البوابة.',
+        'return_paid' => 'تم تأكيد سداد رسوم التسجيل.',
+        'return_failed' => 'لم تكتمل عملية الدفع. يمكنك المحاولة مرة أخرى.',
+        'return_unavailable' => 'تعذر التحقق من حالة الدفع الآن. سيتم تحديثها تلقائياً عند توفر البوابة.',
+    ],
     'application' => [
         'transitioned_to_submitted' => 'تم اكمال بيانات الطلب بنجاح',
         'application_student_is_required' => 'بيانات الطالب مطلوبة',
