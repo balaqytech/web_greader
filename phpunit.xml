@@ -32,5 +32,13 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- The deterministic, network-free gateway. The suite must never be able to reach a
+             real payment provider, and the default driver is the one thing that could. -->
+        <env name="PAYMENT_GATEWAY" value="fake"/>
+        <!-- Deliberately blank: proves the adapter refuses to transact without real
+             credentials, and stops a stray test picking up a developer's own keys. -->
+        <env name="THAWANI_MODE" value="test"/>
+        <env name="THAWANI_TEST_SECRET_KEY" value=""/>
+        <env name="THAWANI_TEST_PUBLISHABLE_KEY" value=""/>
     </php>
 </phpunit>

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Payments\PaymentGateway;
+use App\Services\Payments\PaymentGatewayManager;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +20,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->registerPaymentGateway();
+    }
+
+    /**
+     * The manager is a singleton so its per-driver memoisation — and anything a test
+     * registers through `extend()` — is shared across a request.
+     *
+     * `PaymentGateway` resolves to the active driver, so callers type-hint the contract and
+     * never the manager, the driver, or anything from the vendor package.
+     */
+    protected function registerPaymentGateway(): void
+    {
+        $this->app->singleton(PaymentGatewayManager::class);
+
+        $this->app->bind(
+            PaymentGateway::class,
+            fn ($app): PaymentGateway => $app->make(PaymentGatewayManager::class)->driver(),
+        );
     }
 
     /**
@@ -28,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
-        LogViewer::auth(fn($request) => Auth::check());
+        LogViewer::auth(fn ($request) => Auth::check());
 
         FilamentShield::prohibitDestructiveCommands(app()->isProduction());
     }
@@ -45,11 +64,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(
-            fn(): ?Password => app()->isProduction()
+            fn (): ?Password => app()->isProduction()
                 ? Password::min(8)
-                ->letters()
-                ->numbers()
-                ->uncompromised()
+                    ->letters()
+                    ->numbers()
+                    ->uncompromised()
                 : null,
         );
     }

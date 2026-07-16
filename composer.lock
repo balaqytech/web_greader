@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "780ab8f995b89d4f1bba13d99deb7469",
+    "content-hash": "211dfa34c87af767d2440f6a0873252a",
     "packages": [
         {
             "name": "akira/laravel-qrcode",
@@ -2709,6 +2709,68 @@
                 }
             ],
             "time": "2025-08-22T14:27:06+00:00"
+        },
+        {
+            "name": "jkbroot/thawani",
+            "version": "1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/jkbroot/thawani.git",
+                "reference": "16a458d59b95a67c474beaf54fd4752e9b09445c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/jkbroot/thawani/zipball/16a458d59b95a67c474beaf54fd4752e9b09445c",
+                "reference": "16a458d59b95a67c474beaf54fd4752e9b09445c",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Jkbroot\\Thawani\\ThawaniServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Jkbroot\\Thawani\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "jkbroot",
+                    "email": "jkbcoder@gmail.com"
+                }
+            ],
+            "description": "A Laravel package for Thawani payment gateway integration.",
+            "keywords": [
+                "ecommerce",
+                "gateway",
+                "laravel",
+                "online payments",
+                "payment gateway",
+                "payment integration",
+                "payment processing",
+                "thawani",
+                "thawani api",
+                "thawaniPayment"
+            ],
+            "support": {
+                "issues": "https://github.com/jkbroot/thawani/issues",
+                "source": "https://github.com/jkbroot/thawani/tree/1.1.1"
+            },
+            "time": "2024-04-02T00:29:38+00:00"
         },
         {
             "name": "kirschbaum-development/eloquent-power-joins",
@@ -13847,5 +13909,5 @@
         "php": "^8.3"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
