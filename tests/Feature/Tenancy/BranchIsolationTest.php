@@ -192,7 +192,8 @@ function shieldPermissionFoundationPermissionNames(): array
         'ViewAny:Payment',
         'View:Payment',
         'VerifyBankTransfer:Payment',
-        'Refund:Payment',
+        'ConfirmCash:Payment',
+        'Manage:PaymentSettings',
     ];
 }
 
@@ -226,8 +227,10 @@ it('seeds the Shield permission foundation idempotently, resetting central_finan
     // post-reseed permission set rather than the primed pre-reseed one.
     $financeUser = $financeUser->fresh();
 
+    // Exactly four: no Refund:Payment (refunds are out of scope for the payment domain), and
+    // notably no ConfirmCash:Payment — confirming cash marks a fee paid without money moving
+    // through any verifiable channel, so central finance does not carry it by default either.
     $intendedFinancePermissions = [
-        'Refund:Payment',
         'VerifyBankTransfer:Payment',
         'View:Payment',
         'ViewAllBranches:Payment',
@@ -251,6 +254,66 @@ it('seeds the Shield permission foundation idempotently, resetting central_finan
         expect(Permission::where('name', $permissionName)->where('guard_name', 'web')->count())->toBe(1);
     }
 });
+
+/**
+ * Refunds are out of scope for the payment domain, so `Refund:Payment` must not merely stop
+ * being created on a fresh database — it has to be actively removed from an already-seeded
+ * one, where the row would otherwise survive, stay attached to central_finance, and be
+ * re-granted to super_admin by the blanket sync on every reseed.
+ */
+it('prunes the obsolete Refund:Payment permission from an already-seeded database', function () {
+    $refund = Permission::firstOrCreate(['name' => 'Refund:Payment', 'guard_name' => 'web']);
+
+    $financeRole = Role::firstOrCreate(['name' => 'central_finance', 'guard_name' => 'web']);
+    $financeRole->givePermissionTo($refund);
+
+    $superAdminRole = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+    $superAdminRole->givePermissionTo($refund);
+
+    $financeUser = User::factory()->create();
+    $financeUser->assignRole($financeRole);
+
+    $superAdminUser = User::factory()->create();
+    $superAdminUser->assignRole($superAdminRole);
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect($financeUser->can('Refund:Payment'))->toBeTrue()
+        ->and($superAdminUser->can('Refund:Payment'))->toBeTrue();
+
+    $this->seed(ShieldPermissionSeeder::class);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect(Permission::where('name', 'Refund:Payment')->where('guard_name', 'web')->exists())->toBeFalse()
+        ->and($financeUser->fresh()->can('Refund:Payment'))->toBeFalse()
+        ->and($superAdminUser->fresh()->can('Refund:Payment'))->toBeFalse();
+});
+
+it('never recreates Refund:Payment on a fresh database, however many times it is seeded', function () {
+    $this->seed(ShieldPermissionSeeder::class);
+    $this->seed(ShieldPermissionSeeder::class);
+
+    expect(Permission::where('name', 'Refund:Payment')->exists())->toBeFalse();
+});
+
+/**
+ * Created so they are real and assignable, but held by no ordinary role: confirming cash
+ * marks a fee paid with no verifiable money movement, and managing payment settings decides
+ * what every future applicant is charged.
+ */
+it('creates the unassigned payment permissions without granting them to any ordinary role', function (string $permissionName) {
+    $this->seed(ShieldPermissionSeeder::class);
+
+    expect(Permission::where('name', $permissionName)->where('guard_name', 'web')->count())->toBe(1);
+
+    foreach (['branch_staff', 'branch_manager', 'central_finance'] as $roleName) {
+        $user = User::factory()->create();
+        $user->assignRole(Role::where('name', $roleName)->where('guard_name', 'web')->firstOrFail());
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        expect($user->can($permissionName))->toBeFalse();
+    }
+})->with(['ConfirmCash:Payment', 'Manage:PaymentSettings']);
 
 /**
  * @return list<string>
@@ -340,8 +403,11 @@ it('grants super_admin every permission the foundation seeder creates, including
         expect($user->can($permissionName))->toBeTrue();
     }
 
+    // super_admin holds the deliberately-unassigned payment permissions through the blanket
+    // sync, which is the only sanctioned way anyone holds them by default.
     expect($user->can('VerifyBankTransfer:Payment'))->toBeTrue()
-        ->and($user->can('Refund:Payment'))->toBeTrue();
+        ->and($user->can('ConfirmCash:Payment'))->toBeTrue()
+        ->and($user->can('Manage:PaymentSettings'))->toBeTrue();
 });
 
 it('grants super_admin every pre-existing web permission too, but never a same-named permission on another guard', function () {

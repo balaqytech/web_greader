@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             ShieldSeeder::class,
             ShieldPermissionSeeder::class,
             ProgramSeeder::class,
+            PaymentSettingsSeeder::class,
         ]);
 
         $user->assignRole('super_admin');

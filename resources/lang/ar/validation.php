@@ -186,6 +186,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | OMR Amount Validation
+    |--------------------------------------------------------------------------
+    |
+    | Messages for App\Rules\Payment\PositiveOmrAmount. OMR is a three-decimal
+    | currency (1 OMR = 1000 baisa), and the precision is required rather than
+    | coerced so an amount can never be silently reinterpreted.
+    |
+    */
+
+    'omr_amount' => [
+        'format' => 'يجب إدخال المبلغ بالريال العُماني بثلاث خانات عشرية بالضبط (مثال: 25.000).',
+        'positive' => 'يجب أن يكون المبلغ أكبر من صفر.',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Validation Attributes
     |--------------------------------------------------------------------------
     |

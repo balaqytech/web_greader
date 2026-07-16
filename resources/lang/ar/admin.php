@@ -22,6 +22,15 @@ return [
         'students' => 'دليل الطلاب',
         'guardians' => 'أولياء الأمور',
         'bot_contacts' => 'سجل تفاعلات فصيح',
+        'payment_settings' => 'إعدادات المدفوعات',
+    ],
+    'payment_settings' => [
+        'registration_fee_amount' => 'رسوم التسجيل (ر.ع.)',
+        'registration_fee_amount_help' => 'المبلغ بالريال العُماني بثلاث خانات عشرية بالضبط (مثال: 25.000). لا يمكن إنشاء أي عملية دفع قبل ضبط هذه القيمة.',
+        'bank_transfer_instructions' => 'تعليمات التحويل البنكي',
+        'bank_transfer_instructions_help' => 'نص يظهر لولي الأمر عند اختيار التحويل البنكي. يبقى خيار التحويل البنكي غير متاح ما لم يُضبط هذا الحقل.',
+        'save' => 'حفظ',
+        'saved' => 'تم حفظ إعدادات المدفوعات.',
     ],
     'branch' => [
         'label' => 'فرع',
