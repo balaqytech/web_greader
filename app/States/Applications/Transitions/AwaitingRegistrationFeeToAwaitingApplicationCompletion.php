@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\States\Applications\Transitions;
 
 use App\Actions\Applications\RecordApplicationActivityAction;
+use App\Actions\Documents\SyncRequiredDocumentsAction;
 use App\Enums\PaymentPurpose;
 use App\Exceptions\UnpaidRegistrationFeeException;
 use App\Models\Application;
@@ -63,6 +64,10 @@ class AwaitingRegistrationFeeToAwaitingApplicationCompletion extends Transition
                 AwaitingApplicationCompletion::$name,
                 $this->notes ?? __('alerts.payment.fee_settled', ['reference' => $this->payment?->reference]),
             );
+
+            // Materialise the document requirement set the moment data completion opens, in
+            // the same transaction: if the state change commits, the requirements exist.
+            app(SyncRequiredDocumentsAction::class)->execute($application);
 
             return $application;
         }, attempts: 3);

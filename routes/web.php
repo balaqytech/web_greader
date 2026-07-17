@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApplicationDocumentDownloadController;
 use App\Http\Controllers\ContractSigningController;
 use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\PaymentReturnController;
@@ -10,6 +11,15 @@ Route::view('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
+
+/*
+ * Authenticated, authorized download of a single document file version. The parent document's
+ * view policy (own-branch) is the gate; the file itself is streamed from the private disk and
+ * has no public URL. Any version — current or historical — downloads through here.
+ */
+Route::get('/application-documents/files/{file}/download', ApplicationDocumentDownloadController::class)
+    ->middleware('auth')
+    ->name('application-documents.files.download');
 
 Route::get('/contract/{token}', [ContractSigningController::class, 'show'])->name('contract.show');
 Route::post('/contract/{token}', [ContractSigningController::class, 'sign'])->name('contract.sign');

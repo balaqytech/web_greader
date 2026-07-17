@@ -7,6 +7,7 @@ use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Filament\Resources\Applications\RelationManagers\ActivitiesRelationManager;
+use App\Filament\Resources\Applications\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
 use App\Filament\Resources\Applications\Tables\ApplicationsTable;
@@ -59,6 +60,7 @@ class ApplicationResource extends Resource
     public static function getRelations(): array
     {
         return [
+            DocumentsRelationManager::class,
             ActivitiesRelationManager::class,
         ];
     }

@@ -2,13 +2,16 @@
 
 namespace App\Filament\Resources\Applications\Actions;
 
+use App\Actions\Documents\EvaluateDocumentRequirementsAction;
 use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingContractSignature;
+use App\Support\Documents\LogicalRequirement;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Callout;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
@@ -37,6 +40,15 @@ class MoveToWaitingContractFilamentAction extends Action
         $this->modalSubmitActionLabel(__('admin.application.actions.move_to_waiting_contract'));
 
         $this->schema([
+            // A non-blocking heads-up: missing or rejected documents are surfaced but never
+            // prevent contract generation, which proceeds exactly as before.
+            Callout::make(__('admin.document.warning.contract_heading'))
+                ->warning()
+                ->icon('heroicon-o-exclamation-triangle')
+                ->description(fn (Application $record): string => $this->outstandingDocumentsDescription($record))
+                ->visible(fn (Application $record): bool => app(EvaluateDocumentRequirementsAction::class)
+                    ->execute($record)
+                    ->hasWarnings()),
             Textarea::make('notes')
                 ->label(__('admin.application.notes'))
                 ->placeholder(__('admin.application.notes_placeholder'))
@@ -68,5 +80,16 @@ class MoveToWaitingContractFilamentAction extends Action
                     ->send();
             }
         });
+    }
+
+    private function outstandingDocumentsDescription(Application $record): string
+    {
+        $labels = app(EvaluateDocumentRequirementsAction::class)
+            ->execute($record)
+            ->warnings()
+            ->map(fn (LogicalRequirement $requirement): string => $requirement->label)
+            ->all();
+
+        return __('admin.document.warning.contract_body').' '.implode('، ', $labels);
     }
 }

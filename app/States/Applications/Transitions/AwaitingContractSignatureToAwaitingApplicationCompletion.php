@@ -3,6 +3,7 @@
 namespace App\States\Applications\Transitions;
 
 use App\Actions\Applications\RecordApplicationActivityAction;
+use App\Actions\Documents\SyncRequiredDocumentsAction;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingContractSignature;
@@ -49,6 +50,11 @@ class AwaitingContractSignatureToAwaitingApplicationCompletion extends Transitio
                 AwaitingApplicationCompletion::$name,
                 $this->notes,
             );
+
+            // Reopening data entry re-enters data completion, so re-run the idempotent sync:
+            // it reconciles the requirement set (e.g. a transfer flag changed meanwhile)
+            // without disturbing any document already uploaded.
+            app(SyncRequiredDocumentsAction::class)->execute($application);
 
             return $application;
         }, attempts: 3);
