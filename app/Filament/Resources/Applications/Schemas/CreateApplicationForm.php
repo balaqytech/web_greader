@@ -73,6 +73,10 @@ class CreateApplicationForm
                                 ->label(__('admin.application.student_relationship_with_guardian'))
                                 ->options(GuardianRelationship::class)
                                 ->required(),
+                            Toggle::make('is_transfer_student')
+                                ->label(__('admin.application.is_transfer_student'))
+                                ->helperText(__('admin.application.is_transfer_student_help'))
+                                ->default(false),
                         ])
                         ->columns(3),
 

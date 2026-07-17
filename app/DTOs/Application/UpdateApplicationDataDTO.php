@@ -23,21 +23,21 @@ final readonly class UpdateApplicationDataDTO
         // Father data
         public string $father_name,
         public string $father_phone,
-        public ?string $father_email = null,
+        public ?string $father_email,
         public string $father_id_number,
         public string $father_occupation,
-        public ?string $father_work_address = null,
-        public ?string $father_work_phone = null,
+        public ?string $father_work_address,
+        public ?string $father_work_phone,
         public bool $father_is_guardian,
 
         // Mother data
         public string $mother_name,
         public string $mother_phone,
-        public ?string $mother_email = null,
+        public ?string $mother_email,
         public string $mother_id_number,
         public string $mother_occupation,
-        public ?string $mother_work_address = null,
-        public ?string $mother_work_phone = null,
+        public ?string $mother_work_address,
+        public ?string $mother_work_phone,
         public bool $mother_is_guardian,
 
         // Relative data
@@ -48,6 +48,7 @@ final readonly class UpdateApplicationDataDTO
         public string $relative_occupation,
         public ?string $relative_work_address = null,
         public ?string $relative_work_phone = null,
+        public bool $is_transfer_student = false,
     ) {}
 
     /**
@@ -90,6 +91,7 @@ final readonly class UpdateApplicationDataDTO
             'relative_occupation' => $this->relative_occupation,
             'relative_work_address' => $this->relative_work_address,
             'relative_work_phone' => $this->relative_work_phone,
+            'is_transfer_student' => $this->is_transfer_student,
         ];
     }
 
@@ -129,6 +131,7 @@ final readonly class UpdateApplicationDataDTO
             relative_occupation: $data['relative_occupation'] ?? null,
             relative_work_address: $data['relative_work_address'] ?? null,
             relative_work_phone: $data['relative_work_phone'] ?? null,
+            is_transfer_student: $data['is_transfer_student'] ?? false,
         );
     }
 }

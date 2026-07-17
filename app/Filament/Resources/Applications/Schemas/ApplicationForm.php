@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Applications\Schemas;
 use App\Enums\Gender;
 use App\Enums\GuardianRelationship;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -57,6 +56,10 @@ class ApplicationForm
                                 ->label(__('admin.application.student_relationship_with_guardian'))
                                 ->options(GuardianRelationship::class)
                                 ->required(),
+                            Toggle::make('is_transfer_student')
+                                ->label(__('admin.application.is_transfer_student'))
+                                ->helperText(__('admin.application.is_transfer_student_help'))
+                                ->default(false),
                         ])
                         ->columns(2),
 
@@ -117,7 +120,7 @@ class ApplicationForm
                             Toggle::make('mother_is_guardian')
                                 ->label(__('admin.application_contacts.is_guardian'))
                                 ->live()
-                                ->state(fn(Get $get) => !$get('father_is_guardian')),
+                                ->state(fn (Get $get) => ! $get('father_is_guardian')),
                         ])
                         ->columns(2),
 

@@ -194,6 +194,10 @@ function shieldPermissionFoundationPermissionNames(): array
         'VerifyBankTransfer:Payment',
         'ConfirmCash:Payment',
         'Manage:PaymentSettings',
+        'ViewAny:ApplicationDocument',
+        'View:ApplicationDocument',
+        'Upload:ApplicationDocument',
+        'Review:ApplicationDocument',
     ];
 }
 
@@ -348,6 +352,23 @@ function branchPaymentPermissionNames(): array
     ];
 }
 
+/**
+ * What branch_staff/branch_manager hold for their own-branch document workflow: viewing,
+ * uploading, and reviewing. Central finance holds none of these — it reaches application data
+ * only through the payment projection, never through documents.
+ *
+ * @return list<string>
+ */
+function branchDocumentPermissionNames(): array
+{
+    return [
+        'ViewAny:ApplicationDocument',
+        'View:ApplicationDocument',
+        'Upload:ApplicationDocument',
+        'Review:ApplicationDocument',
+    ];
+}
+
 it('grants branch_staff and branch_manager exactly the approved-workflow Application permission matrix, with no cross-branch permission and no raw delete', function () {
     $this->seed(ShieldPermissionSeeder::class);
 
@@ -355,7 +376,7 @@ it('grants branch_staff and branch_manager exactly the approved-workflow Applica
         $role = Role::where('name', $roleName)->where('guard_name', 'web')->firstOrFail();
 
         expect($role->permissions->pluck('name')->sort()->values()->all())
-            ->toBe(collect([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames()])->sort()->values()->all());
+            ->toBe(collect([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames(), ...branchDocumentPermissionNames()])->sort()->values()->all());
     }
 });
 
@@ -374,7 +395,7 @@ it('resets branch_staff and branch_manager to exactly their intended matrix on r
     $this->seed(ShieldPermissionSeeder::class);
 
     expect($branchStaff->fresh()->permissions->pluck('name')->sort()->values()->all())
-        ->toBe(collect([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames()])->sort()->values()->all());
+        ->toBe(collect([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames(), ...branchDocumentPermissionNames()])->sort()->values()->all());
 });
 
 it('creates Access:Panel and the full Application permission matrix, including Delete:Application as a real but unassigned permission', function () {
@@ -398,7 +419,7 @@ it('grants super_admin Access:Panel and the full Application permission matrix i
     expect($user->can('Access:Panel'))->toBeTrue()
         ->and($user->can('Delete:Application'))->toBeTrue();
 
-    foreach ([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames()] as $permissionName) {
+    foreach ([...branchApplicationPermissionNames(), ...branchPaymentPermissionNames(), ...branchDocumentPermissionNames()] as $permissionName) {
         expect($user->can($permissionName))->toBeTrue();
     }
 });

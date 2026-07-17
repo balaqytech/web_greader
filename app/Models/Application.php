@@ -67,6 +67,7 @@ use Spatie\ModelStates\HasStates;
     'relative_occupation',
     'relative_work_address',
     'relative_work_phone',
+    'is_transfer_student',
 ])]
 class Application extends Model
 {
@@ -86,6 +87,7 @@ class Application extends Model
             'student_birth_date' => 'date',
             'father_is_guardian' => 'boolean',
             'mother_is_guardian' => 'boolean',
+            'is_transfer_student' => 'boolean',
             'relationship_with_guardian' => GuardianRelationship::class,
         ];
     }
@@ -157,6 +159,11 @@ class Application extends Model
     public function contract(): HasOne
     {
         return $this->hasOne(ApplicationContract::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ApplicationDocument::class);
     }
 
     /**

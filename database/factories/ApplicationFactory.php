@@ -50,6 +50,7 @@ class ApplicationFactory extends Factory
             'branch_id' => $branch->id,
             'source' => Source::DASHBOARD,
             'status' => AwaitingRegistrationFee::$name,
+            'is_transfer_student' => false,
 
             'student_name' => fake()->name(),
             'student_gender' => fake()->randomElement(Gender::cases()),
@@ -74,6 +75,13 @@ class ApplicationFactory extends Factory
             'mother_id_number' => fake()->unique()->numerify('########'),
             'mother_is_guardian' => false,
         ];
+    }
+
+    public function transferStudent(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_transfer_student' => true,
+        ]);
     }
 
     public function awaitingRegistrationFee(): static

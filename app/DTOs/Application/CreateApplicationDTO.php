@@ -60,6 +60,7 @@ class CreateApplicationDTO
         public ?string $relative_occupation = null,
         public ?string $relative_work_address = null,
         public ?string $relative_work_phone = null,
+        public bool $is_transfer_student = false,
     ) {}
 
     public function toArray(): array
@@ -104,6 +105,7 @@ class CreateApplicationDTO
             'relative_occupation' => $this->relative_occupation,
             'relative_work_address' => $this->relative_work_address,
             'relative_work_phone' => $this->relative_work_phone,
+            'is_transfer_student' => $this->is_transfer_student,
         ];
     }
 
@@ -170,6 +172,7 @@ class CreateApplicationDTO
             relative_occupation: $data['relative_occupation'],
             relative_work_address: $data['relative_work_address'] ?? null,
             relative_work_phone: $data['relative_work_phone'] ?? null,
+            is_transfer_student: $data['is_transfer_student'] ?? false,
         );
     }
 }

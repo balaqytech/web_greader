@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Schemas;
 
-use App\Enums\Gender;
-use App\Models\Application;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -78,6 +77,9 @@ class ApplicationInfolist
                                 TextEntry::make('relationship_with_guardian')
                                     ->label(__('admin.student.relationship_with_guardian'))
                                     ->placeholder('-'),
+                                IconEntry::make('is_transfer_student')
+                                    ->label(__('admin.application.is_transfer_student'))
+                                    ->boolean(),
                             ]),
                         Tab::make('father_info')
                             ->label(__('admin.application.father_data'))
@@ -163,7 +165,7 @@ class ApplicationInfolist
                                     ->label(__('admin.application.relative_work_phone'))
                                     ->placeholder('-'),
                             ]),
-                    ])
+                    ]),
             ]);
     }
 }

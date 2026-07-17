@@ -148,6 +148,19 @@ class ShieldPermissionSeeder extends Seeder
     ];
 
     /**
+     * Document permissions: branch staff/managers can view, upload, and review documents
+     * within their own branch.
+     *
+     * @var list<string>
+     */
+    private const DOCUMENT_PERMISSIONS = [
+        'ViewAny:ApplicationDocument',
+        'View:ApplicationDocument',
+        'Upload:ApplicationDocument',
+        'Review:ApplicationDocument',
+    ];
+
+    /**
      * @var list<string>
      */
     private const ROLES = ['branch_staff', 'branch_manager', 'central_finance'];
@@ -166,6 +179,7 @@ class ShieldPermissionSeeder extends Seeder
             ...self::PANEL_PERMISSIONS,
             ...self::APPLICATION_PERMISSIONS,
             ...self::BRANCH_PAYMENT_PERMISSIONS,
+            ...self::DOCUMENT_PERMISSIONS,
         ] as $permission) {
             $permissionModel::firstOrCreate([
                 'name' => $permission,
@@ -203,6 +217,7 @@ class ShieldPermissionSeeder extends Seeder
         $branchStaff->syncPermissions([
             ...self::BRANCH_APPLICATION_PERMISSIONS,
             ...self::BRANCH_PAYMENT_PERMISSIONS,
+            ...self::DOCUMENT_PERMISSIONS,
         ]);
 
         $branchManager = $roleModel::where('name', 'branch_manager')
@@ -212,6 +227,7 @@ class ShieldPermissionSeeder extends Seeder
         $branchManager->syncPermissions([
             ...self::BRANCH_APPLICATION_PERMISSIONS,
             ...self::BRANCH_PAYMENT_PERMISSIONS,
+            ...self::DOCUMENT_PERMISSIONS,
         ]);
 
         // firstOrCreate rather than assumed-to-exist: this seeder must remain correct even
