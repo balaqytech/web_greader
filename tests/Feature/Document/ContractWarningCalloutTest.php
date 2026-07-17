@@ -30,9 +30,22 @@ it('still generates the contract when documents are missing — the warning neve
 
     $this->actingAs(contractActionUser($branch->id));
 
-    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+    $component = Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
         ->assertActionVisible('move_to_waiting_contract')
-        ->callAction('move_to_waiting_contract', data: ['notes' => 'proceeding'])
+        ->mountAction('move_to_waiting_contract')
+        ->assertSchemaComponentVisible('document-warning');
+
+    $mountedSchema = $component->instance()->getSchema(
+        $component->instance()->getMountedActionSchemaName(),
+    );
+    $warning = $mountedSchema->getFlatComponents(withHidden: true)['document-warning'];
+
+    expect((string) $warning->getHeading())->toBe(__('admin.document.warning.contract_heading'))
+        ->and((string) $warning->getDescription())->toContain(__('admin.document.groups.student_identity'));
+
+    $component
+        ->set('mountedActions.0.data.notes', 'proceeding')
+        ->callMountedAction()
         ->assertHasNoActionErrors();
 
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);

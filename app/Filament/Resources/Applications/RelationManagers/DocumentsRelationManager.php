@@ -22,7 +22,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Read/upload/review surface for an application's document requirements. There is deliberately
@@ -123,15 +122,12 @@ class DocumentsRelationManager extends RelationManager
                 Gate::authorize('upload', $record);
 
                 $path = $data['file'];
-                $disk = Storage::disk('local');
 
                 try {
                     app(UploadDocumentAction::class)->execute(new UploadDocumentDTO(
                         document: $record,
                         temporaryPath: $path,
                         originalName: $data['original_name'] ?? basename($path),
-                        mimeType: $disk->mimeType($path) ?: 'application/octet-stream',
-                        size: (int) $disk->size($path),
                         uploadedBy: Auth::user(),
                     ));
 
@@ -145,12 +141,6 @@ class DocumentsRelationManager extends RelationManager
                         ->body($this->messageFor($e))
                         ->danger()
                         ->send();
-                } finally {
-                    // The authoritative action copies the file to its permanent home; the
-                    // component's temporary upload is no longer needed either way.
-                    if ($disk->exists($path)) {
-                        $disk->delete($path);
-                    }
                 }
             });
     }

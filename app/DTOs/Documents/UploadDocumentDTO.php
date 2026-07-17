@@ -20,8 +20,6 @@ final class UploadDocumentDTO
         public readonly ApplicationDocument $document,
         public readonly string $temporaryPath,
         public readonly string $originalName,
-        public readonly string $mimeType,
-        public readonly int $size,
         public readonly ?Model $uploadedBy = null,
     ) {}
 }

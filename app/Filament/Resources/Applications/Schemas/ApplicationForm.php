@@ -52,7 +52,7 @@ class ApplicationForm
                             TextInput::make('student_parents_social_status')
                                 ->label(__('admin.application.student_parents_social_status'))
                                 ->required(),
-                            Select::make('student_relationship_with_guardian')
+                            Select::make('relationship_with_guardian')
                                 ->label(__('admin.application.student_relationship_with_guardian'))
                                 ->options(GuardianRelationship::class)
                                 ->required(),

@@ -2,15 +2,22 @@
 
 declare(strict_types=1);
 
+use App\Actions\Documents\ApproveDocumentAction;
 use App\Actions\Documents\EvaluateDocumentRequirementsAction;
+use App\Actions\Documents\RejectDocumentAction;
 use App\Actions\Documents\SyncRequiredDocumentsAction;
 use App\Enums\DocumentType;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
+use App\Models\ApplicationDocumentFile;
 use App\Models\Scopes\BranchScope;
-use App\States\Documents\Approved;
-use App\States\Documents\Rejected;
+use App\Models\User;
 use App\States\Documents\Uploaded;
+use Illuminate\Support\Facades\Storage;
+
+beforeEach(function () {
+    Storage::fake('local');
+});
 
 function synced(bool $transfer = false): Application
 {
@@ -33,6 +40,16 @@ function evaluate(Application $application)
     return app(EvaluateDocumentRequirementsAction::class)->execute($application);
 }
 
+function markRequirementUploaded(ApplicationDocument $document): ApplicationDocument
+{
+    $file = ApplicationDocumentFile::factory()->for($document, 'document')->create();
+    Storage::disk('local')->put($file->file_path, "%PDF-1.4\nrequirement");
+    $document->update(['current_file_id' => $file->id]);
+    $document->status->transitionTo(Uploaded::class);
+
+    return $document->fresh();
+}
+
 it('warns about every requirement while all documents are missing', function () {
     $application = synced();
 
@@ -45,7 +62,7 @@ it('warns about every requirement while all documents are missing', function () 
 
 it('treats an uploaded document as satisfying its requirement', function () {
     $application = synced();
-    requirement($application, DocumentType::BirthCertificate)->status->transitionTo(Uploaded::class);
+    markRequirementUploaded(requirement($application, DocumentType::BirthCertificate));
 
     $keys = evaluate($application)->warnings()->pluck('key');
 
@@ -54,7 +71,7 @@ it('treats an uploaded document as satisfying its requirement', function () {
 
 it('lets either identity member satisfy the whole identity group', function () {
     $application = synced();
-    requirement($application, DocumentType::Passport)->status->transitionTo(Uploaded::class);
+    markRequirementUploaded(requirement($application, DocumentType::Passport));
 
     $keys = evaluate($application)->warnings()->pluck('key');
 
@@ -71,9 +88,8 @@ it('still warns for the identity group while both members are missing', function
 
 it('keeps warning when a document is rejected', function () {
     $application = synced();
-    $document = requirement($application, DocumentType::PersonalPhoto);
-    $document->status->transitionTo(Uploaded::class);
-    $document->status->transitionTo(Rejected::class);
+    $document = markRequirementUploaded(requirement($application, DocumentType::PersonalPhoto));
+    app(RejectDocumentAction::class)->execute($document, User::factory()->create(), 'Unreadable');
 
     $keys = evaluate($application)->warnings()->pluck('key');
 
@@ -82,9 +98,8 @@ it('keeps warning when a document is rejected', function () {
 
 it('counts an approved document as satisfied', function () {
     $application = synced();
-    $document = requirement($application, DocumentType::VaccinationCard);
-    $document->status->transitionTo(Uploaded::class);
-    $document->status->transitionTo(Approved::class);
+    $document = markRequirementUploaded(requirement($application, DocumentType::VaccinationCard));
+    app(ApproveDocumentAction::class)->execute($document, User::factory()->create());
 
     $keys = evaluate($application)->warnings()->pluck('key');
 
@@ -107,7 +122,7 @@ it('reports complete once every logical requirement is present', function () {
     ApplicationDocument::withoutGlobalScope(BranchScope::class)
         ->where('application_id', $application->id)
         ->get()
-        ->each(fn (ApplicationDocument $document) => $document->status->transitionTo(Uploaded::class));
+        ->each(fn (ApplicationDocument $document) => markRequirementUploaded($document));
 
     expect(evaluate($application)->isComplete())->toBeTrue();
 });

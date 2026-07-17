@@ -52,4 +52,28 @@ class DocumentUploadException extends Exception
             'admin.document.messages.file_too_large',
         );
     }
+
+    public static function storageFailure(string $path): self
+    {
+        return new self(
+            sprintf('Uploaded file [%s] could not be persisted on the private disk.', $path),
+            'admin.document.messages.upload_failed',
+        );
+    }
+
+    public static function currentFileRequired(int $documentId): self
+    {
+        return new self(
+            sprintf('Document %d cannot enter uploaded state without a persisted current file.', $documentId),
+            'admin.document.messages.upload_failed',
+        );
+    }
+
+    public static function staleReviewMetadata(int $documentId): self
+    {
+        return new self(
+            sprintf('Document %d cannot enter uploaded state while stale review metadata remains.', $documentId),
+            'admin.document.messages.upload_failed',
+        );
+    }
 }

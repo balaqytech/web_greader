@@ -42,4 +42,20 @@ class DocumentReviewException extends Exception
             'admin.document.messages.rejection_reason_required',
         );
     }
+
+    public static function currentFileRequired(ApplicationDocument $document): self
+    {
+        return new self(
+            sprintf('Document %d has no persisted current file to review.', $document->getKey()),
+            'admin.document.messages.not_reviewable',
+        );
+    }
+
+    public static function incompleteDecision(ApplicationDocument $document): self
+    {
+        return new self(
+            sprintf('Document %d is missing reviewer metadata for the requested decision.', $document->getKey()),
+            'admin.document.messages.not_reviewable',
+        );
+    }
 }

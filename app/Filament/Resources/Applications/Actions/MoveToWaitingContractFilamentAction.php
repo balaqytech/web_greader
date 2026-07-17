@@ -43,6 +43,7 @@ class MoveToWaitingContractFilamentAction extends Action
             // A non-blocking heads-up: missing or rejected documents are surfaced but never
             // prevent contract generation, which proceeds exactly as before.
             Callout::make(__('admin.document.warning.contract_heading'))
+                ->key('document-warning')
                 ->warning()
                 ->icon('heroicon-o-exclamation-triangle')
                 ->description(fn (Application $record): string => $this->outstandingDocumentsDescription($record))

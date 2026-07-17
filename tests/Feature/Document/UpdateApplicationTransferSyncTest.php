@@ -5,11 +5,12 @@ declare(strict_types=1);
 use App\Actions\Applications\UpdateApplicationDataAction;
 use App\Actions\Documents\SyncRequiredDocumentsAction;
 use App\DTOs\Application\UpdateApplicationDataDTO;
+use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
 use App\Models\Scopes\BranchScope;
 
-function updateTransfer(Application $application, bool $isTransfer): Application
+function applicationTransferData(Application $application, bool $isTransfer): array
 {
     $data = $application->fresh()->getAttributes();
 
@@ -33,7 +34,15 @@ function updateTransfer(Application $application, bool $isTransfer): Application
     $data['mother_is_guardian'] = (bool) ($data['mother_is_guardian'] ?? false);
     $data['is_transfer_student'] = $isTransfer;
 
-    return app(UpdateApplicationDataAction::class)->execute($application, UpdateApplicationDataDTO::fromValidated($data));
+    return $data;
+}
+
+function updateTransfer(Application $application, bool $isTransfer): Application
+{
+    return app(UpdateApplicationDataAction::class)->execute(
+        $application,
+        UpdateApplicationDataDTO::fromValidated(applicationTransferData($application, $isTransfer)),
+    );
 }
 
 function countDocuments(Application $application): int
@@ -76,4 +85,22 @@ it('does not create requirements when the flag is unchanged', function () {
     updateTransfer($application, false);
 
     expect(countDocuments($application))->toBe(8);
+});
+
+it('resynchronises requirements when the transfer flag is changed through the edit page', function () {
+    $application = Application::factory()->awaitingApplicationCompletion()->create(['is_transfer_student' => false]);
+    app(SyncRequiredDocumentsAction::class)->execute($application);
+
+    $page = app(EditApplication::class);
+    $updateThroughPage = function (Application $record, array $data): Application {
+        return $this->handleRecordUpdate($record, $data);
+    };
+    $updated = $updateThroughPage->call(
+        $page,
+        $application,
+        applicationTransferData($application, true),
+    );
+
+    expect($updated->is_transfer_student)->toBeTrue()
+        ->and(countDocuments($application))->toBe(9);
 });

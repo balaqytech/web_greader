@@ -60,13 +60,9 @@ it('enforces one row per application and type', function () {
 });
 
 it('denormalises branch_id onto the document so scope checks never need a join', function () {
-    $branch = Branch::factory()->create();
-    $application = Application::factory()->create(['branch_id' => $branch->id]);
+    $document = ApplicationDocument::factory()->create();
 
-    $document = ApplicationDocument::factory()->for($application)->create(['branch_id' => $branch->id]);
-
-    expect($document->branch_id)->toBe($branch->id)
-        ->and($document->application->branch_id)->toBe($branch->id);
+    expect($document->branch_id)->toBe($document->application->branch_id);
 });
 
 it('cascades document and file rows when the application is deleted', function () {

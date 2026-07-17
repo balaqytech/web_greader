@@ -12,6 +12,7 @@ use App\Models\Scopes\BranchScope;
 use App\States\Documents\Uploaded;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -50,19 +51,23 @@ final class UploadDocumentAction
 
     private const MAX_BYTES = 5 * 1024 * 1024;
 
+    private const TEMPORARY_DIRECTORY = 'documents/tmp/';
+
     /**
      * @throws DocumentUploadException
      */
     public function execute(UploadDocumentDTO $dto): ApplicationDocumentFile
     {
         $disk = Storage::disk('local');
-
-        $this->guardFile($disk, $dto);
-
-        $storedPath = $this->storeCandidate($disk, $dto);
+        $temporaryPath = $this->guardTemporaryPath($dto->temporaryPath);
+        $storedPath = null;
 
         try {
-            return DB::transaction(function () use ($dto, $storedPath): ApplicationDocumentFile {
+            [$mimeType, $size] = $this->inspectTemporaryFile($disk, $temporaryPath);
+            $storedPath = $this->finalPath($dto->document, $mimeType);
+            $this->copyToPermanentStorage($disk, $temporaryPath, $storedPath, $size);
+
+            return DB::transaction(function () use ($dto, $storedPath, $mimeType, $size): ApplicationDocumentFile {
                 $document = ApplicationDocument::withoutGlobalScope(BranchScope::class)
                     ->whereKey($dto->document->getKey())
                     ->lockForUpdate()
@@ -70,9 +75,9 @@ final class UploadDocumentAction
 
                 $file = $document->files()->create([
                     'file_path' => $storedPath,
-                    'original_name' => $dto->originalName,
-                    'mime_type' => $dto->mimeType,
-                    'size' => $dto->size,
+                    'original_name' => $this->safeOriginalName($dto),
+                    'mime_type' => $mimeType,
+                    'size' => $size,
                     'uploaded_by_type' => $dto->uploadedBy?->getMorphClass(),
                     'uploaded_by_id' => $dto->uploadedBy?->getKey(),
                     'uploaded_at' => now(),
@@ -93,28 +98,59 @@ final class UploadDocumentAction
                 return $file;
             }, attempts: 3);
         } catch (Throwable $e) {
-            $this->discardCandidate($disk, $storedPath);
+            if ($storedPath !== null) {
+                $this->discardCandidate($disk, $storedPath);
+            }
 
             throw $e;
+        } finally {
+            $this->discardTemporaryFile($disk, $temporaryPath);
         }
     }
 
     /**
      * @throws DocumentUploadException
      */
-    private function guardFile(Filesystem $disk, UploadDocumentDTO $dto): void
+    private function guardTemporaryPath(string $path): string
     {
-        if (! in_array($dto->mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw DocumentUploadException::disallowedMimeType($dto->mimeType);
+        $path = str_replace('\\', '/', trim($path));
+        $relativePath = Str::after($path, self::TEMPORARY_DIRECTORY);
+
+        if (
+            $path === ''
+            || ! Str::startsWith($path, self::TEMPORARY_DIRECTORY)
+            || $relativePath === ''
+            || str_contains($path, "\0")
+            || preg_match('#(^|/)\.{1,2}(/|$)#', $relativePath) === 1
+        ) {
+            throw DocumentUploadException::unexpectedPath($path, self::TEMPORARY_DIRECTORY);
         }
 
-        if ($dto->size > self::MAX_BYTES) {
-            throw DocumentUploadException::tooLarge($dto->size, self::MAX_BYTES);
+        return $path;
+    }
+
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private function inspectTemporaryFile(Filesystem $disk, string $path): array
+    {
+        if (! $disk->exists($path)) {
+            throw DocumentUploadException::fileMissing($path);
         }
 
-        if (! $disk->exists($dto->temporaryPath)) {
-            throw DocumentUploadException::fileMissing($dto->temporaryPath);
+        $size = $disk->size($path);
+
+        if ($size > self::MAX_BYTES) {
+            throw DocumentUploadException::tooLarge($size, self::MAX_BYTES);
         }
+
+        $mimeType = $disk->mimeType($path);
+
+        if (! is_string($mimeType) || ! in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
+            throw DocumentUploadException::disallowedMimeType(is_string($mimeType) ? $mimeType : 'unknown');
+        }
+
+        return [$mimeType, $size];
     }
 
     /**
@@ -122,22 +158,28 @@ final class UploadDocumentAction
      * this application and document. The path is fully server-generated, so a caller can never
      * steer the write outside the expected private tree.
      */
-    private function storeCandidate(Filesystem $disk, UploadDocumentDTO $dto): string
+    private function finalPath(ApplicationDocument $document, string $mimeType): string
     {
-        $directory = $this->directoryFor($dto->document);
-        $path = $directory.'/'.Str::random(40).$this->extensionFor($dto->mimeType);
+        return $this->directoryFor($document).'/'.Str::random(40).$this->extensionFor($mimeType);
+    }
 
-        $stream = $disk->readStream($dto->temporaryPath);
+    private function copyToPermanentStorage(Filesystem $disk, string $temporaryPath, string $storedPath, int $expectedSize): void
+    {
+        $stream = $disk->readStream($temporaryPath);
 
-        try {
-            $disk->writeStream($path, $stream);
-        } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
+        if (! is_resource($stream)) {
+            throw DocumentUploadException::storageFailure($storedPath);
         }
 
-        return $path;
+        try {
+            $written = $disk->writeStream($storedPath, $stream);
+        } finally {
+            fclose($stream);
+        }
+
+        if (! $written || ! $disk->exists($storedPath) || $disk->size($storedPath) !== $expectedSize) {
+            throw DocumentUploadException::storageFailure($storedPath);
+        }
     }
 
     private function discardCandidate(Filesystem $disk, string $path): void
@@ -147,8 +189,28 @@ final class UploadDocumentAction
             ->exists();
 
         if (! $referenced && $disk->exists($path)) {
-            $disk->delete($path);
+            if (! $disk->delete($path)) {
+                Log::warning('An unreferenced application document candidate could not be removed.', [
+                    'file_path' => $path,
+                ]);
+            }
         }
+    }
+
+    private function discardTemporaryFile(Filesystem $disk, string $path): void
+    {
+        if ($disk->exists($path) && ! $disk->delete($path)) {
+            Log::warning('A verified temporary application document upload could not be removed.', [
+                'file_path' => $path,
+            ]);
+        }
+    }
+
+    private function safeOriginalName(UploadDocumentDTO $dto): string
+    {
+        $name = basename(str_replace('\\', '/', trim($dto->originalName)));
+
+        return $name !== '' ? $name : basename($dto->temporaryPath);
     }
 
     private function directoryFor(ApplicationDocument $document): string

@@ -9,6 +9,11 @@ use App\Models\ApplicationDocument;
 use App\Models\ApplicationDocumentFile;
 use App\Models\Scopes\BranchScope;
 use App\States\Documents\Uploaded;
+use Illuminate\Support\Facades\Storage;
+
+beforeEach(function () {
+    Storage::fake('local');
+});
 
 function syncDocuments(Application $application): void
 {
@@ -19,6 +24,14 @@ function documentsOf(Application $application)
 {
     return ApplicationDocument::withoutGlobalScope(BranchScope::class)
         ->where('application_id', $application->id);
+}
+
+function markSyncedDocumentUploaded(ApplicationDocument $document): void
+{
+    $file = ApplicationDocumentFile::factory()->for($document, 'document')->create();
+    Storage::disk('local')->put($file->file_path, "%PDF-1.4\nsynced");
+    $document->update(['current_file_id' => $file->id]);
+    $document->status->transitionTo(Uploaded::class);
 }
 
 it('creates eight required documents for a non-transfer student', function () {
@@ -68,8 +81,7 @@ it('retains an uploaded transfer file but marks it optional when transfer status
     syncDocuments($application);
 
     $transfer = documentsOf($application)->where('type', DocumentType::TransferFile->value)->first();
-    $transfer->status->transitionTo(Uploaded::class);
-    ApplicationDocumentFile::factory()->for($transfer, 'document')->create();
+    markSyncedDocumentUploaded($transfer);
 
     $application->update(['is_transfer_student' => false]);
     syncDocuments($application);

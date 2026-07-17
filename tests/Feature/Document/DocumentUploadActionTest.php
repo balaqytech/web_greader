@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Documents\ApproveDocumentAction;
+use App\Actions\Documents\RejectDocumentAction;
 use App\Actions\Documents\UploadDocumentAction;
 use App\DTOs\Documents\UploadDocumentDTO;
 use App\Exceptions\DocumentUploadException;
@@ -9,12 +11,10 @@ use App\Models\ApplicationDocument;
 use App\Models\ApplicationDocumentFile;
 use App\Models\Scopes\BranchScope;
 use App\Models\User;
-use App\States\Documents\Approved;
 use App\States\Documents\Missing;
-use App\States\Documents\Rejected;
 use App\States\Documents\Uploaded;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -23,14 +23,20 @@ beforeEach(function () {
 
 function stageTempFile(string $name = 'doc.pdf', string $mime = 'application/pdf', int $kilobytes = 100): array
 {
-    $file = UploadedFile::fake()->create($name, $kilobytes, $mime);
-    $path = $file->storeAs('documents/tmp', $name, ['disk' => 'local']);
+    $path = 'documents/tmp/'.$name;
+    $header = match ($mime) {
+        'application/pdf' => "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n",
+        'image/jpeg' => "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xFF\xD9",
+        'image/png' => base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZK1sAAAAASUVORK5CYII=', true),
+        default => 'plain text',
+    };
+    $contents = str_pad((string) $header, $kilobytes * 1024, "\0");
+
+    Storage::disk('local')->put($path, $contents);
 
     return [
         'path' => $path,
         'name' => $name,
-        'mime' => $mime,
-        'size' => Storage::disk('local')->size($path),
     ];
 }
 
@@ -40,8 +46,6 @@ function upload(ApplicationDocument $document, array $temp, ?User $by = null): A
         document: $document,
         temporaryPath: $temp['path'],
         originalName: $temp['name'],
-        mimeType: $temp['mime'],
-        size: $temp['size'],
         uploadedBy: $by,
     ));
 }
@@ -57,8 +61,10 @@ it('stores the first upload, moves the document to uploaded, and repoints the cu
         ->and($document->current_file_id)->toBe($file->id)
         ->and($file->original_name)->toBe('doc.pdf')
         ->and($file->mime_type)->toBe('application/pdf')
+        ->and($file->size)->toBe(100 * 1024)
         ->and($file->uploaded_by_id)->toBe($uploader->id)
-        ->and(Storage::disk('local')->exists($file->file_path))->toBeTrue();
+        ->and(Storage::disk('local')->exists($file->file_path))->toBeTrue()
+        ->and(Storage::disk('local')->exists('documents/tmp/doc.pdf'))->toBeFalse();
 });
 
 it('generates a random private path namespaced to the application and document', function () {
@@ -86,8 +92,7 @@ it('clears the review verdict when a rejected document is re-uploaded', function
     $document = ApplicationDocument::factory()->create(['status' => Missing::$name]);
     upload($document, stageTempFile());
     $document->refresh();
-    $document->status->transitionTo(Rejected::class);
-    $document->update(['reviewed_by' => User::factory()->create()->id, 'rejection_reason' => 'blurry', 'reviewed_at' => now()]);
+    app(RejectDocumentAction::class)->execute($document, User::factory()->create(), 'blurry');
 
     upload($document, stageTempFile('fixed.pdf'));
     $document->refresh();
@@ -102,7 +107,7 @@ it('allows replacing an approved document, returning it to the uploaded state', 
     $document = ApplicationDocument::factory()->create(['status' => Missing::$name]);
     upload($document, stageTempFile());
     $document->refresh();
-    $document->status->transitionTo(Approved::class);
+    app(ApproveDocumentAction::class)->execute($document, User::factory()->create());
 
     upload($document, stageTempFile('new.pdf'));
 
@@ -119,10 +124,10 @@ it('rejects a disallowed mime type', function () {
 
 it('rejects a file over five megabytes', function () {
     $document = ApplicationDocument::factory()->create();
-    $temp = stageTempFile('big.pdf');
-    $temp['size'] = 6 * 1024 * 1024;
+    $temp = stageTempFile('big.pdf', kilobytes: 6 * 1024);
 
     expect(fn () => upload($document, $temp))->toThrow(DocumentUploadException::class);
+    expect(Storage::disk('local')->exists($temp['path']))->toBeFalse();
 });
 
 it('rejects a temporary file that is not present on the disk', function () {
@@ -132,10 +137,25 @@ it('rejects a temporary file that is not present on the disk', function () {
         document: $document,
         temporaryPath: 'documents/tmp/missing.pdf',
         originalName: 'missing.pdf',
-        mimeType: 'application/pdf',
-        size: 1000,
     )))->toThrow(DocumentUploadException::class);
 });
+
+it('rejects paths outside the owned temporary directory without deleting them', function (string $path) {
+    $document = ApplicationDocument::factory()->create();
+    Storage::disk('local')->put('contracts/winner.pdf', "%PDF-1.4\nprotected");
+
+    expect(fn () => app(UploadDocumentAction::class)->execute(new UploadDocumentDTO(
+        document: $document,
+        temporaryPath: $path,
+        originalName: 'winner.pdf',
+    )))->toThrow(DocumentUploadException::class);
+
+    expect(Storage::disk('local')->exists('contracts/winner.pdf'))->toBeTrue()
+        ->and($document->fresh()->status)->toBeInstanceOf(Missing::class);
+})->with([
+    'unrelated private path' => 'contracts/winner.pdf',
+    'temporary directory traversal' => 'documents/tmp/../contracts/winner.pdf',
+]);
 
 it('accepts jpeg and png uploads', function (string $name, string $mime) {
     $document = ApplicationDocument::factory()->create();
@@ -160,4 +180,33 @@ it('discards an orphaned candidate file when the write transaction fails', funct
     // No permanent file under the document directory survives.
     expect(Storage::disk('local')->allFiles("documents/applications/{$document->application_id}/{$document->id}"))
         ->toBeEmpty();
+});
+
+it('treats a false storage write as a failed upload with no persisted history', function () {
+    $document = ApplicationDocument::factory()->create();
+    $temporaryPath = 'documents/tmp/write-failure.pdf';
+    $stream = fopen('php://temp', 'r+');
+    fwrite($stream, "%PDF-1.4\nwrite failure");
+    rewind($stream);
+
+    $disk = Mockery::mock(Filesystem::class);
+    $disk->shouldReceive('exists')->andReturnUsing(
+        fn (string $path): bool => $path === $temporaryPath,
+    );
+    $disk->shouldReceive('size')->with($temporaryPath)->andReturn(24);
+    $disk->shouldReceive('mimeType')->with($temporaryPath)->andReturn('application/pdf');
+    $disk->shouldReceive('readStream')->with($temporaryPath)->andReturn($stream);
+    $disk->shouldReceive('writeStream')->once()->andReturn(false);
+    $disk->shouldReceive('delete')->once()->with($temporaryPath)->andReturn(true);
+    Storage::shouldReceive('disk')->with('local')->andReturn($disk);
+
+    expect(fn () => app(UploadDocumentAction::class)->execute(new UploadDocumentDTO(
+        document: $document,
+        temporaryPath: $temporaryPath,
+        originalName: 'write-failure.pdf',
+    )))->toThrow(DocumentUploadException::class);
+
+    expect($document->fresh()->status)->toBeInstanceOf(Missing::class)
+        ->and($document->files()->count())->toBe(0)
+        ->and($document->fresh()->current_file_id)->toBeNull();
 });

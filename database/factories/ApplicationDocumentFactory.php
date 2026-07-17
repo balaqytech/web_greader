@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Enums\DocumentType;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
-use App\Models\Branch;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,7 +21,9 @@ class ApplicationDocumentFactory extends Factory
     {
         return [
             'application_id' => Application::factory(),
-            'branch_id' => Branch::factory(),
+            'branch_id' => fn (array $attributes): int => (int) Application::withoutGlobalScopes()
+                ->whereKey($attributes['application_id'])
+                ->valueOrFail('branch_id'),
             'type' => DocumentType::BirthCertificate,
             'status' => 'missing',
             'is_required' => true,
