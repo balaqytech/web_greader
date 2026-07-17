@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Applications\RenderApplicationContractAction;
 use App\Actions\Applications\SignContractOnlineAction;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Exceptions\StaleApplicationStateException;
@@ -12,7 +11,7 @@ use InvalidArgumentException;
 
 class ContractSigningController extends Controller
 {
-    public function show(string $token, RenderApplicationContractAction $render)
+    public function show(string $token)
     {
         $applicationContract = ApplicationContract::with('application')->where('token', $token)->first();
 
@@ -22,9 +21,11 @@ class ContractSigningController extends Controller
             ]);
         }
 
+        // Display replays the version's frozen body — never a live re-render — so what the
+        // signer sees is exactly what is stored and later signed (§6.1).
         return view('contract.show', [
             'applicationContract' => $applicationContract,
-            'contract' => $render->execute($applicationContract->application),
+            'contract' => $applicationContract->rendered_body,
         ]);
     }
 

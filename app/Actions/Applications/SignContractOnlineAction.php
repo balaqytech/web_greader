@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\ApplicationContract;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
+use App\States\Contracts\Signed;
 use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -42,37 +43,32 @@ final class SignContractOnlineAction
         try {
             // Application -> contract lock order, all in one guarded boundary: the row is
             // locked and re-verified — including that the locked contract's token still
-            // matches the one actually submitted — before the contract body is rendered from
-            // the *locked* (current) data and before any artifact is written. A stale replay
-            // therefore cannot overwrite a later signer's artifacts, rotate the token, or sign
-            // a contract it was never shown.
+            // matches the one actually submitted — before any artifact is written. A stale
+            // replay therefore cannot overwrite a later signer's artifacts, rotate the token,
+            // or sign a contract it was never shown.
             DB::transaction(function () use ($applicationContract, $token, $imageBytes, $signaturePath, $pdfPath) {
                 $application = LockApplication::inState($applicationContract->application, AwaitingContractSignature::class);
 
-                $lockedContract = $application->contract()->lockForUpdate()->first();
+                $lockedContract = $application->activeContract()->lockForUpdate()->first();
 
                 if (! $application->hasSignableContract($lockedContract, $token)) {
                     throw new InvalidArgumentException(__('alerts.application.contract_token_invalid_or_expired'));
                 }
 
-                // KNOWN PHASE 0 GAP, not fixed here: this re-renders the contract body from
-                // *current* data at signing time — it is not a stored snapshot of the exact
-                // body that was actually displayed to the signer when the page was rendered
-                // (GET). If the program's contract template or the application's data changes
-                // between GET and this POST, the signed PDF can legitimately differ from what
-                // the signer saw. Electronic signing is not production-ready until contract
-                // generation persists an immutable `rendered_body` (+ `template_hash`) and both
-                // display and signing reuse that stored snapshot instead of re-rendering — see
-                // the contract-versioning section of docs/target-registration-architecture.md.
-                $contractBody = app(RenderApplicationContractAction::class)->execute($application);
+                // The signed PDF is built from the version's frozen `rendered_body` — exactly
+                // what the signer was shown at generation — never re-rendered from current data
+                // or the live template. This is what makes "what the signer signed" reproducible
+                // and immune to later template/data edits (§6.1).
+                $contractBody = $lockedContract->rendered_body;
 
                 if (! Storage::disk('public')->put($signaturePath, $imageBytes)) {
                     throw new RuntimeException("Failed to write signature image to storage path [{$signaturePath}].");
                 }
 
-                // Resolve through the same 'public' disk the signature was actually written
-                // to — the default disk resolves URLs through a different serving route.
-                $fileUrl = app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
+                // CreatePdfAction writes to and returns a URL on the 'public' disk; we keep the
+                // disk-relative path in `file_path` (§5, path normalization) and let the
+                // signature image resolve through the same disk it was written to.
+                app(CreatePdfAction::class)->execute('pdf.contract', $pdfPath, [
                     'title' => 'test',
                     'contract' => $contractBody,
                     'signature' => Storage::disk('public')->url($signaturePath),
@@ -82,8 +78,10 @@ final class SignContractOnlineAction
                     'signed_at' => now(),
                     'signed_by_applicant' => true,
                     'signature_path' => $signaturePath,
-                    'file_path' => $fileUrl,
+                    'file_path' => $pdfPath,
                 ]);
+
+                $lockedContract->status->transitionTo(Signed::class);
 
                 $application->status->transitionTo(
                     AwaitingBranchReview::class,

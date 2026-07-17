@@ -6,6 +6,7 @@ use App\Actions\Applications\RecordApplicationActivityAction;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\Cancelled;
+use App\States\Contracts\Cancelled as ContractCancelled;
 use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
@@ -35,6 +36,14 @@ abstract class CancelApplicationTransition extends Transition
             }
 
             $application = LockApplication::inState($this->application, $this->fromState());
+
+            // Cancel the active (generated/signed) contract version alongside the application so
+            // its signing link dies immediately; historical files are retained.
+            $contract = $application->activeContract()->lockForUpdate()->first();
+
+            if ($contract !== null) {
+                $contract->status->transitionTo(ContractCancelled::class);
+            }
 
             $application->status = Cancelled::class;
             $application->save();

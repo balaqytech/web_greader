@@ -7,16 +7,18 @@ use App\Actions\Documents\SyncRequiredDocumentsAction;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingContractSignature;
+use App\States\Contracts\Superseded;
 use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 /**
  * Staff reopens data entry before signing. The row is locked and its persisted state
- * re-verified before writing, so a stale replay cannot invalidate a token another request has
- * already used to sign. Any generated (unsigned) contract token is invalidated so a fresh
- * contract is generated on the next forward transition; contract update, application state,
- * and activity are written in one transaction.
+ * re-verified before writing, so a stale replay cannot supersede a version another request has
+ * already used to sign. The active generated version is superseded (not erased or reused): its
+ * token is invalidated and the row retained as history, so the next forward transition
+ * generates a fresh vN+1. Contract supersession, application state, and activity are written in
+ * one transaction.
  */
 class AwaitingContractSignatureToAwaitingApplicationCompletion extends Transition
 {
@@ -30,15 +32,10 @@ class AwaitingContractSignatureToAwaitingApplicationCompletion extends Transitio
         return DB::transaction(function () {
             $application = LockApplication::inState($this->application, AwaitingContractSignature::class);
 
-            $contract = $application->contract()->lockForUpdate()->first();
+            $contract = $application->activeContract()->lockForUpdate()->first();
 
             if ($contract !== null) {
-                $contract->update([
-                    'token' => null,
-                    'token_expires_at' => null,
-                    'signed_at' => null,
-                    'signed_by_applicant' => false,
-                ]);
+                $contract->status->transitionTo(Superseded::class);
             }
 
             $application->status = AwaitingApplicationCompletion::class;

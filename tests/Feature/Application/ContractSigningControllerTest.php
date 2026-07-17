@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Applications\GenerateApplicationContractAction;
 use App\Actions\Support\CreatePdfAction;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
@@ -23,8 +24,15 @@ beforeEach(function () {
 
 function contractApplication(array $overrides = []): Application
 {
-    $application = Application::factory()->awaitingContractSignature()->create($overrides);
+    // Configure the template and guardian data first, then generate — the version freezes an
+    // immutable rendered_body from the data as it stands at generation, so display replays that
+    // snapshot rather than re-rendering current data.
+    $application = Application::factory()->awaitingApplicationCompletion()->create($overrides);
     $application->program->update(['contract' => 'Guardian: $parent_name$ | Student: $student_name$']);
+    $application->refresh();
+
+    app(GenerateApplicationContractAction::class)->handle($application);
+    $application->update(['status' => AwaitingContractSignature::class]);
 
     return $application->fresh();
 }

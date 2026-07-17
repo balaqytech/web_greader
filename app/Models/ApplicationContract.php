@@ -2,44 +2,72 @@
 
 namespace App\Models;
 
+use App\States\Contracts\ContractState;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\ModelStates\HasStates;
 
 /**
- * `file_path` does not currently store one consistent representation: the online-signing path
- * (SignContractOnlineAction -> CreatePdfAction) stores the full `public`-disk URL returned by
- * Storage::disk('public')->url(), while the staff-upload path (UploadSignedContractAction)
- * stores the disk-relative path exactly as given by the upload component. `signature_path`
- * always stores a disk-relative path. This is a pre-existing inconsistency, not introduced
- * here — every current caller already accounts for it (e.g. deleteIfUnreferenced() compares
- * like-for-like relative paths only within the upload path). Normalizing both columns to one
- * representation belongs with contract versioning (see docs/target-registration-architecture.md);
- * do not silently change what gets written here in the meantime.
+ * A single immutable contract version (§3.5, §5.5). `rendered_body` and `template_hash` are
+ * frozen at generation and never rewritten, so display and signing replay exactly what the
+ * signer saw and a later template edit cannot retroactively change a version.
+ *
+ * `file_path` stores a public-disk-relative path for every version created under versioning.
+ * Legacy rows may hold a full absolute URL (the pre-versioning online-signing path wrote
+ * `Storage::disk('public')->url(...)`); `signedFileUrl()` reads both shapes so callers never
+ * have to special-case them.
  */
 #[Fillable([
     'application_id',
+    'version',
+    'status',
+    'data_snapshot',
+    'rendered_body',
+    'template_hash',
+    'generated_by',
     'token',
     'token_expires_at',
     'signed_at',
     'signed_by_applicant',
     'file_path',
     'signature_path',
+    'superseded_at',
+    'superseded_by_contract_id',
 ])]
 class ApplicationContract extends Model
 {
+    use HasFactory;
+    use HasStates;
+
     protected function casts(): array
     {
         return [
+            'status' => ContractState::class,
+            'data_snapshot' => 'array',
             'token_expires_at' => 'datetime',
             'signed_at' => 'datetime',
             'signed_by_applicant' => 'boolean',
+            'superseded_at' => 'datetime',
         ];
     }
 
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
+    }
+
+    public function generatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'generated_by');
+    }
+
+    public function supersededBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'superseded_by_contract_id');
     }
 
     public function isSigned(): bool
@@ -58,5 +86,22 @@ class ApplicationContract extends Model
     public function isSignedOff(): bool
     {
         return $this->signed_at !== null && $this->file_path !== null;
+    }
+
+    /**
+     * Resolve a browser-usable URL for the stored signed artifact, tolerating both the
+     * versioned representation (public-disk-relative path) and legacy absolute URLs.
+     */
+    public function signedFileUrl(): ?string
+    {
+        if ($this->file_path === null) {
+            return null;
+        }
+
+        if (Str::startsWith($this->file_path, ['http://', 'https://', '/storage/'])) {
+            return $this->file_path;
+        }
+
+        return Storage::disk('public')->url($this->file_path);
     }
 }

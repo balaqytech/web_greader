@@ -6,6 +6,7 @@ use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
+use App\States\Contracts\Signed;
 use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +39,7 @@ final class UploadSignedContractAction
         DB::transaction(function () use ($application, $filePath, $notes) {
             $locked = LockApplication::inState($application, AwaitingContractSignature::class);
 
-            $contract = $locked->contract()->lockForUpdate()->first();
+            $contract = $locked->activeContract()->lockForUpdate()->first();
 
             if ($contract === null || $contract->isSignedOff()) {
                 throw new ApplicationIncompleteException(__('alerts.application.contract_missing'));
@@ -53,6 +54,8 @@ final class UploadSignedContractAction
                 'signed_at' => now(),
                 'signed_by_applicant' => false,
             ]);
+
+            $contract->status->transitionTo(Signed::class);
 
             $locked->status->transitionTo(
                 AwaitingBranchReview::class,

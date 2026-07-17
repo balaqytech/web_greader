@@ -13,6 +13,8 @@ use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
 use App\States\Applications\Rejected;
+use App\States\Contracts\Generated;
+use App\States\Contracts\Signed;
 use App\Support\Model;
 use App\Traits\HasAffiliate;
 use Carbon\Carbon;
@@ -110,6 +112,15 @@ class Application extends Model
                 : $this->relative_phone);
     }
 
+    public function getGuardianIdNumberAttribute(): ?string
+    {
+        return $this->father_is_guardian
+            ? $this->father_id_number
+            : ($this->mother_is_guardian
+                ? $this->mother_id_number
+                : $this->relative_id_number);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $application) {
@@ -156,9 +167,39 @@ class Application extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * All contract versions, newest first. The single-contract relation was retired with
+     * versioning (§5.5): production reads either the whole history (`contracts()`) or the one
+     * live version (`activeContract()`), never an ambiguous "the contract".
+     */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(ApplicationContract::class)->orderByDesc('version');
+    }
+
+    /**
+     * The one live version — the highest-version contract still `generated` or `signed`. The
+     * generation action supersedes any prior active version under lock before creating the
+     * next, so at most one row ever matches; `latest('version')` is defensive ordering, not a
+     * tie-break that should ever be needed. Callers under a row lock should
+     * `->activeContract()->lockForUpdate()->first()` so they act on the committed live version.
+     */
+    public function activeContract(): HasOne
+    {
+        return $this->hasOne(ApplicationContract::class)
+            ->whereIn('status', [Generated::$name, Signed::$name])
+            ->latest('version');
+    }
+
+    /**
+     * TEMPORARY test-only shim, retired in the acceptance/matrix hardening commit (§ commit 15).
+     * Returns the highest-version contract regardless of status so pre-versioning tests that
+     * reach for "the contract" keep resolving the current row. Production code must not use this
+     * — it reads `activeContract()` (the one live version) or `contracts()` (the full history).
+     */
     public function contract(): HasOne
     {
-        return $this->hasOne(ApplicationContract::class);
+        return $this->hasOne(ApplicationContract::class)->latest('version');
     }
 
     public function documents(): HasMany
@@ -180,7 +221,7 @@ class Application extends Model
      */
     public function hasSignableContract(?ApplicationContract $contract = null, ?string $expectedToken = null): bool
     {
-        $contract ??= $this->contract;
+        $contract ??= $this->activeContract;
 
         return $this->status instanceof AwaitingContractSignature
             && $contract !== null

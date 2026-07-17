@@ -399,6 +399,17 @@ return [
             'data_complete' => 'البيانات مكتملة',
             'waiting_contract' => 'في انتظار توقيع العقد',
         ],
+        'contract_states' => [
+            'generated' => 'تم إنشاؤه',
+            'signed' => 'موقّع',
+            'superseded' => 'مُستبدل',
+            'cancelled' => 'ملغي',
+        ],
+        'contract_history' => 'سجل العقود',
+        'contract_version' => 'الإصدار',
+        'contract_status' => 'الحالة',
+        'contract_generated_by' => 'أنشئ بواسطة',
+        'contract_generated_at' => 'تاريخ الإنشاء',
         'actions' => [
             'submit' => 'تقديم الطلب',
             'submit_success' => 'تم تقديم الطلب بنجاح',

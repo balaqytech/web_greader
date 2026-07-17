@@ -25,7 +25,7 @@ class OpenContractLinkFilamentAction extends Action
         $this->outlined();
 
         $this->url(function (Application $record): string {
-            return route('contract.show', $record->contract->token);
+            return route('contract.show', $record->activeContract?->token);
         });
 
         // $this->disabled();

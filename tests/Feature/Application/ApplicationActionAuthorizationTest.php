@@ -4,6 +4,7 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Models\Application;
 use App\Models\ApplicationActivity;
+use App\Models\ApplicationContract;
 use App\Models\Branch;
 use App\Models\User;
 use App\States\Applications\Accepted;
@@ -18,7 +19,6 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -370,10 +370,7 @@ it('wires each custom action\'s authorize() call to the expected record-aware po
     // null-contract crash. getAction() below resolves the action (and its schema) regardless of
     // the action's own visibility, unlike normal page rendering.
     $application = Application::factory()->awaitingApplicationCompletion()->create(['branch_id' => $branch->id]);
-    $application->contract()->create([
-        'token' => Str::random(64),
-        'token_expires_at' => now()->addDays(7),
-    ]);
+    ApplicationContract::factory()->for($application)->create();
 
     $user = actionTestUser($branch->id);
     $this->actingAs($user);
