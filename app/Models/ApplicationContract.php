@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\ContractImmutabilityException;
 use App\States\Contracts\ContractState;
 use App\Support\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -43,6 +44,23 @@ class ApplicationContract extends Model
     use HasFactory;
     use HasStates;
 
+    /**
+     * Fields frozen at generation. The snapshot/body/hash are the authoritative record of what
+     * the signer saw, and identity/version/generator never change for a given version. Only the
+     * lifecycle fields (token, signing artifacts, status, supersession linkage) may move
+     * afterwards, through signing/supersession/cancellation.
+     *
+     * @var list<string>
+     */
+    private const IMMUTABLE_AFTER_CREATION = [
+        'application_id',
+        'version',
+        'data_snapshot',
+        'rendered_body',
+        'template_hash',
+        'generated_by',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -53,6 +71,24 @@ class ApplicationContract extends Model
             'signed_by_applicant' => 'boolean',
             'superseded_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $contract) {
+            foreach (self::IMMUTABLE_AFTER_CREATION as $column) {
+                if ($contract->isDirty($column)) {
+                    throw ContractImmutabilityException::field($contract, $column);
+                }
+            }
+        });
+
+        // History is never erased through the model. The application delete cascade is a
+        // DB-level ON DELETE CASCADE and does not fire this event, so removing an application
+        // still removes its versions atomically.
+        static::deleting(function () {
+            throw ContractImmutabilityException::deletionForbidden();
+        });
     }
 
     public function application(): BelongsTo

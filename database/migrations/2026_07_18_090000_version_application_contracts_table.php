@@ -105,6 +105,18 @@ return new class extends Migration
             );
         }
 
+        // Restore the standalone application_id unique FIRST, so the foreign key on
+        // application_id always retains a covering index before either compound index is
+        // dropped. Dropping the compound indexes first fails on MySQL/MariaDB with SQLSTATE
+        // HY000/1553 ("needed in a foreign key constraint"). Safe to add here because the guard
+        // above already refused when any application has more than one version, so application_id
+        // is unique across the surviving rows. Never disables foreign-key checks.
+        if (! $this->hasIndex('application_contracts', 'application_contracts_application_id_unique')) {
+            Schema::table('application_contracts', function (Blueprint $table) {
+                $table->unique('application_id', 'application_contracts_application_id_unique');
+            });
+        }
+
         Schema::table('application_contracts', function (Blueprint $table) {
             if ($this->hasIndex('application_contracts', 'application_contracts_application_id_version_unique')) {
                 $table->dropUnique('application_contracts_application_id_version_unique');
@@ -114,12 +126,6 @@ return new class extends Migration
                 $table->dropIndex('application_contracts_application_id_status_index');
             }
         });
-
-        if (! $this->hasIndex('application_contracts', 'application_contracts_application_id_unique')) {
-            Schema::table('application_contracts', function (Blueprint $table) {
-                $table->unique('application_id', 'application_contracts_application_id_unique');
-            });
-        }
 
         Schema::table('application_contracts', function (Blueprint $table) {
             if (Schema::hasColumn('application_contracts', 'superseded_by_contract_id')) {
@@ -218,16 +224,14 @@ return new class extends Migration
     }
 
     /**
-     * Tighten the backfilled columns to NOT NULL now that every row has a value. Skipped on
-     * SQLite, whose table-rebuild `change()` is unnecessary for the in-memory test schema and
-     * whose stored-JSON handling differs — the application layer never writes null here anyway.
+     * Tighten the backfilled columns to NOT NULL now that every row has a value, on every
+     * engine — the physical test schema (SQLite) must match the production invariant, not merely
+     * rely on model behaviour. Laravel's native column change rebuilds the SQLite table (and
+     * issues a MODIFY on MySQL/MariaDB), preserving data, the token unique, the generated_by and
+     * self-referencing superseded_by_contract_id foreign keys, and the compound indexes.
      */
     private function enforceNotNull(): void
     {
-        if (DB::getDriverName() === 'sqlite') {
-            return;
-        }
-
         Schema::table('application_contracts', function (Blueprint $table) {
             $table->unsignedInteger('version')->nullable(false)->change();
             $table->string('status')->nullable(false)->change();
