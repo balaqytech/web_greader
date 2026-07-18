@@ -207,6 +207,20 @@ class Application extends Model
         return $this->hasMany(ApplicationDocument::class);
     }
 
+    public function corrections(): HasMany
+    {
+        return $this->hasMany(ApplicationCorrection::class)->latest('requested_at');
+    }
+
+    /**
+     * The single open correction, if any. At most one is ever open at a time — enforced by
+     * locking the application row in the request/complete actions.
+     */
+    public function openCorrection(): HasOne
+    {
+        return $this->hasOne(ApplicationCorrection::class)->whereNull('completed_at');
+    }
+
     /**
      * The single authoritative rule for whether this application's contract may be rendered
      * or signed: the application must be persisted in AwaitingContractSignature, the contract

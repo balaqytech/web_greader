@@ -8,6 +8,7 @@ use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Filament\Resources\Applications\RelationManagers\ActivitiesRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\ContractsRelationManager;
+use App\Filament\Resources\Applications\RelationManagers\CorrectionsRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
@@ -63,6 +64,7 @@ class ApplicationResource extends Resource
         return [
             DocumentsRelationManager::class,
             ContractsRelationManager::class,
+            CorrectionsRelationManager::class,
             ActivitiesRelationManager::class,
         ];
     }

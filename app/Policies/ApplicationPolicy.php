@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\Branch;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingRegistrationFee;
+use App\States\Applications\CorrectionRequested;
 use App\Support\Authorization\BranchAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Auth\Access\Response;
@@ -55,15 +56,22 @@ class ApplicationPolicy
     }
 
     /**
-     * Application data is only editable while it is still being assembled. Once a contract
-     * has been generated for signature, and through review/terminal states, the record is
-     * immutable here until correction/versioning exists — enforced in authorization, not
-     * merely by hiding the action.
+     * Application data is editable while it is still being assembled (registration-fee and
+     * data-completion stages) and, additionally, while an open correction is being worked —
+     * `CorrectionRequested` with an open correction row lets staff fix the flagged data before
+     * completing the correction. Once signed and through review/terminal states with no open
+     * correction, the record is immutable here — enforced in authorization, not merely by
+     * hiding the action.
      */
     private function isEditableState(Application $application): bool
     {
-        return $application->status instanceof AwaitingRegistrationFee
-            || $application->status instanceof AwaitingApplicationCompletion;
+        if ($application->status instanceof AwaitingRegistrationFee
+            || $application->status instanceof AwaitingApplicationCompletion) {
+            return true;
+        }
+
+        return $application->status instanceof CorrectionRequested
+            && $application->openCorrection()->exists();
     }
 
     public function delete(AuthUser $authUser, Application $application): bool
@@ -90,6 +98,16 @@ class ApplicationPolicy
     public function reopen(AuthUser $authUser, Application $application): bool
     {
         return $this->authorizeForBranch($authUser, $application, 'Update:Application');
+    }
+
+    public function requestCorrection(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'RequestCorrection:Application');
+    }
+
+    public function completeCorrection(AuthUser $authUser, Application $application): bool
+    {
+        return $this->authorizeForBranch($authUser, $application, 'CompleteCorrection:Application');
     }
 
     public function accept(AuthUser $authUser, Application $application): bool

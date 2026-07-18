@@ -331,6 +331,8 @@ function branchApplicationPermissionNames(): array
         'Update:Application',
         'GenerateContract:Application',
         'UploadSignedContract:Application',
+        'RequestCorrection:Application',
+        'CompleteCorrection:Application',
         'Accept:Application',
         'Reject:Application',
         'Cancel:Application',

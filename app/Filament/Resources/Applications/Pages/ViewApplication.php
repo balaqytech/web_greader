@@ -4,17 +4,20 @@ namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\Actions\AcceptApplicationFilamentAction;
 use App\Filament\Resources\Applications\Actions\CancelApplicationFilamentAction;
+use App\Filament\Resources\Applications\Actions\CompleteCorrectionFilamentAction;
 use App\Filament\Resources\Applications\Actions\CopyContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\InitiatePaymentFilamentAction;
 use App\Filament\Resources\Applications\Actions\MoveToWaitingContractFilamentAction;
 use App\Filament\Resources\Applications\Actions\OpenContractLinkFilamentAction;
 use App\Filament\Resources\Applications\Actions\RejectApplicationFilamentAction;
+use App\Filament\Resources\Applications\Actions\RequestCorrectionFilamentAction;
 use App\Filament\Resources\Applications\Actions\ReturnToSubmittedFilamentAction;
 use App\Filament\Resources\Applications\Actions\UploadContractFilamentAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
 use App\States\Applications\AwaitingApplicationCompletion;
 use App\States\Applications\AwaitingRegistrationFee;
+use App\States\Applications\CorrectionRequested;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -33,6 +36,7 @@ class ViewApplication extends ViewRecord
                 ->visible(
                     fn (Application $record): bool => $record->status instanceof AwaitingRegistrationFee
                         || $record->status instanceof AwaitingApplicationCompletion
+                        || ($record->status instanceof CorrectionRequested && $record->openCorrection()->exists())
                 ),
             // No action advances the fee gate. SubmitApplicationFilamentAction used to sit
             // here and did exactly that, gated only by `Update:Application` — a permission
@@ -51,9 +55,8 @@ class ViewApplication extends ViewRecord
                 ->button(),
             ReturnToSubmittedFilamentAction::make(),
             AcceptApplicationFilamentAction::make(),
-
-            // ReturnForCorrectionFilamentAction::make(),
-
+            RequestCorrectionFilamentAction::make(),
+            CompleteCorrectionFilamentAction::make(),
             RejectApplicationFilamentAction::make(),
             CancelApplicationFilamentAction::make(),
         ];

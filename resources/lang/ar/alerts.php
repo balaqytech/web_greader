@@ -59,5 +59,14 @@ return [
 
         // Guardian uniqueness conflicts during acceptance
         'guardian_phone_conflict' => 'رقم الهاتف :phone مسجّل بالفعل لولي أمر آخر.',
+
+        // Correction workflow (Phase 4)
+        'correction_reason_required' => 'سبب التصحيح مطلوب.',
+        'correction_checklist_required' => 'يجب إدخال بند واحد على الأقل في قائمة التصحيح.',
+        'correction_already_open' => 'يوجد طلب تصحيح مفتوح بالفعل لهذا الطلب.',
+        'correction_none_open' => 'لا يوجد طلب تصحيح مفتوح لهذا الطلب.',
+        'correction_checklist_incomplete' => 'يجب إكمال جميع بنود قائمة التصحيح قبل الإغلاق.',
+        'correction_not_contract_relevant' => 'هذا التصحيح لا يؤثر على العقد ولا يمكن أن يتطلب توقيعاً جديداً.',
+        'correction_is_contract_relevant' => 'هذا التصحيح يؤثر على العقد ويتطلب توقيعاً جديداً.',
     ],
 ];
