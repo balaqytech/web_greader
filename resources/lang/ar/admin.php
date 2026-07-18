@@ -454,6 +454,7 @@ return [
             'created_as_draft' => 'تم حفظ الطلب كمسودة',
             'submit_failed_incomplete' => 'تم حفظ الطلب كمسودة',
             'submit_failed_incomplete_body' => 'البيانات غير مكتملة. تم حفظ الطلب كمسودة بدلاً من تقديمه.',
+            'view_signed_contract' => 'عرض العقد الموقّع',
             'request_correction' => 'طلب تصحيح',
             'request_correction_success' => 'تم إرسال طلب التصحيح',
             'complete_correction' => 'إنهاء التصحيح',

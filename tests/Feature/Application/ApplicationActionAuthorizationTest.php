@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Corrections\RequestCorrectionAction;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Models\Application;
@@ -13,8 +14,10 @@ use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
+use App\States\Applications\CorrectionRequested;
 use App\States\Applications\Rejected;
 use Database\Seeders\ShieldPermissionSeeder;
+use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -405,6 +408,209 @@ it('wires each custom action\'s authorize() call to the expected record-aware po
     // unregistered. The fee gate is now crossed solely by a paid registration-fee payment —
     // see tests/Feature/Payment/RegistrationFeeGateTest.php.
     'upload_contract maps to the uploadSignedContract ability' => ['upload_contract', 'uploadSignedContract', 'UploadSignedContract:Application'],
+    'request_correction maps to the requestCorrection ability' => ['request_correction', 'requestCorrection', 'RequestCorrection:Application'],
+    'complete_correction maps to the completeCorrection ability' => ['complete_correction', 'completeCorrection', 'CompleteCorrection:Application'],
     'open_contract_link maps to the view ability, already satisfied by baseline page access' => ['open_contract_link', 'view', null],
     'copy_contract_link maps to the view ability, already satisfied by baseline page access' => ['copy_contract_link', 'view', null],
 ]);
+
+/**
+ * Sets up an application in CorrectionRequested with an open correction, independent of the
+ * acting user's permissions — the correction request itself only needs an explicit actor, not a
+ * Gate grant (that gate lives on the Filament action).
+ */
+function applicationWithOpenCorrection(int $branchId): Application
+{
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $branchId]);
+    app(RequestCorrectionAction::class)
+        ->handle($application, User::factory()->create(), 'please fix', ['fix civil number']);
+
+    return $application->fresh();
+}
+
+// ── request_correction ───────────────────────────────────────────────────────
+
+it('hides request_correction without the permission and mutates nothing at the mount gate', function () {
+    $branch = Branch::factory()->create();
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $branch->id]);
+    $this->actingAs(actionTestUser($branch->id));
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->assertActionHidden('request_correction')
+        ->mountAction('request_correction')
+        ->set('mountedActions.0.data.reason', 'forged')
+        ->set('mountedActions.0.data.items', ['x'])
+        ->callMountedAction();
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class)
+        ->and($application->corrections()->count())->toBe(0);
+});
+
+it('reaches request_correction\'s own Gate::authorize() when the mount gate is bypassed', function () {
+    $branch = Branch::factory()->create();
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $branch->id]);
+    $this->actingAs(actionTestUser($branch->id));
+
+    $action = Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->instance()->getAction('request_correction');
+
+    expect(fn () => $action->data(['reason' => 'forged', 'items' => ['x']])->call())
+        ->toThrow(AuthorizationException::class);
+
+    expect($application->fresh()->corrections()->count())->toBe(0)
+        ->and($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class);
+});
+
+it('denies request_correction on a cross-branch record even with the permission', function () {
+    $ownBranch = Branch::factory()->create();
+    $otherBranch = Branch::factory()->create();
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $otherBranch->id]);
+
+    $user = actionTestUser($ownBranch->id, ['RequestCorrection:Application']);
+
+    expect(Gate::forUser($user)->denies('requestCorrection', $application))->toBeTrue();
+});
+
+it('requests a correction end to end through the real Filament action once permitted', function () {
+    $branch = Branch::factory()->create();
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $branch->id]);
+    $user = actionTestUser($branch->id, ['RequestCorrection:Application']);
+    $this->actingAs($user);
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->assertActionVisible('request_correction')
+        ->callAction('request_correction', data: ['reason' => 'please fix the civil number', 'items' => ['fix civil number']])
+        ->assertHasNoActionErrors();
+
+    $correction = $application->fresh()->openCorrection;
+
+    expect($application->fresh()->status)->toBeInstanceOf(CorrectionRequested::class)
+        ->and($correction)->not->toBeNull()
+        ->and($correction->requested_by)->toBe($user->id);
+});
+
+// ── complete_correction ──────────────────────────────────────────────────────
+
+it('hides complete_correction without the permission and mutates nothing at the mount gate', function () {
+    $branch = Branch::factory()->create();
+    $application = applicationWithOpenCorrection($branch->id);
+    $this->actingAs(actionTestUser($branch->id));
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->assertActionHidden('complete_correction')
+        ->mountAction('complete_correction')
+        ->set('mountedActions.0.data.completed', [0])
+        ->callMountedAction();
+
+    $application->refresh();
+
+    expect($application->status)->toBeInstanceOf(CorrectionRequested::class)
+        ->and($application->openCorrection)->not->toBeNull()
+        ->and($application->openCorrection->completed_at)->toBeNull();
+});
+
+it('reaches complete_correction\'s own Gate::authorize() when the mount gate is bypassed', function () {
+    $branch = Branch::factory()->create();
+    $application = applicationWithOpenCorrection($branch->id);
+    $this->actingAs(actionTestUser($branch->id));
+
+    $action = Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->instance()->getAction('complete_correction');
+
+    expect(fn () => $action->data(['completed' => [0]])->call())
+        ->toThrow(AuthorizationException::class);
+
+    expect($application->fresh()->openCorrection?->completed_at)->toBeNull()
+        ->and($application->fresh()->status)->toBeInstanceOf(CorrectionRequested::class);
+});
+
+it('denies complete_correction on a cross-branch record even with the permission', function () {
+    $ownBranch = Branch::factory()->create();
+    $otherBranch = Branch::factory()->create();
+    $application = applicationWithOpenCorrection($otherBranch->id);
+
+    $user = actionTestUser($ownBranch->id, ['CompleteCorrection:Application']);
+
+    expect(Gate::forUser($user)->denies('completeCorrection', $application))->toBeTrue();
+});
+
+it('completes a non-contract-relevant correction end to end back to branch review', function () {
+    $branch = Branch::factory()->create();
+    $application = applicationWithOpenCorrection($branch->id);
+    // A non-printed change only → returns to branch review.
+    $application->update(['father_phone' => '900777888']);
+
+    $user = actionTestUser($branch->id, ['CompleteCorrection:Application']);
+    $this->actingAs($user);
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->assertActionVisible('complete_correction')
+        ->callAction('complete_correction', data: ['completed' => [0]])
+        ->assertHasNoActionErrors();
+
+    $correction = $application->fresh()->corrections()->first();
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class)
+        ->and($correction->is_contract_relevant)->toBeFalse()
+        ->and($correction->completed_by)->toBe($user->id);
+});
+
+it('completes a contract-relevant correction end to end into re-signature', function () {
+    $branch = Branch::factory()->create();
+    $application = applicationWithOpenCorrection($branch->id);
+    // A confirmed-minimum change → requires a fresh signature.
+    $application->update(['student_name' => 'Corrected Name']);
+
+    $user = actionTestUser($branch->id, ['CompleteCorrection:Application']);
+    $this->actingAs($user);
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->callAction('complete_correction', data: ['completed' => [0]])
+        ->assertHasNoActionErrors();
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class)
+        ->and($application->fresh()->activeContract->version)->toBe(2)
+        ->and($application->fresh()->corrections()->first()->is_contract_relevant)->toBeTrue();
+});
+
+// ── Finding 8: error rendering ───────────────────────────────────────────────
+
+it('renders a translated domain error and does not report success when a correction is refused', function () {
+    $branch = Branch::factory()->create();
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $branch->id]);
+    // Strip the signed artifact so the request transition refuses with a translated message.
+    $application->activeContract->update(['signed_at' => null, 'file_path' => null]);
+
+    $this->actingAs(actionTestUser($branch->id, ['RequestCorrection:Application']));
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->callAction('request_correction', data: ['reason' => 'fix', 'items' => ['fix civil number']]);
+
+    Notification::assertNotified(__('alerts.application.contract_not_signed'));
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class)
+        ->and($application->fresh()->corrections()->count())->toBe(0);
+});
+
+it('renders a generic error and reports the exception for an unexpected failure', function () {
+    $branch = Branch::factory()->create();
+    $application = Application::factory()->awaitingBranchReview()->create(['branch_id' => $branch->id]);
+
+    // An unexpected (non-domain) failure inside the action must never surface its raw message.
+    app()->bind(RequestCorrectionAction::class, fn () => new class
+    {
+        public function handle(...$args)
+        {
+            throw new RuntimeException('SQLSTATE internal detail that must not be shown');
+        }
+    });
+
+    $this->actingAs(actionTestUser($branch->id, ['RequestCorrection:Application']));
+
+    Livewire::test(ViewApplication::class, ['record' => $application->getKey()])
+        ->callAction('request_correction', data: ['reason' => 'fix', 'items' => ['fix civil number']]);
+
+    Notification::assertNotified(__('alerts.application.action_failed'));
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class);
+});
