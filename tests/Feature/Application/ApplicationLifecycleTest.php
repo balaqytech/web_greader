@@ -11,6 +11,7 @@ use App\States\Applications\AwaitingRegistrationFee;
 use App\States\Applications\Cancelled;
 use App\States\Applications\CorrectionRequested;
 use App\States\Applications\Rejected;
+use App\States\Contracts\Superseded;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -29,8 +30,8 @@ it('generates a contract when advancing from completion to contract signature', 
     $application->refresh();
 
     expect($application->status)->toBeInstanceOf(AwaitingContractSignature::class)
-        ->and($application->contract)->not->toBeNull()
-        ->and($application->contract->token)->not->toBeNull()
+        ->and($application->activeContract)->not->toBeNull()
+        ->and($application->activeContract->token)->not->toBeNull()
         ->and($application->activities()->where('to_state', AwaitingContractSignature::getMorphClass())->exists())->toBeTrue();
 });
 
@@ -47,7 +48,7 @@ it('blocks advancing to contract signature when required data is incomplete', fu
 
 it('advances a signed contract into branch review', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
-    $application->contract->update(['signed_at' => now(), 'file_path' => 'contracts/signed.pdf']);
+    $application->activeContract->update(['signed_at' => now(), 'file_path' => 'contracts/signed.pdf']);
 
     $application->status->transitionTo(AwaitingBranchReview::class);
 
@@ -63,14 +64,18 @@ it('rejects advancing an unsigned contract into branch review', function () {
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
-it('reopens data entry from contract signature and invalidates the contract token', function () {
+it('reopens data entry from contract signature and supersedes the active contract', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
+    $contract = $application->activeContract;
 
     $application->status->transitionTo(AwaitingApplicationCompletion::class);
     $application->refresh();
+    $contract->refresh();
 
     expect($application->status)->toBeInstanceOf(AwaitingApplicationCompletion::class)
-        ->and($application->contract->token)->toBeNull();
+        ->and($application->activeContract)->toBeNull()
+        ->and($contract->status)->toBeInstanceOf(Superseded::class)
+        ->and($contract->token)->toBeNull();
 });
 
 it('accepts an application with a signed contract', function () {
@@ -142,11 +147,11 @@ it('registers the fee transition but refuses to cross it without a payment', fun
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingRegistrationFee::class);
 });
 
-it('does not register the correction transitions in Phase 0', function () {
+it('registers the Phase 4 correction transitions', function () {
     $review = Application::factory()->awaitingBranchReview()->create();
-    expect($review->status->canTransitionTo(CorrectionRequested::class))->toBeFalse();
+    expect($review->status->canTransitionTo(CorrectionRequested::class))->toBeTrue();
 
     $correction = Application::factory()->create(['status' => CorrectionRequested::$name]);
-    expect($correction->status->canTransitionTo(AwaitingBranchReview::class))->toBeFalse()
-        ->and($correction->status->canTransitionTo(AwaitingContractSignature::class))->toBeFalse();
+    expect($correction->status->canTransitionTo(AwaitingBranchReview::class))->toBeTrue()
+        ->and($correction->status->canTransitionTo(AwaitingContractSignature::class))->toBeTrue();
 });

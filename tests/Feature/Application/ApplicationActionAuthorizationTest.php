@@ -181,20 +181,20 @@ it('authorizes generate-contract once granted, runs the real Livewire action end
     $record = $component->instance()->getRecord();
 
     expect($record->status)->toBeInstanceOf(AwaitingContractSignature::class)
-        ->and($record->contract)->not->toBeNull()
-        ->and($record->contract->token)->not->toBeNull();
+        ->and($record->activeContract)->not->toBeNull()
+        ->and($record->activeContract->token)->not->toBeNull();
 
     $application->refresh();
 
     expect($application->status)->toBeInstanceOf(AwaitingContractSignature::class)
-        ->and($application->contract)->not->toBeNull()
-        ->and($application->contract->token)->not->toBeNull();
+        ->and($application->activeContract)->not->toBeNull()
+        ->and($application->activeContract->token)->not->toBeNull();
 });
 
 it('authorizes reopen once granted, runs the real Livewire action end to end, and invalidates the old contract token', function () {
     $branch = Branch::factory()->create();
     $application = Application::factory()->awaitingContractSignature()->create(['branch_id' => $branch->id]);
-    $originalToken = $application->contract->token;
+    $originalToken = $application->activeContract->token;
     $user = actionTestUser($branch->id, ['Update:Application', 'GenerateContract:Application']);
     $this->actingAs($user);
 
@@ -220,7 +220,7 @@ it('authorizes reopen once granted, runs the real Livewire action end to end, an
     $application->refresh();
 
     expect($application->status)->toBeInstanceOf(AwaitingApplicationCompletion::class)
-        ->and($application->contract->token)->toBeNull();
+        ->and($application->activeContract)->toBeNull();
 });
 
 it('blocks accept_application at Filament\'s own mount-stage authorization gate before the callback runs, when permission is missing', function () {
@@ -257,7 +257,7 @@ it('blocks move_to_waiting_contract at Filament\'s own mount-stage authorization
         ->callMountedAction();
 
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingApplicationCompletion::class)
-        ->and($application->fresh()->contract)->toBeNull();
+        ->and($application->fresh()->activeContract)->toBeNull();
 });
 
 it('blocks upload_contract at Filament\'s own mount-stage authorization gate before the callback runs, when permission is missing', function () {
@@ -271,8 +271,8 @@ it('blocks upload_contract at Filament\'s own mount-stage authorization gate bef
         ->mountAction('upload_contract')
         ->callMountedAction();
 
-    expect($application->fresh()->contract->file_path)->toBeNull()
-        ->and($application->fresh()->contract->signed_at)->toBeNull();
+    expect($application->fresh()->activeContract->file_path)->toBeNull()
+        ->and($application->fresh()->activeContract->signed_at)->toBeNull();
 });
 
 it('reaches the closure\'s own Gate::authorize() and throws AuthorizationException when Filament\'s mount-stage gate is bypassed entirely', function () {
@@ -305,8 +305,8 @@ it('reaches upload_contract\'s own Gate::authorize() before any storage or domai
 
     $branch = Branch::factory()->create();
     $application = Application::factory()->awaitingContractSignature()->create(['branch_id' => $branch->id]);
-    $originalFilePath = $application->contract->file_path;
-    $originalSignedAt = $application->contract->signed_at;
+    $originalFilePath = $application->activeContract->file_path;
+    $originalSignedAt = $application->activeContract->signed_at;
 
     $user = actionTestUser($branch->id);
     $this->actingAs($user);
@@ -329,8 +329,8 @@ it('reaches upload_contract\'s own Gate::authorize() before any storage or domai
     // even constructed — so the domain/storage side effects it would perform never happen.
     $application->refresh();
 
-    expect($application->contract->file_path)->toBe($originalFilePath)
-        ->and($application->contract->signed_at)->toBe($originalSignedAt)
+    expect($application->activeContract->file_path)->toBe($originalFilePath)
+        ->and($application->activeContract->signed_at)->toBe($originalSignedAt)
         ->and($application->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
@@ -365,7 +365,7 @@ it('wires each custom action\'s authorize() call to the expected record-aware po
 
     // AwaitingApplicationCompletion so the 'update'-family abilities also pass their own
     // isEditableState() check, with a contract attached regardless so
-    // CopyContractLinkFilamentAction's schema — which dereferences $record->contract
+    // CopyContractLinkFilamentAction's schema — which dereferences $record->activeContract
     // unconditionally when Filament resolves/mounts the action — can be built without a
     // null-contract crash. getAction() below resolves the action (and its schema) regardless of
     // the action's own visibility, unlike normal page rendering.

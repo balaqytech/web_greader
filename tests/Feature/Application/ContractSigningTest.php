@@ -44,7 +44,7 @@ it('rejects the branch-review transition when the contract is unsigned', functio
 it('rejects the branch-review transition when no contract exists', function () {
     $application = Application::factory()->create(['status' => AwaitingContractSignature::$name]);
 
-    expect($application->contract)->toBeNull();
+    expect($application->activeContract)->toBeNull();
 
     expect(fn () => $application->status->transitionTo(AwaitingBranchReview::class))
         ->toThrow(ApplicationIncompleteException::class);
@@ -53,10 +53,10 @@ it('rejects the branch-review transition when no contract exists', function () {
 it('signs the contract electronically and advances to branch review', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
 
-    app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signature());
+    app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, signature());
 
     $application->refresh();
-    $contract = $application->contract;
+    $contract = $application->activeContract;
 
     expect($application->status)->toBeInstanceOf(AwaitingBranchReview::class)
         ->and($contract->signed_at)->not->toBeNull()
@@ -93,7 +93,7 @@ it('embeds a signature URL that resolves through the public disk, not the defaul
         });
     app()->instance(CreatePdfAction::class, $pdfMock);
 
-    app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signature());
+    app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, signature());
 
     // Storage::url() on the default ('local') disk resolves through a different serving
     // route ('/storage/...' with no host) than 'public' ('http://.../storage/...').
@@ -110,9 +110,9 @@ it('records a staff-uploaded signed copy and advances to branch review', functio
     $application->refresh();
 
     expect($application->status)->toBeInstanceOf(AwaitingBranchReview::class)
-        ->and($application->contract->file_path)->toBe('contracts/uploads/signed.pdf')
-        ->and($application->contract->signed_at)->not->toBeNull()
-        ->and($application->contract->isSignedOff())->toBeTrue();
+        ->and($application->activeContract->file_path)->toBe('contracts/uploads/signed.pdf')
+        ->and($application->activeContract->signed_at)->not->toBeNull()
+        ->and($application->activeContract->isSignedOff())->toBeTrue();
 });
 
 it('rejects an uploaded signed copy when the contract is missing, leaving the candidate as an orphan', function () {
@@ -134,7 +134,7 @@ it('rejects an upload when the referenced storage path does not exist', function
     expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/does-not-exist.pdf'))
         ->toThrow(ApplicationIncompleteException::class);
 
-    expect($application->fresh()->contract->file_path)->toBeNull()
+    expect($application->fresh()->activeContract->file_path)->toBeNull()
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
@@ -151,7 +151,7 @@ it('rejects signing when the candidate file is deleted between the initial call 
     expect(fn () => app(UploadSignedContractAction::class)->execute($application, 'contracts/uploads/vanishing.pdf'))
         ->toThrow(ApplicationIncompleteException::class);
 
-    expect($application->fresh()->contract->file_path)->toBeNull()
+    expect($application->fresh()->activeContract->file_path)->toBeNull()
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
@@ -167,13 +167,13 @@ it('compensates signature artifacts and rolls back when the signing transaction 
 
     $application = Application::factory()->awaitingContractSignature()->create();
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signature()))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, signature()))
         ->toThrow(RuntimeException::class);
 
     $application->refresh();
 
     expect($application->status)->toBeInstanceOf(AwaitingContractSignature::class)
-        ->and($application->contract->signed_at)->toBeNull()
+        ->and($application->activeContract->signed_at)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
@@ -186,10 +186,10 @@ it('throws when the signature write returns false, leaving no state changes', fu
     Storage::shouldReceive('disk')->with('public')->andReturn($fakeDisk);
 
     expect(fn () => app(SignContractOnlineAction::class)->execute(
-        $application->contract, $application->contract->token, signature(),
+        $application->activeContract, $application->activeContract->token, signature(),
     ))->toThrow(RuntimeException::class);
 
-    expect($application->fresh()->contract->signed_at)->toBeNull()
+    expect($application->fresh()->activeContract->signed_at)->toBeNull()
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
 
@@ -197,12 +197,12 @@ it('rejects a signature with invalid base64 characters, leaving no artifacts', f
     $application = Application::factory()->awaitingContractSignature()->create();
 
     expect(fn () => app(SignContractOnlineAction::class)->execute(
-        $application->contract,
-        $application->contract->token,
+        $application->activeContract,
+        $application->activeContract->token,
         'data:image/png;base64,not!!valid==base64',
     ))->toThrow(InvalidArgumentException::class);
 
-    expect($application->fresh()->contract->signed_at)->toBeNull()
+    expect($application->fresh()->activeContract->signed_at)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
@@ -210,10 +210,10 @@ it('rejects a signature payload that is not a real PNG image, leaving no artifac
     $application = Application::factory()->awaitingContractSignature()->create();
     $notAnImage = 'data:image/png;base64,'.base64_encode('this is definitely not a png file');
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, $notAnImage))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, $notAnImage))
         ->toThrow(InvalidArgumentException::class);
 
-    expect($application->fresh()->contract->signed_at)->toBeNull()
+    expect($application->fresh()->activeContract->signed_at)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
@@ -221,10 +221,10 @@ it('rejects an oversized signature payload, leaving no artifacts', function () {
     $application = Application::factory()->awaitingContractSignature()->create();
     $oversized = 'data:image/png;base64,'.str_repeat('A', 2_000_001);
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, $oversized))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, $oversized))
         ->toThrow(InvalidArgumentException::class);
 
-    expect($application->fresh()->contract->signed_at)->toBeNull()
+    expect($application->fresh()->activeContract->signed_at)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
@@ -249,6 +249,6 @@ it('rolls back the DB state when the upload transaction fails, leaving the candi
     // it, so a failure must never delete it — only report the signing failure. It is left as
     // an orphan for a later age-threshold cleanup job.
     expect($application->status)->toBeInstanceOf(AwaitingContractSignature::class)
-        ->and($application->contract->file_path)->toBeNull()
+        ->and($application->activeContract->file_path)->toBeNull()
         ->and(Storage::disk('public')->exists('contracts/uploads/signed.pdf'))->toBeTrue();
 });

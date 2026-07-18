@@ -77,12 +77,12 @@ it('generates the contract once and rejects a stale completion-to-signature repl
     $stale = Application::find($application->id);
 
     $application->status->transitionTo(AwaitingContractSignature::class);
-    $firstToken = $application->fresh()->contract->token;
+    $firstToken = $application->fresh()->activeContract->token;
 
     expect(fn () => $stale->status->transitionTo(AwaitingContractSignature::class))
         ->toThrow(StaleApplicationStateException::class);
 
-    expect($application->fresh()->contract->token)->toBe($firstToken)
+    expect($application->fresh()->activeContract->token)->toBe($firstToken)
         ->and($application->fresh()->activities()->where('to_state', AwaitingContractSignature::getMorphClass())->count())->toBe(1);
 });
 
@@ -95,7 +95,7 @@ it('reopens once and rejects a stale signature-to-completion replay', function (
     expect(fn () => $stale->status->transitionTo(AwaitingApplicationCompletion::class))
         ->toThrow(StaleApplicationStateException::class);
 
-    expect($application->fresh()->contract->token)->toBeNull()
+    expect($application->fresh()->activeContract)->toBeNull()
         ->and($application->fresh()->activities()->where('to_state', AwaitingApplicationCompletion::getMorphClass())->count())->toBe(1);
 });
 
@@ -104,16 +104,16 @@ it('signs online once and rejects a stale online-signing replay without overwrit
     fakePdfBinding();
 
     $application = Application::factory()->awaitingContractSignature()->create();
-    $staleContract = ApplicationContract::with('application')->find($application->contract->id);
+    $staleContract = ApplicationContract::with('application')->find($application->activeContract->id);
 
-    app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signatureData());
+    app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, signatureData());
 
-    $firstFilePath = $application->fresh()->contract->file_path;
+    $firstFilePath = $application->fresh()->activeContract->file_path;
 
     expect(fn () => app(SignContractOnlineAction::class)->execute($staleContract, $staleContract->token, signatureData()))
         ->toThrow(StaleApplicationStateException::class);
 
-    expect($application->fresh()->contract->file_path)->toBe($firstFilePath)
+    expect($application->fresh()->activeContract->file_path)->toBe($firstFilePath)
         ->and($application->activities()->where('to_state', AwaitingBranchReview::getMorphClass())->count())->toBe(1);
 });
 
@@ -125,7 +125,7 @@ it('rejects signing with a token invalidated by a reopen + regenerate cycle, nev
 
     // Load the old token/request exactly as the controller would have, before anything else
     // happens to this application.
-    $oldToken = $application->contract->token;
+    $oldToken = $application->activeContract->token;
     $staleApplicationContract = ApplicationContract::with('application')->where('token', $oldToken)->first();
 
     // Concurrently: reopen data entry (invalidates the token) and regenerate the contract
@@ -134,16 +134,16 @@ it('rejects signing with a token invalidated by a reopen + regenerate cycle, nev
     $application->status->transitionTo(AwaitingApplicationCompletion::class);
     $application->refresh();
     $application->status->transitionTo(AwaitingContractSignature::class);
-    $newToken = $application->fresh()->contract->token;
+    $newToken = $application->fresh()->activeContract->token;
 
     expect($newToken)->not->toBeNull()->not->toBe($oldToken);
 
     expect(fn () => app(SignContractOnlineAction::class)->execute($staleApplicationContract, $oldToken, signatureData()))
         ->toThrow(InvalidArgumentException::class);
 
-    expect($application->fresh()->contract->token)->toBe($newToken)
-        ->and($application->fresh()->contract->signed_at)->toBeNull()
-        ->and($application->fresh()->contract->isSignedOff())->toBeFalse()
+    expect($application->fresh()->activeContract->token)->toBe($newToken)
+        ->and($application->fresh()->activeContract->signed_at)->toBeNull()
+        ->and($application->fresh()->activeContract->isSignedOff())->toBeFalse()
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class)
         ->and($application->activities()->where('to_state', AwaitingBranchReview::getMorphClass())->exists())->toBeFalse()
         ->and(Storage::disk('public')->allFiles())->toBeEmpty();
@@ -165,7 +165,7 @@ it('records an uploaded signature once and rejects a stale upload replay', funct
     // The stale replay's own distinct candidate is left in place, not deleted: this action
     // never created it and cannot prove exclusive ownership, so a failure is reported, not
     // compensated by storage deletion. It becomes a later cleanup job's concern.
-    expect($application->fresh()->contract->file_path)->toBe('contracts/uploads/first.pdf')
+    expect($application->fresh()->activeContract->file_path)->toBe('contracts/uploads/first.pdf')
         ->and(Storage::disk('public')->exists('contracts/uploads/second.pdf'))->toBeTrue()
         ->and($application->activities()->where('to_state', AwaitingBranchReview::getMorphClass())->count())->toBe(1);
 });
@@ -183,7 +183,7 @@ it('does not delete the winning artifact when a stale upload replay reuses the s
         ->toThrow(StaleApplicationStateException::class);
 
     expect(Storage::disk('public')->exists('contracts/uploads/shared.pdf'))->toBeTrue()
-        ->and($application->fresh()->contract->file_path)->toBe('contracts/uploads/shared.pdf');
+        ->and($application->fresh()->activeContract->file_path)->toBe('contracts/uploads/shared.pdf');
 });
 
 it('compensates the signature file when PDF generation fails', function () {
@@ -198,10 +198,10 @@ it('compensates the signature file when PDF generation fails', function () {
 
     $application = Application::factory()->awaitingContractSignature()->create();
 
-    expect(fn () => app(SignContractOnlineAction::class)->execute($application->contract, $application->contract->token, signatureData()))
+    expect(fn () => app(SignContractOnlineAction::class)->execute($application->activeContract, $application->activeContract->token, signatureData()))
         ->toThrow(RuntimeException::class);
 
     expect(Storage::disk('public')->allFiles())->toBeEmpty()
-        ->and($application->fresh()->contract->signed_at)->toBeNull()
+        ->and($application->fresh()->activeContract->signed_at)->toBeNull()
         ->and($application->fresh()->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });

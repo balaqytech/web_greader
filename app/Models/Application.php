@@ -191,17 +191,6 @@ class Application extends Model
             ->latest('version');
     }
 
-    /**
-     * TEMPORARY test-only shim, retired in the acceptance/matrix hardening commit (§ commit 15).
-     * Returns the highest-version contract regardless of status so pre-versioning tests that
-     * reach for "the contract" keep resolving the current row. Production code must not use this
-     * — it reads `activeContract()` (the one live version) or `contracts()` (the full history).
-     */
-    public function contract(): HasOne
-    {
-        return $this->hasOne(ApplicationContract::class)->latest('version');
-    }
-
     public function documents(): HasMany
     {
         return $this->hasMany(ApplicationDocument::class);

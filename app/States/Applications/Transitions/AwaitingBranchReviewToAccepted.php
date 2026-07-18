@@ -8,16 +8,22 @@ use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\Accepted;
 use App\States\Applications\AwaitingBranchReview;
+use App\States\Contracts\Signed;
 use App\Support\Applications\LockApplication;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 /**
- * Baseline atomic acceptance (§3.5, §4.1). The row is locked and its persisted state
- * re-verified before writing, so a stale replay cannot repeat acceptance (double-creating
- * students/guardians). Guards a signed contract, then upserts guardian/student/contacts,
- * back-links student_id, flips the state, and records the approver in one transaction.
- * The version-aware guard is added with contract versioning in a later phase.
+ * Atomic acceptance (§3.5, §4.1). The row is locked and its persisted state re-verified before
+ * writing, so a stale replay cannot repeat acceptance (double-creating students/guardians).
+ *
+ * Version-aware guard: acceptance requires the **active** contract — the highest-version, still
+ * non-superseded row (`activeContract()`) — to be in `Signed` state with a persisted artifact.
+ * A historical signed version cannot satisfy acceptance once a newer version has been generated:
+ * `activeContract()` then resolves to that newer `generated` (unsigned) version, which fails the
+ * guard. Only after the newer version is itself signed does acceptance pass. Then it upserts
+ * guardian/student/contacts, back-links student_id, flips the state, and records the approver in
+ * one transaction.
  */
 class AwaitingBranchReviewToAccepted extends Transition
 {
@@ -33,7 +39,7 @@ class AwaitingBranchReviewToAccepted extends Transition
 
             $contract = $application->activeContract()->lockForUpdate()->first();
 
-            if ($contract === null || ! $contract->isSignedOff()) {
+            if ($contract === null || ! $contract->status instanceof Signed || ! $contract->isSignedOff()) {
                 throw new ApplicationIncompleteException(__('alerts.application.contract_not_signed'));
             }
 
