@@ -17,6 +17,9 @@ function authorizedApplicationEditor(): User
     $user = User::factory()->create(['branch_id' => null]);
 
     $user->givePermissionTo([
+        Permission::firstOrCreate(['name' => 'Access:Panel', 'guard_name' => 'web']),
+        Permission::firstOrCreate(['name' => 'ViewAny:Application', 'guard_name' => 'web']),
+        Permission::firstOrCreate(['name' => 'View:Application', 'guard_name' => 'web']),
         Permission::firstOrCreate(['name' => 'Update:Application', 'guard_name' => 'web']),
         Permission::firstOrCreate(['name' => 'ViewAllBranches:Application', 'guard_name' => 'web']),
     ]);
@@ -45,6 +48,21 @@ it('preserves the ordinary permission check for editable states', function () {
     $application = Application::factory()->awaitingApplicationCompletion()->create();
 
     expect(Gate::forUser($user)->denies('update', $application))->toBeTrue();
+});
+
+it('renders the edit page for an editable application with a relative guardian', function () {
+    $this->actingAs(authorizedApplicationEditor());
+    $application = Application::factory()->awaitingApplicationCompletion()->create([
+        'father_is_guardian' => false,
+        'mother_is_guardian' => false,
+    ]);
+
+    $this->get(ApplicationResource::getUrl('edit', ['record' => $application]))
+        ->assertOk();
+
+    expect($application->refresh())
+        ->father_is_guardian->toBeFalse()
+        ->mother_is_guardian->toBeFalse();
 });
 
 it('forbids direct route access to the edit page past data entry', function (string $factoryState) {
