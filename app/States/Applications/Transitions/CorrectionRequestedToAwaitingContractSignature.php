@@ -9,11 +9,11 @@ use App\Actions\Corrections\ClassifyCorrectionAction;
 use App\Exceptions\CorrectionException;
 use App\Models\Application;
 use App\Models\ApplicationCorrection;
+use App\Models\User;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\CorrectionRequested;
 use App\Support\Applications\LockApplication;
 use App\Support\Corrections\Checklist;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
@@ -30,12 +30,17 @@ class CorrectionRequestedToAwaitingContractSignature extends Transition
 {
     public function __construct(
         public Application $application,
+        public ?User $actor = null,
         public ?ApplicationCorrection $correction = null,
         public ?string $notes = null,
     ) {}
 
     public function handle(): Application
     {
+        if ($this->actor === null) {
+            throw CorrectionException::actorRequired();
+        }
+
         return DB::transaction(function () {
             $application = LockApplication::inState($this->application, CorrectionRequested::class);
 
@@ -60,7 +65,7 @@ class CorrectionRequestedToAwaitingContractSignature extends Transition
             app(GenerateApplicationContractAction::class)->handle($application);
 
             $correction->update([
-                'completed_by' => Auth::id(),
+                'completed_by' => $this->actor->getKey(),
                 'completed_at' => now(),
                 'is_contract_relevant' => true,
             ]);
@@ -73,6 +78,7 @@ class CorrectionRequestedToAwaitingContractSignature extends Transition
                 CorrectionRequested::$name,
                 AwaitingContractSignature::$name,
                 $this->notes,
+                $this->actor->getKey(),
             );
 
             return $application;

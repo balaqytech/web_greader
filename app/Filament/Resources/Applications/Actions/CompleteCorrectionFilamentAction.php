@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Actions\Corrections\CompleteCorrectionAction;
-use App\Actions\Documents\SyncRequiredDocumentsAction;
+use App\Filament\Resources\Applications\Actions\Concerns\NotifiesDomainErrors;
 use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingContractSignature;
@@ -13,11 +13,13 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class CompleteCorrectionFilamentAction extends Action
 {
+    use NotifiesDomainErrors;
     use RefreshesApplicationRecord;
 
     public static function getDefaultName(): ?string
@@ -68,13 +70,10 @@ class CompleteCorrectionFilamentAction extends Action
             try {
                 $fresh = app(CompleteCorrectionAction::class)->handle(
                     $record,
+                    Auth::user(),
                     $data['completed'] ?? [],
                     $data['notes'] ?? null,
                 );
-
-                // A correction may have flipped the transfer flag while editing; reconcile the
-                // required-document set so the transfer file requirement follows suit.
-                app(SyncRequiredDocumentsAction::class)->execute($fresh);
 
                 $this->refreshLivewireRecord($fresh, $livewire);
 
@@ -84,11 +83,8 @@ class CompleteCorrectionFilamentAction extends Action
                         : __('admin.application.actions.complete_correction_success_review'))
                     ->success()
                     ->send();
-            } catch (\Exception $e) {
-                Notification::make()
-                    ->title($e->getMessage())
-                    ->danger()
-                    ->send();
+            } catch (\Throwable $e) {
+                $this->notifyDomainFailure($e);
             }
         });
     }

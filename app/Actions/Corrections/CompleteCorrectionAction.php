@@ -6,6 +6,7 @@ namespace App\Actions\Corrections;
 
 use App\Exceptions\CorrectionException;
 use App\Models\Application;
+use App\Models\User;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\AwaitingContractSignature;
 use App\States\Applications\CorrectionRequested;
@@ -22,13 +23,21 @@ use Illuminate\Support\Facades\DB;
  * transition re-locks and re-classifies, so the decision is validated twice under lock and a
  * concurrent duplicate completion resolves to a single outcome.
  *
- * @param  array<int, int|string>  $completedIndexes
+ * The acting user is explicit and rejected before any mutation if absent; it is threaded to the
+ * chosen transition as the sole source for `completed_by` and the activity actor.
  */
 final class CompleteCorrectionAction
 {
-    public function handle(Application $application, array $completedIndexes, ?string $notes = null): Application
+    /**
+     * @param  array<int, int|string>  $completedIndexes
+     */
+    public function handle(Application $application, ?User $actor, array $completedIndexes, ?string $notes = null): Application
     {
-        return DB::transaction(function () use ($application, $completedIndexes, $notes) {
+        if ($actor === null) {
+            throw CorrectionException::actorRequired();
+        }
+
+        return DB::transaction(function () use ($application, $actor, $completedIndexes, $notes) {
             $locked = LockApplication::inState($application, CorrectionRequested::class);
 
             $correction = $locked->openCorrection()->lockForUpdate()->first();
@@ -51,7 +60,7 @@ final class CompleteCorrectionAction
 
             // transitionTo returns the row-locked instance the transition mutated (fetched
             // without BranchScope), so it is safe to return even cross-branch.
-            return $locked->status->transitionTo($target, $correction, $notes);
+            return $locked->status->transitionTo($target, $actor, $correction, $notes);
         }, attempts: 3);
     }
 }

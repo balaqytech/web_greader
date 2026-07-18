@@ -7,11 +7,11 @@ use App\Actions\Corrections\ClassifyCorrectionAction;
 use App\Exceptions\CorrectionException;
 use App\Models\Application;
 use App\Models\ApplicationCorrection;
+use App\Models\User;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\CorrectionRequested;
 use App\Support\Applications\LockApplication;
 use App\Support\Corrections\Checklist;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
@@ -21,17 +21,26 @@ use Spatie\ModelStates\Transition;
  * classification recomputed under lock — if it turns out contract-relevant this edge refuses
  * (the caller must go through the re-signature edge instead). Correction completion, state
  * change, and activity are written in one transaction.
+ *
+ * The acting user is supplied explicitly (not read from ambient Auth) and is the sole source
+ * for both `completed_by` and the activity actor. Nullable only for Spatie's `canTransitionTo()`
+ * instantiation; the guard enforces it.
  */
 class CorrectionRequestedToAwaitingBranchReview extends Transition
 {
     public function __construct(
         public Application $application,
+        public ?User $actor = null,
         public ?ApplicationCorrection $correction = null,
         public ?string $notes = null,
     ) {}
 
     public function handle(): Application
     {
+        if ($this->actor === null) {
+            throw CorrectionException::actorRequired();
+        }
+
         return DB::transaction(function () {
             $application = LockApplication::inState($this->application, CorrectionRequested::class);
 
@@ -50,7 +59,7 @@ class CorrectionRequestedToAwaitingBranchReview extends Transition
             }
 
             $correction->update([
-                'completed_by' => Auth::id(),
+                'completed_by' => $this->actor->getKey(),
                 'completed_at' => now(),
                 'is_contract_relevant' => false,
             ]);
@@ -63,6 +72,7 @@ class CorrectionRequestedToAwaitingBranchReview extends Transition
                 CorrectionRequested::$name,
                 AwaitingBranchReview::$name,
                 $this->notes,
+                $this->actor->getKey(),
             );
 
             return $application;

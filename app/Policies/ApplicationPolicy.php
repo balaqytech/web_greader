@@ -6,9 +6,7 @@ namespace App\Policies;
 
 use App\Models\Application;
 use App\Models\Branch;
-use App\States\Applications\AwaitingApplicationCompletion;
-use App\States\Applications\AwaitingRegistrationFee;
-use App\States\Applications\CorrectionRequested;
+use App\Support\Applications\ApplicationEditability;
 use App\Support\Authorization\BranchAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Auth\Access\Response;
@@ -57,21 +55,13 @@ class ApplicationPolicy
 
     /**
      * Application data is editable while it is still being assembled (registration-fee and
-     * data-completion stages) and, additionally, while an open correction is being worked —
-     * `CorrectionRequested` with an open correction row lets staff fix the flagged data before
-     * completing the correction. Once signed and through review/terminal states with no open
-     * correction, the record is immutable here — enforced in authorization, not merely by
-     * hiding the action.
+     * data-completion stages) and, additionally, while an open correction is being worked. The
+     * rule lives in {@see ApplicationEditability} so this presentation gate and the
+     * transactional guard in UpdateApplicationDataAction can never drift apart.
      */
     private function isEditableState(Application $application): bool
     {
-        if ($application->status instanceof AwaitingRegistrationFee
-            || $application->status instanceof AwaitingApplicationCompletion) {
-            return true;
-        }
-
-        return $application->status instanceof CorrectionRequested
-            && $application->openCorrection()->exists();
+        return ApplicationEditability::isEditable($application);
     }
 
     public function delete(AuthUser $authUser, Application $application): bool

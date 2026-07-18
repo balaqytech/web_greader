@@ -7,11 +7,11 @@ use App\Actions\Contracts\BuildContractSnapshotAction;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Exceptions\CorrectionException;
 use App\Models\Application;
+use App\Models\User;
 use App\States\Applications\AwaitingBranchReview;
 use App\States\Applications\CorrectionRequested;
 use App\Support\Applications\LockApplication;
 use App\Support\Corrections\Checklist;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
@@ -22,6 +22,12 @@ use Spatie\ModelStates\Transition;
  * open. The confirmed-minimum + placeholder snapshot at request time is frozen into
  * `data_before`. Correction row, state change, and activity are written in one transaction, so
  * two concurrent requests can only ever produce one open correction.
+ *
+ * The acting user is passed in explicitly rather than read from ambient Auth: it is the sole
+ * source for both `requested_by` and the activity actor, so the domain action (and a future
+ * Sanctum service account) drives it deterministically. `$actor` is nullable only because
+ * Spatie instantiates the transition with the model alone for `canTransitionTo()`; the guard
+ * below, not the signature, is the enforcement.
  */
 class AwaitingBranchReviewToCorrectionRequested extends Transition
 {
@@ -30,6 +36,7 @@ class AwaitingBranchReviewToCorrectionRequested extends Transition
      */
     public function __construct(
         public Application $application,
+        public ?User $actor = null,
         public ?string $reason = null,
         public array $items = [],
         public ?string $notes = null,
@@ -37,6 +44,10 @@ class AwaitingBranchReviewToCorrectionRequested extends Transition
 
     public function handle(): Application
     {
+        if ($this->actor === null) {
+            throw CorrectionException::actorRequired();
+        }
+
         return DB::transaction(function () {
             $application = LockApplication::inState($this->application, AwaitingBranchReview::class);
 
@@ -59,7 +70,7 @@ class AwaitingBranchReviewToCorrectionRequested extends Transition
             }
 
             $application->corrections()->create([
-                'requested_by' => Auth::id(),
+                'requested_by' => $this->actor->getKey(),
                 'reason' => $reason,
                 'checklist' => $checklist,
                 'data_before' => app(BuildContractSnapshotAction::class)->handle($application)->toArray(),
@@ -74,6 +85,7 @@ class AwaitingBranchReviewToCorrectionRequested extends Transition
                 AwaitingBranchReview::$name,
                 CorrectionRequested::$name,
                 $this->notes ?? $reason,
+                $this->actor->getKey(),
             );
 
             return $application;

@@ -188,7 +188,7 @@ it('requests a correction from branch review', function () {
     $this->actingAs(User::factory()->create());
     $application = Application::factory()->awaitingBranchReview()->create();
 
-    $result = app(RequestCorrectionAction::class)->handle($application, 'fix it', ['fix civil number']);
+    $result = app(RequestCorrectionAction::class)->handle($application, auth()->user(), 'fix it', ['fix civil number']);
 
     expect($result->status)->toBeInstanceOf(CorrectionRequested::class);
 });
@@ -204,10 +204,10 @@ it('cancels from branch review with a note', function () {
 it('completes a non-contract-relevant correction back to branch review', function () {
     $this->actingAs(User::factory()->create());
     $application = Application::factory()->awaitingBranchReview()->create();
-    app(RequestCorrectionAction::class)->handle($application, 'fix', ['a']);
+    app(RequestCorrectionAction::class)->handle($application, auth()->user(), 'fix', ['a']);
 
     $application->update(['father_phone' => '900000123']);
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), auth()->user(), [0]);
 
     expect($result->status)->toBeInstanceOf(AwaitingBranchReview::class);
 });
@@ -215,10 +215,10 @@ it('completes a non-contract-relevant correction back to branch review', functio
 it('completes a contract-relevant correction into re-signature', function () {
     $this->actingAs(User::factory()->create());
     $application = Application::factory()->awaitingBranchReview()->create();
-    app(RequestCorrectionAction::class)->handle($application, 'fix', ['a']);
+    app(RequestCorrectionAction::class)->handle($application, auth()->user(), 'fix', ['a']);
 
     $application->update(['student_name' => 'Changed Name']);
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), auth()->user(), [0]);
 
     expect($result->status)->toBeInstanceOf(AwaitingContractSignature::class);
 });
@@ -226,7 +226,7 @@ it('completes a contract-relevant correction into re-signature', function () {
 it('cancels from correction requested with a note', function () {
     $this->actingAs(User::factory()->create());
     $application = Application::factory()->awaitingBranchReview()->create();
-    app(RequestCorrectionAction::class)->handle($application, 'fix', ['a']);
+    app(RequestCorrectionAction::class)->handle($application, auth()->user(), 'fix', ['a']);
 
     $application->fresh()->status->transitionTo(Cancelled::class, 'cancelled');
 
@@ -250,7 +250,7 @@ it('records the acting user on a requested-correction activity', function () {
     $this->actingAs($user);
     $application = Application::factory()->awaitingBranchReview()->create();
 
-    app(RequestCorrectionAction::class)->handle($application, 'fix', ['a']);
+    app(RequestCorrectionAction::class)->handle($application, auth()->user(), 'fix', ['a']);
 
     $activity = $application->fresh()->activities()
         ->where('to_state', CorrectionRequested::getMorphClass())

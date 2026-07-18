@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Actions;
 
 use App\Actions\Corrections\RequestCorrectionAction;
+use App\Filament\Resources\Applications\Actions\Concerns\NotifiesDomainErrors;
 use App\Filament\Resources\Applications\Actions\Concerns\RefreshesApplicationRecord;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
@@ -11,11 +12,13 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class RequestCorrectionFilamentAction extends Action
 {
+    use NotifiesDomainErrors;
     use RefreshesApplicationRecord;
 
     public static function getDefaultName(): ?string
@@ -60,6 +63,7 @@ class RequestCorrectionFilamentAction extends Action
             try {
                 $fresh = app(RequestCorrectionAction::class)->handle(
                     $record,
+                    Auth::user(),
                     $data['reason'],
                     $data['items'] ?? [],
                     $data['notes'] ?? null,
@@ -71,11 +75,8 @@ class RequestCorrectionFilamentAction extends Action
                     ->title(__('admin.application.actions.request_correction_success'))
                     ->success()
                     ->send();
-            } catch (\Exception $e) {
-                Notification::make()
-                    ->title($e->getMessage())
-                    ->danger()
-                    ->send();
+            } catch (\Throwable $e) {
+                $this->notifyDomainFailure($e);
             }
         });
     }

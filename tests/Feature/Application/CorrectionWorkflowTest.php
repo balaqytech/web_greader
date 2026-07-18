@@ -9,6 +9,7 @@ use App\Exceptions\ApplicationIncompleteException;
 use App\Exceptions\CorrectionException;
 use App\Exceptions\StaleApplicationStateException;
 use App\Models\Application;
+use App\Models\ApplicationCorrection;
 use App\Models\Branch;
 use App\Models\User;
 use App\States\Applications\AwaitingBranchReview;
@@ -26,21 +27,33 @@ function reviewApplication(array $overrides = []): Application
     return Application::factory()->awaitingBranchReview()->create($overrides);
 }
 
+function correctionActor(): User
+{
+    return auth()->user() ?? User::factory()->create();
+}
+
 function openCorrectionOn(Application $application, array $items = ['Fix the civil number'], string $reason = 'Please correct'): Application
 {
-    return app(RequestCorrectionAction::class)->handle($application, $reason, $items);
+    return app(RequestCorrectionAction::class)->handle($application, correctionActor(), $reason, $items);
+}
+
+function completeCorrectionOn(Application $application, array $indexes = [0]): Application
+{
+    return app(CompleteCorrectionAction::class)->handle($application, correctionActor(), $indexes);
 }
 
 // ── Request ─────────────────────────────────────────────────────────────────
 
-it('opens a correction with reason, checklist, data_before and an activity row', function () {
-    $this->actingAs(User::factory()->create());
+it('opens a correction with reason, checklist, data_before and an activity row identifying the actor', function () {
+    $actor = User::factory()->create();
+    $this->actingAs($actor);
     $application = reviewApplication();
 
     openCorrectionOn($application, ['Fix civil number', 'Correct guardian name'], 'Two issues');
     $application->refresh();
 
     $correction = $application->openCorrection;
+    $activity = $application->activities()->where('to_state', CorrectionRequested::getMorphClass())->first();
 
     expect($application->status)->toBeInstanceOf(CorrectionRequested::class)
         ->and($correction)->not->toBeNull()
@@ -48,17 +61,79 @@ it('opens a correction with reason, checklist, data_before and an activity row',
         ->and($correction->checklist)->toHaveCount(2)
         ->and($correction->checklist[0]['done'])->toBeFalse()
         ->and($correction->data_before['minimum'])->not->toBeEmpty()
-        ->and($correction->requested_by)->not->toBeNull()
-        ->and($application->activities()->where('to_state', CorrectionRequested::getMorphClass())->exists())->toBeTrue();
+        ->and($correction->requested_by)->toBe($actor->id)
+        ->and($activity)->not->toBeNull()
+        ->and($activity->transitioned_by)->toBe($actor->id);
+});
+
+it('rejects an actorless correction request with no side effects', function () {
+    $application = reviewApplication();
+
+    expect(fn () => app(RequestCorrectionAction::class)->handle($application, null, 'reason', ['fix it']))
+        ->toThrow(CorrectionException::class);
+
+    expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class)
+        ->and($application->corrections()->count())->toBe(0)
+        ->and($application->activities()->where('to_state', CorrectionRequested::getMorphClass())->count())->toBe(0);
+});
+
+it('rejects an actorless correction completion with no side effects', function () {
+    $this->actingAs(User::factory()->create());
+    $application = reviewApplication();
+    openCorrectionOn($application);
+    $application->update(['father_phone' => '900222333']);
+
+    expect(fn () => app(CompleteCorrectionAction::class)->handle($application->fresh(), null, [0]))
+        ->toThrow(CorrectionException::class);
+
+    $application->refresh();
+
+    expect($application->status)->toBeInstanceOf(CorrectionRequested::class)
+        ->and($application->openCorrection)->not->toBeNull()
+        ->and($application->openCorrection->completed_at)->toBeNull();
+});
+
+it('records the same actor on the completed correction and its activity', function () {
+    $actor = User::factory()->create();
+    $this->actingAs($actor);
+    $application = reviewApplication();
+    openCorrectionOn($application);
+    $application->update(['father_phone' => '900444555']);
+
+    $result = completeCorrectionOn($application->fresh());
+    $correction = $result->corrections()->first();
+    $activity = $result->activities()->where('to_state', AwaitingBranchReview::getMorphClass())->first();
+
+    expect($correction->completed_by)->toBe($actor->id)
+        ->and($activity)->not->toBeNull()
+        ->and($activity->transitioned_by)->toBe($actor->id);
+});
+
+it('still nulls the correction actor FK when the user is deleted, keeping the history', function () {
+    $actor = User::factory()->create();
+    $this->actingAs($actor);
+    $application = reviewApplication();
+    openCorrectionOn($application);
+
+    $correctionId = $application->fresh()->openCorrection->id;
+
+    // Re-authenticate as someone else so the acting user can be removed.
+    $this->actingAs(User::factory()->create());
+    $actor->delete();
+
+    $correction = ApplicationCorrection::find($correctionId);
+
+    expect($correction)->not->toBeNull()
+        ->and($correction->requested_by)->toBeNull();
 });
 
 it('requires a nonblank reason and at least one distinct nonblank item', function () {
     $application = reviewApplication();
 
-    expect(fn () => app(RequestCorrectionAction::class)->handle($application, '   ', ['x']))
+    expect(fn () => app(RequestCorrectionAction::class)->handle($application, correctionActor(), '   ', ['x']))
         ->toThrow(CorrectionException::class);
 
-    expect(fn () => app(RequestCorrectionAction::class)->handle($application->fresh(), 'reason', ['', '  ']))
+    expect(fn () => app(RequestCorrectionAction::class)->handle($application->fresh(), correctionActor(), 'reason', ['', '  ']))
         ->toThrow(CorrectionException::class);
 
     expect($application->fresh()->status)->toBeInstanceOf(AwaitingBranchReview::class);
@@ -94,7 +169,7 @@ it('returns to branch review when nothing contract-relevant changed', function (
     // Change a non-printed, non-minimum field only.
     $application->update(['father_phone' => '900000999']);
 
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = completeCorrectionOn($application->fresh());
 
     $correction = $result->corrections()->first();
 
@@ -115,7 +190,7 @@ it('supersedes the signed contract and requires re-signature when a minimum fiel
 
     $application->update(['student_name' => 'Corrected Student Name']);
 
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = completeCorrectionOn($application->fresh());
 
     $signedContract->refresh();
     $correction = $result->corrections()->first();
@@ -137,7 +212,7 @@ it('treats a template/body change as contract-relevant even with no data change'
     // Rewrite the contract template itself → template_hash + body differ.
     $application->program->update(['contract' => 'Brand new terms $student_name$']);
 
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = completeCorrectionOn($application->fresh());
 
     expect($result->status)->toBeInstanceOf(AwaitingContractSignature::class)
         ->and($result->corrections()->first()->is_contract_relevant)->toBeTrue()
@@ -151,7 +226,7 @@ it('classifies every confirmed-minimum field change as contract-relevant', funct
 
     $application->update([$column => $value]);
 
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = completeCorrectionOn($application->fresh());
 
     expect($result->status)->toBeInstanceOf(AwaitingContractSignature::class);
 })->with([
@@ -168,7 +243,7 @@ it('requires every checklist item complete before closing', function () {
     openCorrectionOn($application, ['Item one', 'Item two']);
 
     // Only one of two items checked.
-    expect(fn () => app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]))
+    expect(fn () => completeCorrectionOn($application->fresh()))
         ->toThrow(CorrectionException::class);
 
     expect($application->fresh()->status)->toBeInstanceOf(CorrectionRequested::class);
@@ -177,7 +252,7 @@ it('requires every checklist item complete before closing', function () {
 it('rejects a completion when there is no open correction', function () {
     $application = reviewApplication();
 
-    expect(fn () => app(CompleteCorrectionAction::class)->handle($application, [0]))
+    expect(fn () => completeCorrectionOn($application))
         ->toThrow(StaleApplicationStateException::class);
 });
 
@@ -195,7 +270,7 @@ it('rolls back the whole completion when a mid-transaction step fails', function
         }
     });
 
-    expect(fn () => app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]))
+    expect(fn () => completeCorrectionOn($application->fresh()))
         ->toThrow(RuntimeException::class);
 
     $application->refresh();
@@ -234,7 +309,7 @@ it('completed corrections are immutable and cannot be deleted', function () {
     $application = reviewApplication();
     openCorrectionOn($application);
     $application->update(['father_phone' => '900111222']);
-    $result = app(CompleteCorrectionAction::class)->handle($application->fresh(), [0]);
+    $result = completeCorrectionOn($application->fresh());
 
     $correction = $result->corrections()->first();
 

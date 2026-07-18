@@ -20,6 +20,11 @@ class CorrectionException extends Exception
         parent::__construct($message);
     }
 
+    public static function actorRequired(): self
+    {
+        return new self('An explicit acting user is required to request or complete a correction.', 'alerts.application.correction_actor_required');
+    }
+
     public static function reasonRequired(): self
     {
         return new self('A correction reason is required.', 'alerts.application.correction_reason_required');

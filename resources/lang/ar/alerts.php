@@ -60,7 +60,12 @@ return [
         // Guardian uniqueness conflicts during acceptance
         'guardian_phone_conflict' => 'رقم الهاتف :phone مسجّل بالفعل لولي أمر آخر.',
 
+        // Generic action outcomes (Phase 4 corrective)
+        'state_changed_refresh' => 'تغيّرت حالة الطلب قبل تنفيذ الإجراء. يرجى تحديث الصفحة والمحاولة من جديد.',
+        'action_failed' => 'تعذّر تنفيذ الإجراء. يرجى المحاولة لاحقاً.',
+
         // Correction workflow (Phase 4)
+        'correction_actor_required' => 'يجب تحديد المستخدم المنفّذ لطلب أو إنهاء التصحيح.',
         'correction_reason_required' => 'سبب التصحيح مطلوب.',
         'correction_checklist_required' => 'يجب إدخال بند واحد على الأقل في قائمة التصحيح.',
         'correction_already_open' => 'يوجد طلب تصحيح مفتوح بالفعل لهذا الطلب.',
