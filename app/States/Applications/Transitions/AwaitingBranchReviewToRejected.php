@@ -3,6 +3,7 @@
 namespace App\States\Applications\Transitions;
 
 use App\Actions\Applications\RecordApplicationActivityAction;
+use App\Events\ApplicationRejected;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\AwaitingBranchReview;
@@ -46,6 +47,13 @@ class AwaitingBranchReviewToRejected extends Transition
                 Rejected::$name,
                 $reason,
             );
+
+            // The rejection reason is deliberately not carried on the event.
+            event(new ApplicationRejected(
+                $application->getKey(),
+                $application->ref_no,
+                $application->branch_id,
+            ));
 
             return $application;
         }, attempts: 3);

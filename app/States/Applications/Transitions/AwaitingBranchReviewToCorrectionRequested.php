@@ -88,6 +88,13 @@ class AwaitingBranchReviewToCorrectionRequested extends Transition
                 $this->actor->getKey(),
             );
 
+            // The correction reason/checklist are deliberately not carried on the event.
+            event(new \App\Events\CorrectionRequested(
+                $application->getKey(),
+                $application->ref_no,
+                $application->branch_id,
+            ));
+
             return $application;
         }, attempts: 3);
     }

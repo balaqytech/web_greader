@@ -4,6 +4,7 @@ namespace App\States\Applications\Transitions;
 
 use App\Actions\Applications\AcceptApplicationAction;
 use App\Actions\Applications\RecordApplicationActivityAction;
+use App\Events\ApplicationAccepted;
 use App\Exceptions\ApplicationIncompleteException;
 use App\Models\Application;
 use App\States\Applications\Accepted;
@@ -54,6 +55,14 @@ class AwaitingBranchReviewToAccepted extends Transition
                 Accepted::$name,
                 $this->notes,
             );
+
+            // Recorded in the outbox within this transaction — rolls back with the acceptance
+            // if anything above fails.
+            event(new ApplicationAccepted(
+                $application->getKey(),
+                $application->ref_no,
+                $application->branch_id,
+            ));
 
             return $application;
         }, attempts: 3);

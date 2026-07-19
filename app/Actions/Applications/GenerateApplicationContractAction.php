@@ -3,6 +3,7 @@
 namespace App\Actions\Applications;
 
 use App\Actions\Contracts\BuildContractSnapshotAction;
+use App\Events\ContractGenerated;
 use App\Models\Application;
 use App\Models\ApplicationContract;
 use App\States\Contracts\Generated;
@@ -52,6 +53,15 @@ class GenerateApplicationContractAction
             foreach ($active as $predecessor) {
                 $predecessor->status->transitionTo(Superseded::class, $contract->id);
             }
+
+            // Recorded in the outbox within this transaction; no token or body is carried.
+            event(new ContractGenerated(
+                $contract->getKey(),
+                $application->getKey(),
+                $application->ref_no,
+                $application->branch_id,
+                $contract->version,
+            ));
 
             return $contract;
         });

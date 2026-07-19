@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Payments;
 
 use App\Enums\PaymentPurpose;
+use App\Events\PaymentPaid;
 use App\Exceptions\InvalidSettlementEvidenceException;
 use App\Models\Payment;
 use App\States\Applications\AwaitingApplicationCompletion;
@@ -68,6 +69,19 @@ class SettleRegistrationFee
         if ($application->status instanceof AwaitingRegistrationFee) {
             $application->status->transitionTo(AwaitingApplicationCompletion::class, $payment, $activityNotes);
         }
+
+        // Only the paid winner is announced — the double-charge path returns before here. The
+        // caller already holds an open transaction, so this outbox row is atomic with the
+        // settlement.
+        event(new PaymentPaid(
+            $payment->getKey(),
+            $payment->reference,
+            (int) $payment->application_id,
+            $application->ref_no,
+            $payment->branch_id,
+            $payment->method->value,
+            (string) $payment->amount,
+        ));
 
         return $payment;
     }
