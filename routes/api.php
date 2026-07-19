@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ApplicationStatusController;
 use App\Http\Controllers\Api\V1\BotContactController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\LeadController;
@@ -57,6 +58,12 @@ Route::middleware(['auth:sanctum', 'fasih.service'])->group(function () {
         Route::get('reading-assessment-form-submissions/{submission}', [ReadingAssessmentFormSubmissionController::class, 'show'])
             ->middleware('abilities:'.Ability::AssessmentsManage)
             ->name('reading-assessment-form-submissions.show');
+
+        // Verified status lookup. A POST (it carries the guardian phone as proof of ownership)
+        // but read-only, so it is rate-limited as a read and deliberately NOT idempotency-guarded.
+        Route::post('applications/status-check', [ApplicationStatusController::class, 'statusCheck'])
+            ->middleware('abilities:'.Ability::ApplicationsStatus)
+            ->name('applications.status-check');
     });
 
     // Writes — 10/min per token. Every mutating route is idempotency-guarded (Idempotency-Key

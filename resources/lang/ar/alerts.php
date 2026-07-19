@@ -9,6 +9,16 @@ return [
         'idempotency_key_required' => 'رأس Idempotency-Key مطلوب (من 1 إلى 128 حرفاً).',
         'idempotency_key_conflict' => 'تم استخدام مفتاح المعالجة هذا مع طلب مختلف.',
         'idempotency_in_progress' => 'لا تزال هناك عملية قيد المعالجة بنفس مفتاح المعالجة.',
+        'application_not_found' => 'لم يتم العثور على طلب مطابق.',
+        'next_steps' => [
+            'pay_registration_fee' => 'سداد رسوم التسجيل.',
+            'complete_application_data' => 'استكمال بيانات الطلب.',
+            'sign_contract' => 'توقيع العقد.',
+            'await_branch_review' => 'بانتظار مراجعة الفرع.',
+            'complete_corrections' => 'استكمال التصحيحات المطلوبة.',
+            'completed' => 'اكتمل الطلب.',
+            'none' => 'لا يوجد إجراء مطلوب.',
+        ],
     ],
     'payment' => [
         'fee_settled' => 'تم سداد رسوم التسجيل (:reference).',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Applications\MatchApplicationForGuardianAction;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDTO;
 use App\Enums\PaymentMethod;
@@ -31,6 +32,10 @@ use InvalidArgumentException;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        private readonly MatchApplicationForGuardianAction $matchApplication,
+    ) {}
+
     public function initiateThawani(InitiateThawaniPaymentRequest $request, InitiatePaymentAction $action): JsonResponse
     {
         return $this->initiate($request, $action, PaymentMethod::THAWANI);
@@ -175,24 +180,10 @@ class PaymentController extends Controller
 
     private function matchingApplication(Request $request): ?Application
     {
-        $reference = (string) $request->input('application_reference');
-        $suppliedPhone = (string) $request->input('guardian_phone');
-
-        $application = Application::withoutGlobalScope(BranchScope::class)
-            ->where('ref_no', $reference)
-            ->first();
-
-        if ($application === null || $application->guardian_phone === null) {
-            return null;
-        }
-
-        try {
-            $matches = normalize_phone_number($suppliedPhone) === normalize_phone_number($application->guardian_phone);
-        } catch (InvalidArgumentException) {
-            return null;
-        }
-
-        return $matches ? $application : null;
+        return $this->matchApplication->execute(
+            (string) $request->input('application_reference'),
+            (string) $request->input('guardian_phone'),
+        );
     }
 
     private function tokenPrincipal(Request $request): string
