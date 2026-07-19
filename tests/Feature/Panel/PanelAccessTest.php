@@ -62,12 +62,15 @@ it('denies service_fasih without the explicit Access:Panel permission', function
     expect($user->canAccessPanel(filament()->getPanel('admin')))->toBeFalse();
 });
 
-it('allows service_fasih once explicitly granted Access:Panel', function () {
+it('still denies service_fasih even when explicitly granted Access:Panel', function () {
+    // Phase 5: the headless service principal is barred from the panel unconditionally, so a
+    // leaked API credential can never become a panel session — even if Access:Panel is
+    // accidentally granted.
     $user = User::factory()->create();
     grantRole($user, 'service_fasih');
     grantAccessPanelPermission($user);
 
-    expect($user->canAccessPanel(filament()->getPanel('admin')))->toBeTrue();
+    expect($user->canAccessPanel(filament()->getPanel('admin')))->toBeFalse();
 });
 
 it('forbids actual HTTP access to /admin for a denied authenticated user', function () {

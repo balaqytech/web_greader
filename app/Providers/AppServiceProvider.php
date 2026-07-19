@@ -54,21 +54,31 @@ class AppServiceProvider extends ServiceProvider
 
         FilamentShield::prohibitDestructiveCommands(app()->isProduction());
 
-        $this->configurePaymentRateLimiter();
+        $this->configureApiRateLimiters();
     }
 
     /**
-     * 5/minute, per token — not per IP, since a single service integration behind one IP must
-     * not be able to starve another's abusive traffic into looking like a shared limit, and a
-     * token id cannot be spoofed the way an IP or a body field can.
+     * Service-API limits are keyed on the Sanctum token id — not the IP — so each integration
+     * gets an isolated budget: one token id cannot be spoofed the way an IP or a body field
+     * can, and two integrations behind the same IP cannot starve each other. Reads, writes,
+     * and payment operations get separate buckets (distinct key prefixes) so a burst of reads
+     * never consumes a token's much smaller write allowance. Public catalogs have no token, so
+     * they fall back to per-IP limiting.
      */
-    protected function configurePaymentRateLimiter(): void
+    protected function configureApiRateLimiters(): void
     {
-        RateLimiter::for('payments', function (Request $request) {
-            $key = $request->user()?->currentAccessToken()?->getKey() ?? $request->ip();
+        // These limits sit behind `auth:sanctum`, so the principal is resolved on the sanctum
+        // guard — not the default `web` guard, which would report null here and silently
+        // collapse every token onto a shared per-IP bucket.
+        $byToken = fn (Request $request): string => (string) ($request->user('sanctum')?->currentAccessToken()?->getKey() ?? $request->ip());
 
-            return Limit::perMinute(5)->by('payments:'.$key);
-        });
+        RateLimiter::for('api-read', fn (Request $request) => Limit::perMinute(60)->by('api-read:'.$byToken($request)));
+
+        RateLimiter::for('api-write', fn (Request $request) => Limit::perMinute(10)->by('api-write:'.$byToken($request)));
+
+        RateLimiter::for('payments', fn (Request $request) => Limit::perMinute(5)->by('payments:'.$byToken($request)));
+
+        RateLimiter::for('api-public', fn (Request $request) => Limit::perMinute(60)->by('api-public:'.$request->ip()));
     }
 
     /**

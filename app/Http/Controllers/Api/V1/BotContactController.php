@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\StoreBotContactRequest;
 use App\Http\Resources\BotContactResource;
 use App\Models\BotContact;
-use Illuminate\Http\Request;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 class BotContactController extends Controller
 {
@@ -24,21 +25,13 @@ class BotContactController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreBotContactRequest $request)
     {
-        $data = $request->validate([
-            'channel' => 'required|string',
-            'sender_name' => 'nullable|string',
-            'whatsapp' => 'required|string|unique:bot_contacts,whatsapp',
-            'conversation_summary' => 'nullable|string',
-            'rejection_reason' => 'nullable|string',
-            'notes' => 'nullable|string',
-            'additional_data' => 'nullable|array',
-        ]);
+        $data = $request->validated();
 
         try {
             $contact = BotContact::create($data);
-        } catch (\Illuminate\Database\UniqueConstraintViolationException $exception) {
+        } catch (UniqueConstraintViolationException $exception) {
             return response()->json([
                 'error' => 422,
                 'message' => 'This whatsapp number is already exists',

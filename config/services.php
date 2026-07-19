@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    'fasih' => [
+        // Lifetime (in days) of a personal-access token minted by `fasih:issue-token`.
+        'token_expiry_days' => (int) env('FASIH_TOKEN_EXPIRY_DAYS', 90),
+    ],
+
     'webhooks' => [
         'secret' => env('WEBHOOK_SECRET', 'secret'),
         'lead' => [

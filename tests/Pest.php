@@ -1,6 +1,10 @@
 <?php
 
+use App\Models\User;
+use App\Support\Api\FasihServiceAbilities;
+use App\Support\Api\FasihServiceAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /*
@@ -47,4 +51,24 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Create a branchless Fasih service-account user (with the `service_fasih` role) and issue a
+ * real Sanctum personal-access token scoped to the given abilities. Returns the token user and
+ * the plaintext token — the credential every protected `/api/v1` service route now requires.
+ *
+ * @param  list<string>|null  $abilities  Defaults to the full canonical ability set.
+ * @return array{0: User, 1: string}
+ */
+function fasihServiceToken(?array $abilities = null): array
+{
+    $abilities ??= FasihServiceAbilities::all();
+
+    Role::findOrCreate(FasihServiceAccount::Role, 'web');
+
+    $user = User::factory()->create(['branch_id' => null]);
+    $user->assignRole(FasihServiceAccount::Role);
+
+    return [$user, $user->createToken('test', $abilities)->plainTextToken];
 }

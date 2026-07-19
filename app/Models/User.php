@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Api\FasihServiceAccount;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -62,13 +63,21 @@ class User extends Authenticatable implements Auditable, FilamentUser
      * `admin` panel entry is granted to holders of an operational role — `super_admin`,
      * `branch_staff`, `branch_manager`, `central_finance`, or Shield's `panel_user` — or to
      * anyone explicitly granted the `Access:Panel` permission (the escape hatch for roles
-     * that don't otherwise warrant blanket membership, e.g. a future `service_fasih` grant).
-     * Roleless users and unrelated roles are denied. Unknown future panels are always denied
-     * here; each new panel must opt itself in explicitly.
+     * that don't otherwise warrant blanket membership). Roleless users and unrelated roles are
+     * denied. Unknown future panels are always denied here; each new panel must opt itself in
+     * explicitly.
+     *
+     * The headless `service_fasih` principal is denied unconditionally — even if `Access:Panel`
+     * were ever accidentally granted to it — so a leaked API credential can never become a
+     * panel session.
      */
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() !== 'admin') {
+            return false;
+        }
+
+        if ($this->hasRole(FasihServiceAccount::Role)) {
             return false;
         }
 

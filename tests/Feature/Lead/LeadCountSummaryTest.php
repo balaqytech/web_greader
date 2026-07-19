@@ -3,24 +3,15 @@
 use App\Models\Branch;
 use App\Models\Lead;
 use App\Models\Program;
-use App\Models\User;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 
 /**
- * These tests exercise cross-branch count summaries, not tenancy itself (see
- * tests/Feature/Tenancy/BranchIsolationTest.php for that), so the acting user is granted
- * the model-specific cross-branch permission explicitly rather than relying on a null
- * branch_id — BranchScope no longer treats a branchless user as seeing every branch.
+ * These tests exercise cross-branch count summaries via the Fasih service account. The counts
+ * endpoint bypasses BranchScope inside its authorized query (the branchless service principal
+ * has no branch to scope to), so no Shield cross-branch grant is involved.
  */
 beforeEach(function () {
-    $user = User::factory()->create();
-
-    $permission = Permission::firstOrCreate(['name' => 'ViewAllBranches:Lead', 'guard_name' => 'web']);
-    $user->givePermissionTo($permission);
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-    $this->actingAs($user, 'sanctum');
+    [, $token] = fasihServiceToken();
+    $this->withHeader('Authorization', "Bearer {$token}");
 });
 
 it('returns lead counts per branch and per program within each branch', function () {

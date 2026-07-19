@@ -6,88 +6,58 @@ use App\Models\Branch;
 use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
-/**
- * These tests exercise cross-branch listing/filtering, not tenancy itself (see
- * tests/Feature/Tenancy/BranchIsolationTest.php for that), so the acting user is granted
- * the model-specific cross-branch permission explicitly rather than relying on a null
- * branch_id — BranchScope no longer treats a branchless user as seeing every branch.
+/*
+ * The lead lookup endpoint is now an exact-whatsapp query returning the minimal
+ * LeadSummaryResource (see tests/Feature/Api). The scope-level filter/search behavior these
+ * tests still cover is exercised directly against the model, where it remains in use.
  */
-beforeEach(function () {
-    $user = User::factory()->create();
 
-    $permission = Permission::firstOrCreate(['name' => 'ViewAllBranches:Lead', 'guard_name' => 'web']);
-    $user->givePermissionTo($permission);
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
+it('filters leads by an exact value in the data JSON field via the model scope', function () {
+    Lead::factory()->create(['data' => ['preferred_time' => 'morning']]);
+    Lead::factory()->create(['data' => ['preferred_time' => 'evening']]);
 
-    $this->actingAs($user, 'sanctum');
+    $results = Lead::query()->filter(['data.preferred_time' => 'morning'])->get();
+
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->data['preferred_time'])->toBe('morning');
 });
 
-it('filters leads by an exact value in the data JSON field', function () {
-    Lead::factory()->create(['data' => ['mother_phone' => '111111111']]);
-    Lead::factory()->create(['data' => ['mother_phone' => '999999999']]);
+it('filters leads by the mother_phone column through the data scope alias', function () {
+    Lead::factory()->create(['mother_phone' => '111111111']);
+    Lead::factory()->create(['mother_phone' => '999999999']);
 
-    $response = $this->getJson('/api/v1/leads?data[mother_phone]=111111111');
+    $results = Lead::query()->filter(['data.mother_phone' => '111111111'])->get();
 
-    $response->assertOk()
-        ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.mother_phone', '111111111')
-        ->assertJsonMissingPath('data.0.data.mother_phone');
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->mother_phone)->toBe('111111111');
 });
 
-it('returns no results when data JSON filter does not match', function () {
-    Lead::factory()->create(['data' => ['mother_phone' => '111111111']]);
-
-    $response = $this->getJson('/api/v1/leads?data[mother_phone]=000000000');
-
-    $response->assertOk()->assertJsonCount(0, 'data');
-});
-
-it('searches leads by guardian_name via search param', function () {
+it('searches leads by guardian_name via the model scope', function () {
     Lead::factory()->create(['guardian_name' => 'Ahmed Ibrahim']);
     Lead::factory()->create(['guardian_name' => 'Mohamed Ali']);
 
-    $response = $this->getJson('/api/v1/leads?search=Ahmed');
+    $results = Lead::query()->search('Ahmed')->get();
 
-    $response->assertOk()
-        ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.guardian_name', 'Ahmed Ibrahim');
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->guardian_name)->toBe('Ahmed Ibrahim');
 });
 
-it('searches leads inside the data JSON field when search_fields includes data key', function () {
-    Lead::factory()->create(['guardian_name' => 'Test User', 'data' => ['mother_phone' => '0501112233']]);
-    Lead::factory()->create(['guardian_name' => 'Another User', 'data' => ['mother_phone' => '0509998877']]);
+it('searches leads inside the mother_phone column when the search field is included', function () {
+    Lead::factory()->create(['guardian_name' => 'Test User', 'mother_phone' => '0501112233']);
+    Lead::factory()->create(['guardian_name' => 'Another User', 'mother_phone' => '0509998877']);
 
-    $response = $this->getJson('/api/v1/leads?search=050111&search_fields[]=data.mother_phone');
+    $results = Lead::query()->search('050111', ['mother_phone'])->get();
 
-    $response->assertOk()
-        ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.mother_phone', '0501112233')
-        ->assertJsonMissingPath('data.0.data.mother_phone');
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->mother_phone)->toBe('0501112233');
 });
 
-it('combines standard filters with data JSON filter', function () {
-    $branch = Branch::factory()->create();
-
-    Lead::factory()->create(['branch_id' => $branch->id, 'data' => ['mother_phone' => '111111111']]);
-    Lead::factory()->create(['branch_id' => $branch->id, 'data' => ['mother_phone' => '999999999']]);
-
-    $response = $this->getJson("/api/v1/leads?branch_id={$branch->id}&data[mother_phone]=111111111");
-
-    $response->assertOk()
-        ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.mother_phone', '111111111')
-        ->assertJsonMissingPath('data.0.data.mother_phone');
-});
-
-it('stores mother phone on the lead column when provided at the top level', function () {
+it('stores the mother phone on the lead column and returns the minimal summary resource', function () {
     $branch = Branch::factory()->create();
     $program = Program::factory()->create();
     Season::factory()->create([
@@ -95,23 +65,34 @@ it('stores mother phone on the lead column when provided at the top level', func
         'is_active' => true,
     ]);
 
-    $response = $this->postJson('/api/v1/leads', [
-        'whatsapp' => '0501234567',
-        'guardian_name' => 'Guardian',
-        'student_name' => 'Student',
-        'program_id' => $program->id,
-        'branch_id' => $branch->id,
-        'source' => Source::WEBSITE->value,
-        'mother_phone' => '0507654321',
-        'data' => [
-            'preferred_time' => 'morning',
-        ],
+    [, $token] = fasihServiceToken();
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/leads', [
+            'whatsapp' => '0501234567',
+            'guardian_name' => 'Guardian',
+            'student_name' => 'Student',
+            'program_id' => $program->id,
+            'branch_id' => $branch->id,
+            'source' => Source::WEBSITE->value,
+            'mother_phone' => '0507654321',
+            'data' => [
+                'preferred_time' => 'morning',
+            ],
+        ]);
+
+    $response->assertCreated();
+
+    // The response is the minimal allowlist — never guardian PII, phones, or the data bag.
+    expect(array_keys($response->json('data')))->toEqualCanonicalizing([
+        'ref_no', 'student_name', 'status', 'status_label', 'branch_name', 'program_name', 'created_at',
     ]);
 
-    $response->assertCreated()
-        ->assertJsonPath('mother_phone', '0507654321')
-        ->assertJsonPath('data.preferred_time', 'morning')
-        ->assertJsonMissingPath('data.mother_phone');
+    $lead = Lead::withoutGlobalScopes()->where('student_name', 'Student')->firstOrFail();
+
+    expect($lead->mother_phone)->toBe(normalize_phone_number('0507654321'))
+        ->and($lead->whatsapp)->toBe(normalize_phone_number('0501234567'))
+        ->and($lead->data)->toBe(['preferred_time' => 'morning']);
 });
 
 it('backfills mother phone from legacy lead data', function () {

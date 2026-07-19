@@ -4,6 +4,12 @@ return [
     'reading_assessment_form_submissions' => [
         'already_exists' => 'تم إرسال هذا النموذج من قبل بالفعل',
     ],
+    'api' => [
+        'service_account_required' => 'هذا المسار متاح فقط لحساب خدمة فصيح عبر رمز وصول مخصص.',
+        'idempotency_key_required' => 'رأس Idempotency-Key مطلوب (من 1 إلى 128 حرفاً).',
+        'idempotency_key_conflict' => 'تم استخدام مفتاح المعالجة هذا مع طلب مختلف.',
+        'idempotency_in_progress' => 'لا تزال هناك عملية قيد المعالجة بنفس مفتاح المعالجة.',
+    ],
     'payment' => [
         'fee_settled' => 'تم سداد رسوم التسجيل (:reference).',
         'double_charge_needs_reconciliation' => 'تم استلام عملية دفع ناجحة ثانية بينما كانت الرسوم مسددة بالفعل عبر العملية :reference. لم يتم تقدّم الطلب مرتين، وتحتاج هذه العملية إلى مطابقة يدوية — قد يكون قد تم خصم المبلغ مرتين.',

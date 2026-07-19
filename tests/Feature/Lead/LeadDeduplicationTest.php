@@ -126,8 +126,9 @@ it('does not merge single-token names with longer names', function () {
     expect(Lead::withoutGlobalScopes()->count())->toBe(2);
 });
 
-it('deduplicates via the public API', function () {
+it('deduplicates via the service API', function () {
     ['branch' => $branch, 'program' => $program] = createLeadContext();
+    [, $token] = fasihServiceToken();
 
     $payload = [
         'whatsapp' => '0501234567',
@@ -138,11 +139,13 @@ it('deduplicates via the public API', function () {
         'source' => Source::WEBSITE->value,
     ];
 
-    $this->postJson('/api/v1/leads', $payload)->assertCreated();
-    $this->postJson('/api/v1/leads', [
-        ...$payload,
-        'student_name' => 'احمد',
-    ])->assertSuccessful();
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/leads', $payload)->assertCreated();
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/leads', [
+            ...$payload,
+            'student_name' => 'احمد',
+        ])->assertSuccessful();
 
     expect(Lead::withoutGlobalScopes()->count())->toBe(1);
 });

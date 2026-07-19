@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Leads\CreateLeadAction;
+use App\Actions\Leads\LookupLeadsByWhatsappAction;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\LeadResource;
+use App\Http\Requests\Api\V1\LookupLeadsRequest;
+use App\Http\Requests\Api\V1\StoreLeadRequest;
+use App\Http\Resources\Api\V1\LeadSummaryResource;
 use App\Models\Lead;
+use App\Models\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,48 +20,16 @@ class LeadController extends Controller
         private CreateLeadAction $createLeadAction,
     ) {}
 
-    public function index(Request $request)
+    /**
+     * Exact-whatsapp lookup for the Fasih service account. Returns the minimal
+     * {@see LeadSummaryResource} projection only — never guardian PII, phones, or the `data`
+     * bag — and can never be coerced into browsing every lead.
+     */
+    public function index(LookupLeadsRequest $request, LookupLeadsByWhatsappAction $lookup)
     {
-        $allowedFilters = ['whatsapp', 'program_id', 'branch_id', 'status', 'source'];
+        $leads = $lookup->execute($request->validated('whatsapp'));
 
-        $filters = $request->only($allowedFilters);
-
-        $dataFilters = $request->input('data', []);
-        foreach ($dataFilters as $key => $value) {
-            $filters["data.{$key}"] = $value;
-        }
-
-        $leads = Lead::query()
-            ->with(['branch', 'program', 'season', 'affiliate'])
-            ->filter($filters);
-
-        $leads->when(
-            $request->filled('search'),
-            function ($query) use ($request) {
-                $jsonKeys = collect($request->input('search_fields', []))
-                    ->filter(fn ($f) => str_starts_with($f, 'data.'))
-                    ->map(fn ($f) => substr($f, 5))
-                    ->values()
-                    ->all();
-
-                $query->search($request->search, $jsonKeys);
-            }
-        );
-
-        if ($request->filled('created_from')) {
-            $leads->where('created_at', '>=', $request->created_from);
-        }
-
-        if ($request->filled('created_to')) {
-            $leads->where('created_at', '<=', $request->created_to);
-        }
-
-        $leads = $leads
-            ->orderBy('created_at', 'asc')
-            ->paginate(15)
-            ->appends($request->query());
-
-        return LeadResource::collection($leads);
+        return LeadSummaryResource::collection($leads);
     }
 
     public function counts(Request $request): JsonResponse
@@ -118,18 +90,9 @@ class LeadController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreLeadRequest $request)
     {
-        $validated = $request->validate([
-            'whatsapp' => 'required|min:8|max:16',
-            'program_id' => 'required|exists:programs,id',
-            'branch_id' => 'required|exists:branches,id',
-            'guardian_name' => 'required',
-            'student_name' => 'required',
-            'source' => 'required',
-            'affiliate_code' => 'nullable|string',
-            'mother_phone' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $data = $request->input('data') ?? $request->except([
             'whatsapp',
@@ -144,7 +107,7 @@ class LeadController extends Controller
         $data = is_array($data) ? $data : [];
 
         if ($request->has('mother_phone')) {
-            $data['mother_phone'] = $validated['mother_phone'];
+            $data['mother_phone'] = $validated['mother_phone'] ?? null;
         }
 
         $lead = $this->createLeadAction->execute(
@@ -158,15 +121,21 @@ class LeadController extends Controller
             $validated['affiliate_code'] ?? null,
         );
 
-        return new LeadResource($lead);
+        return new LeadSummaryResource($lead->loadMissing(['branch', 'program']));
     }
 
     /**
+     * The branchless Fasih service account has no branch to scope to, so cross-branch count
+     * aggregates bypass {@see BranchScope} — and only that scope — inside this authorized query
+     * rather than through any cross-branch Shield grant. Callers still narrow the result with
+     * the validated `branch_id`/`program_id`/… filters.
+     *
      * @param  array<string, mixed>  $filters
      */
     private function leadCountsQuery(array $filters): Builder
     {
         return Lead::query()
+            ->withoutGlobalScope(BranchScope::class)
             ->when(isset($filters['branch_id']), fn (Builder $query) => $query->where('leads.branch_id', $filters['branch_id']))
             ->when(isset($filters['program_id']), fn (Builder $query) => $query->where('leads.program_id', $filters['program_id']))
             ->when(isset($filters['season_id']), fn (Builder $query) => $query->where('leads.season_id', $filters['season_id']))

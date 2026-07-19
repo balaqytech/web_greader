@@ -8,12 +8,14 @@ use App\Models\User;
 use App\Services\Payments\Drivers\FakePaymentGateway;
 use App\Services\Payments\PaymentGateway;
 use App\States\Payments\AwaitingVerification;
+use App\Support\Api\FasihServiceAccount;
 use App\Support\Money\OmrAmount;
 use App\Support\Settings\PaymentSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -23,7 +25,11 @@ beforeEach(function () {
 
     app()->instance(PaymentGateway::class, new FakePaymentGateway);
 
-    $this->tokenUser = User::factory()->create();
+    // The service API now requires a real personal-access token owned by the branchless
+    // `service_fasih` principal, so the token user must carry that role.
+    Role::findOrCreate(FasihServiceAccount::Role, 'web');
+    $this->tokenUser = User::factory()->create(['branch_id' => null]);
+    $this->tokenUser->assignRole(FasihServiceAccount::Role);
     $created = $this->tokenUser->createToken('test', ['payments:initiate', 'payments:upload-receipt']);
     $this->token = $created->plainTextToken;
 

@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
+use BezhanSalleh\FilamentShield\Support\Utils;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use BezhanSalleh\FilamentShield\Support\Utils;
 use Spatie\Permission\PermissionRegistrar;
 
 class ShieldSeeder extends Seeder
@@ -16,7 +17,11 @@ class ShieldSeeder extends Seeder
         $tenants = '[]';
         $users = '[]';
         $userTenantPivot = '[]';
-        $rolesWithPermissions = '[{"name":"super_admin","guard_name":"web","permissions":["ViewAny:Role","View:Role","Create:Role","Update:Role","Delete:Role","ViewAny:Affiliate","View:Affiliate","Create:Affiliate","Update:Affiliate","Delete:Affiliate","ViewAny:Branch","View:Branch","Create:Branch","Update:Branch","Delete:Branch","ViewAny:Lead","View:Lead","Create:Lead","Update:Lead","Delete:Lead","ViewAny:Program","View:Program","Create:Program","Update:Program","Delete:Program","ViewAny:ReadingAssessmentFormSubmission","View:ReadingAssessmentFormSubmission","Create:ReadingAssessmentFormSubmission","Update:ReadingAssessmentFormSubmission","Delete:ReadingAssessmentFormSubmission","ViewAny:Season","View:Season","Create:Season","Update:Season","Delete:Season","Verify:Affiliate","Reject:Affiliate","Close:Season","Open:Season","ViewAny:User","View:User","Create:User","Update:User","Delete:User"]},{"name":"test","guard_name":"web","permissions":["ViewAny:Lead","View:Lead","Create:Lead","Update:Lead","Delete:Lead"]}]';
+        // `service_fasih` is the headless Fasih API principal. It holds ZERO Shield
+        // permissions by design — its API access is granted solely by the abilities on its
+        // Sanctum token, never by panel/policy permissions. It must also stay barred from the
+        // admin panel (see User::canAccessPanel()).
+        $rolesWithPermissions = '[{"name":"super_admin","guard_name":"web","permissions":["ViewAny:Role","View:Role","Create:Role","Update:Role","Delete:Role","ViewAny:Affiliate","View:Affiliate","Create:Affiliate","Update:Affiliate","Delete:Affiliate","ViewAny:Branch","View:Branch","Create:Branch","Update:Branch","Delete:Branch","ViewAny:Lead","View:Lead","Create:Lead","Update:Lead","Delete:Lead","ViewAny:Program","View:Program","Create:Program","Update:Program","Delete:Program","ViewAny:ReadingAssessmentFormSubmission","View:ReadingAssessmentFormSubmission","Create:ReadingAssessmentFormSubmission","Update:ReadingAssessmentFormSubmission","Delete:ReadingAssessmentFormSubmission","ViewAny:Season","View:Season","Create:Season","Update:Season","Delete:Season","Verify:Affiliate","Reject:Affiliate","Close:Season","Open:Season","ViewAny:User","View:User","Create:User","Update:User","Delete:User"]},{"name":"service_fasih","guard_name":"web","permissions":[]},{"name":"test","guard_name":"web","permissions":["ViewAny:Lead","View:Lead","Create:Lead","Update:Lead","Delete:Lead"]}]';
         $directPermissions = '[]';
 
         // 1. Seed tenants first (if present)
@@ -145,9 +150,9 @@ class ShieldSeeder extends Seeder
             return;
         }
 
-        /** @var \Illuminate\Database\Eloquent\Model $roleModel */
+        /** @var Model $roleModel */
         $roleModel = Utils::getRoleModel();
-        /** @var \Illuminate\Database\Eloquent\Model $permissionModel */
+        /** @var Model $permissionModel */
         $permissionModel = Utils::getPermissionModel();
 
         $tenancyEnabled = false;
@@ -192,7 +197,7 @@ class ShieldSeeder extends Seeder
             return;
         }
 
-        /** @var \Illuminate\Database\Eloquent\Model $permissionModel */
+        /** @var Model $permissionModel */
         $permissionModel = Utils::getPermissionModel();
 
         foreach ($permissions as $permission) {
