@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ApiIdempotencyKey;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -20,3 +21,11 @@ Schedule::command('payments:reconcile')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+ * Prune expired API idempotency records (abandoned reservations and lapsed completed replays)
+ * once a day. The store is a supplement to the domain-level payment idempotency, so pruning it
+ * is pure housekeeping and never affects an in-flight window.
+ */
+Schedule::command('model:prune', ['--model' => [ApiIdempotencyKey::class]])
+    ->daily();

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceApiIdempotency;
 use App\Http\Middleware\EnsureFasihServiceAccount;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
             'fasih.service' => EnsureFasihServiceAccount::class,
+            'api.idempotency' => EnforceApiIdempotency::class,
         ]);
 
         $middleware->redirectGuestsTo(

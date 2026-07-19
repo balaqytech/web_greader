@@ -95,12 +95,12 @@ it('404s on a reference and phone that do not both match', function () {
     callInitiate('/api/v1/payments/thawani', $this->token, [
         'application_reference' => $application->ref_no,
         'guardian_phone' => '90000000',
-    ])->assertNotFound();
+    ], idempotencyKey: 'nf-phone')->assertNotFound();
 
     callInitiate('/api/v1/payments/thawani', $this->token, [
         'application_reference' => 'APP-does-not-exist',
         'guardian_phone' => '99123456',
-    ])->assertNotFound();
+    ], idempotencyKey: 'nf-ref')->assertNotFound();
 });
 
 it('initiates a thawani checkout and exposes only the public fields', function () {

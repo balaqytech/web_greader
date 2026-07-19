@@ -68,6 +68,7 @@ it('stores the mother phone on the lead column and returns the minimal summary r
     [, $token] = fasihServiceToken();
 
     $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->withHeader('Idempotency-Key', 'lead-store-1')
         ->postJson('/api/v1/leads', [
             'whatsapp' => '0501234567',
             'guardian_name' => 'Guardian',

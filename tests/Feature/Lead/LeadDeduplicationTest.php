@@ -139,9 +139,13 @@ it('deduplicates via the service API', function () {
         'source' => Source::WEBSITE->value,
     ];
 
+    // Distinct idempotency keys: these are two logically different requests (different student
+    // spellings) that the domain layer then dedupes into one lead.
     $this->withHeader('Authorization', "Bearer {$token}")
+        ->withHeader('Idempotency-Key', 'dedup-1')
         ->postJson('/api/v1/leads', $payload)->assertCreated();
     $this->withHeader('Authorization', "Bearer {$token}")
+        ->withHeader('Idempotency-Key', 'dedup-2')
         ->postJson('/api/v1/leads', [
             ...$payload,
             'student_name' => 'احمد',
