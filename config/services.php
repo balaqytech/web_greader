@@ -38,17 +38,24 @@ return [
     'fasih' => [
         // Lifetime (in days) of a personal-access token minted by `fasih:issue-token`.
         'token_expiry_days' => (int) env('FASIH_TOKEN_EXPIRY_DAYS', 90),
-    ],
 
-    'webhooks' => [
-        'secret' => env('WEBHOOK_SECRET', 'secret'),
-        'lead' => [
-            'enabled' => env('WEBHOOK_LEAD_ENABLED', true),
-            'created_url' => env('WEBHOOK_LEAD_URL', 'https://www.uchat.com.au/api/iwh/fb149bff3f2f1dc61a752d37a527068e'),
+        // Outbound notification adapter. `null` (the default) is a no-op — the HTTP driver
+        // must be turned on explicitly in production. There is deliberately NO insecure default
+        // secret and NO hardcoded endpoint: every endpoint URL and the signing secret come from
+        // the environment only, so a misconfigured deployment sends nothing rather than posting
+        // to a stale or wrong host.
+        'driver' => env('FASIH_DRIVER', 'null'),
+        'secret' => env('FASIH_WEBHOOK_SECRET'),
+        'timeout' => (int) env('FASIH_TIMEOUT', 10),
+        'connect_timeout' => (int) env('FASIH_CONNECT_TIMEOUT', 5),
+
+        'lead_created' => [
+            'enabled' => env('FASIH_LEAD_CREATED_ENABLED', true),
+            'url' => env('FASIH_LEAD_CREATED_URL'),
         ],
-        'affiliate' => [
-            'enabled' => env('WEBHOOK_AFFILIATE_ENABLED', true),
-            'verified_url' => env('WEBHOOK_AFFILIATE_VERIFIED_URL', 'https://www.uchat.com.au/api/iwh/464f76534bafb5f8a5904bd55f3747ae'),
+        'affiliate_verified' => [
+            'enabled' => env('FASIH_AFFILIATE_VERIFIED_ENABLED', true),
+            'url' => env('FASIH_AFFILIATE_VERIFIED_URL'),
         ],
     ],
 

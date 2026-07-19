@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Fasih\FasihClient;
+use App\Services\Fasih\FasihManager;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentGatewayManager;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
@@ -24,6 +26,22 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->registerPaymentGateway();
+        $this->registerFasihClient();
+    }
+
+    /**
+     * Singleton manager (so per-driver memoisation and test `extend()` are shared across a
+     * request), with the `FasihClient` contract bound to the configured driver — callers
+     * type-hint the contract and never the manager, a driver, or the WebhookServer package.
+     */
+    protected function registerFasihClient(): void
+    {
+        $this->app->singleton(FasihManager::class);
+
+        $this->app->bind(
+            FasihClient::class,
+            fn ($app): FasihClient => $app->make(FasihManager::class)->driver(),
+        );
     }
 
     /**

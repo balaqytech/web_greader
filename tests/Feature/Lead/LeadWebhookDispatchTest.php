@@ -11,15 +11,20 @@ use Illuminate\Support\Facades\Queue;
 use Spatie\WebhookServer\CallWebhookJob;
 
 /**
- * The lead webhook only fires when `services.webhooks.lead.enabled` is true *and* the app is
- * in the `production` environment — forced here rather than relying on the tests running
- * under APP_ENV=testing to keep the path disabled, so the afterCommit wiring itself is
- * actually exercised rather than trivially skipped.
+ * The lead notification only fires when `services.fasih.lead_created.enabled` is true *and* the
+ * app is in `production` — forced here rather than relying on APP_ENV=testing to keep the path
+ * disabled, so the afterCommit wiring itself is exercised. The HTTP driver + endpoint are set
+ * so the adapter actually reaches Spatie's WebhookServer (a CallWebhookJob) rather than the
+ * default no-op null driver.
  */
 function forceProductionWebhooks(): void
 {
     app()->instance('env', 'production');
-    config(['services.webhooks.lead.enabled' => true]);
+    config([
+        'services.fasih.lead_created.enabled' => true,
+        'services.fasih.driver' => 'http',
+        'services.fasih.lead_created.url' => 'https://fasih.test/lead-created',
+    ]);
 }
 
 function leadWebhookContext(): array
@@ -101,7 +106,11 @@ it('dispatches immediately when CreateLeadAction is called outside of any transa
 
 it('does not dispatch when the webhook feature is disabled, regardless of transaction state', function () {
     app()->instance('env', 'production');
-    config(['services.webhooks.lead.enabled' => false]);
+    config([
+        'services.fasih.lead_created.enabled' => false,
+        'services.fasih.driver' => 'http',
+        'services.fasih.lead_created.url' => 'https://fasih.test/lead-created',
+    ]);
     Queue::fake();
     [$branch, $program] = leadWebhookContext();
 

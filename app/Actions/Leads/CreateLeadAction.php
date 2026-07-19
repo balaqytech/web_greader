@@ -8,13 +8,13 @@ use App\Models\Affiliate;
 use App\Models\Lead;
 use App\Models\Program;
 use App\Models\Season;
+use App\Services\Fasih\FasihClient;
 use App\Services\LeadDuplicateResolver;
 use App\States\Leads\ContactedLead;
 use App\Support\Database\DuplicateKeyViolation;
 use App\Support\LeadIdentityNormalizer;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Spatie\WebhookServer\WebhookCall;
 
 final class CreateLeadAction
 {
@@ -176,15 +176,19 @@ final class CreateLeadAction
 
     /**
      * The status transition is a required database state change and stays inside whatever
-     * transaction the caller opened. The outbound webhook call is not — it is registered via
+     * transaction the caller opened. The outbound notification is not — it is registered via
      * `DB::afterCommit()` so a rolled-back lead creation (or one still mid-transaction) can
-     * never fire a webhook for data that was never actually persisted. Outside a transaction,
+     * never notify for data that was never actually persisted. Outside a transaction,
      * `afterCommit()` runs the callback immediately, preserving current behavior for callers
      * that don't wrap this in one.
+     *
+     * The transport lives entirely behind {@see FasihClient}: this action knows nothing about
+     * endpoints, signing, or the WebhookServer package. A notification outage is caught and
+     * reported after commit so it can never roll back or misreport an already-committed lead.
      */
     private function dispatchWebhookIfNeeded(Lead $lead): void
     {
-        if (! $this->shouldDispatchWebhook()) {
+        if (! $this->shouldNotify()) {
             return;
         }
 
@@ -197,17 +201,17 @@ final class CreateLeadAction
         }
 
         DB::afterCommit(function () use ($lead) {
-            WebhookCall::create()
-                ->url(config('services.webhooks.lead.created_url'))
-                ->payload($lead->fresh()->toArray())
-                ->useSecret(config('services.webhooks.secret'))
-                ->dispatch();
+            try {
+                app(FasihClient::class)->leadCreated($lead->fresh()->toArray());
+            } catch (\Throwable $e) {
+                report($e);
+            }
         });
     }
 
-    private function shouldDispatchWebhook(): bool
+    private function shouldNotify(): bool
     {
-        return config('services.webhooks.lead.enabled')
+        return config('services.fasih.lead_created.enabled')
             && app()->environment('production');
     }
 }
