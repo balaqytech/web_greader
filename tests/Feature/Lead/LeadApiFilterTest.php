@@ -80,6 +80,7 @@ it('stores the mother phone on the lead column and returns the minimal summary r
             'data' => [
                 'preferred_time' => 'morning',
             ],
+            'unexpected_internal_note' => 'must not enter the data bag',
         ]);
 
     $response->assertCreated();
@@ -95,6 +96,35 @@ it('stores the mother phone on the lead column and returns the minimal summary r
         ->and($lead->whatsapp)->toBe(normalize_phone_number('0501234567'))
         ->and($lead->data)->toBe(['preferred_time' => 'morning']);
 });
+
+it('rejects invalid service-api phone input without creating a lead', function (string $field) {
+    $branch = Branch::factory()->create();
+    $program = Program::factory()->create();
+    Season::factory()->create([
+        'type' => $program->type,
+        'is_active' => true,
+    ]);
+    [, $token] = fasihServiceToken();
+
+    $payload = [
+        'whatsapp' => '0501234567',
+        'guardian_name' => 'Guardian',
+        'student_name' => 'Student',
+        'program_id' => $program->id,
+        'branch_id' => $branch->id,
+        'source' => Source::WEBSITE->value,
+        'mother_phone' => '0507654321',
+        $field => 'not-phone',
+    ];
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->withHeader('Idempotency-Key', 'invalid-lead-'.$field)
+        ->postJson('/api/v1/leads', $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($field);
+
+    expect(Lead::withoutGlobalScopes()->count())->toBe(0);
+})->with(['whatsapp', 'mother_phone']);
 
 it('backfills mother phone from legacy lead data', function () {
     $lead = Lead::factory()->create([

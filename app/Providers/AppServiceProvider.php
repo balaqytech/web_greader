@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Singleton manager (so per-driver memoisation and test `extend()` are shared across a
      * request), with the `FasihClient` contract bound to the configured driver — callers
-     * type-hint the contract and never the manager, a driver, or the WebhookServer package.
+     * type-hint the contract and never the manager, a driver, or the HTTP transport.
      */
     protected function registerFasihClient(): void
     {

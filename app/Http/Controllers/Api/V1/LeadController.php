@@ -94,19 +94,9 @@ class LeadController extends Controller
     {
         $validated = $request->validated();
 
-        $data = $request->input('data') ?? $request->except([
-            'whatsapp',
-            'program_id',
-            'branch_id',
-            'guardian_name',
-            'student_name',
-            'source',
-            'affiliate_code',
-            'mother_phone',
-        ]);
-        $data = is_array($data) ? $data : [];
+        $data = $validated['data'] ?? [];
 
-        if ($request->has('mother_phone')) {
+        if (array_key_exists('mother_phone', $validated)) {
             $data['mother_phone'] = $validated['mother_phone'] ?? null;
         }
 

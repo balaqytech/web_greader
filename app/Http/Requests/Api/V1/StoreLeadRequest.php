@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Rules\ValidPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -50,14 +51,14 @@ class StoreLeadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'whatsapp' => ['required', 'string', 'min:8', 'max:16'],
+            'whatsapp' => ['required', 'string', 'min:8', 'max:16', new ValidPhoneNumber],
             'program_id' => ['required', 'integer', 'exists:programs,id'],
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'guardian_name' => ['required', 'string'],
             'student_name' => ['required', 'string'],
             'source' => ['required', 'string'],
             'affiliate_code' => ['nullable', 'string'],
-            'mother_phone' => ['nullable', 'string'],
+            'mother_phone' => ['nullable', 'string', 'max:16', new ValidPhoneNumber],
             'data' => ['nullable', 'array'],
         ];
     }

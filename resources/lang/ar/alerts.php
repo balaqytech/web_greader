@@ -10,6 +10,8 @@ return [
         'idempotency_key_conflict' => 'تم استخدام مفتاح المعالجة هذا مع طلب مختلف.',
         'idempotency_in_progress' => 'لا تزال هناك عملية قيد المعالجة بنفس مفتاح المعالجة.',
         'application_not_found' => 'لم يتم العثور على طلب مطابق.',
+        'bot_contact_duplicate' => 'رقم واتساب مسجل بالفعل.',
+        'unexpected_error' => 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقا.',
         'next_steps' => [
             'pay_registration_fee' => 'سداد رسوم التسجيل.',
             'complete_application_data' => 'استكمال بيانات الطلب.',

@@ -10,7 +10,9 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response as ResponseFactory;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -45,8 +47,9 @@ class EnforceApiIdempotency
 
         $tokenId = $request->user('sanctum')?->currentAccessToken()?->getKey();
         $requestHash = $this->hashRequest($request);
+        $ownerToken = (string) Str::uuid();
 
-        $reservation = $this->reserve($tokenId, $rawKey, $requestHash);
+        $reservation = $this->reserve($tokenId, $rawKey, $requestHash, $ownerToken);
 
         if ($reservation['status'] === 'conflict') {
             return $this->conflict('idempotency_conflict', __('alerts.api.idempotency_key_conflict'));
@@ -67,13 +70,12 @@ class EnforceApiIdempotency
         try {
             $response = $next($request);
         } catch (Throwable $e) {
-            // The operation did not complete — free the reservation so a retry can proceed.
-            $record->delete();
+            $this->release($record, $ownerToken);
 
             throw $e;
         }
 
-        $this->complete($record, $response);
+        $this->complete($record, $ownerToken, $response);
 
         return $response;
     }
@@ -87,7 +89,7 @@ class EnforceApiIdempotency
      *
      * @return array{status: string, record?: ApiIdempotencyKey, retry_after?: int}
      */
-    private function reserve(?int $tokenId, string $key, string $requestHash): array
+    private function reserve(?int $tokenId, string $key, string $requestHash, string $ownerToken): array
     {
         $existing = ApiIdempotencyKey::query()
             ->where('token_id', $tokenId)
@@ -95,7 +97,7 @@ class EnforceApiIdempotency
             ->first();
 
         if ($existing !== null) {
-            return $this->resolveExisting($existing, $requestHash);
+            return $this->resolveExisting($tokenId, $key, $requestHash, $ownerToken);
         }
 
         try {
@@ -105,37 +107,49 @@ class EnforceApiIdempotency
                     'token_id' => $tokenId,
                     'key' => $key,
                     'request_hash' => $requestHash,
+                    'owner_token' => $ownerToken,
                     'processing_at' => Carbon::now(),
                     'expires_at' => Carbon::now()->addSeconds(self::LeaseSeconds),
                 ]),
             ];
         } catch (UniqueConstraintViolationException) {
             // Lost the race — another request reserved this key first.
-            $existing = ApiIdempotencyKey::query()
-                ->where('token_id', $tokenId)
-                ->where('key', $key)
-                ->first();
-
-            if ($existing === null) {
-                return ['status' => 'in_progress', 'retry_after' => self::LeaseSeconds];
-            }
-
-            return $this->resolveExisting($existing, $requestHash);
+            return $this->resolveExisting($tokenId, $key, $requestHash, $ownerToken);
         }
     }
 
     /**
      * @return array{status: string, record?: ApiIdempotencyKey, retry_after?: int}
      */
-    private function resolveExisting(ApiIdempotencyKey $existing, string $requestHash): array
+    private function resolveExisting(
+        ?int $tokenId,
+        string $key,
+        string $requestHash,
+        string $ownerToken,
+    ): array {
+        return DB::transaction(function () use ($tokenId, $key, $requestHash, $ownerToken): array {
+            $existing = ApiIdempotencyKey::query()
+                ->where('token_id', $tokenId)
+                ->where('key', $key)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing === null) {
+                return $this->freshReservation($tokenId, $key, $requestHash, $ownerToken);
+            }
+
+            return $this->resolveLocked($existing, $requestHash, $ownerToken);
+        }, attempts: 3);
+    }
+
+    /**
+     * @return array{status: string, record?: ApiIdempotencyKey, retry_after?: int}
+     */
+    private function resolveLocked(ApiIdempotencyKey $existing, string $requestHash, string $ownerToken): array
     {
-        // Completed record: a byte-identical retry replays it; a different request under the
-        // same key is a conflict; a lapsed replay window is reprocessed.
         if ($existing->isCompleted()) {
             if (! $existing->isLive()) {
-                $existing->delete();
-
-                return $this->freshReservation($existing->token_id, $existing->key, $requestHash);
+                return $this->takeOver($existing, $requestHash, $ownerToken);
             }
 
             return hash_equals($existing->request_hash, $requestHash)
@@ -143,8 +157,6 @@ class EnforceApiIdempotency
                 : ['status' => 'conflict'];
         }
 
-        // Still-processing reservation whose lease is live: the first attempt is in flight, so
-        // any retry (identical or not) must back off rather than double-process.
         if ($existing->isLive()) {
             return [
                 'status' => 'in_progress',
@@ -152,23 +164,30 @@ class EnforceApiIdempotency
             ];
         }
 
-        // The prior reservation's lease has expired without completing (a crashed request) — the
-        // key is effectively free, so take it over for this request.
+        return $this->takeOver($existing, $requestHash, $ownerToken);
+    }
+
+    /**
+     * @return array{status: 'reserved', record: ApiIdempotencyKey}
+     */
+    private function takeOver(ApiIdempotencyKey $existing, string $requestHash, string $ownerToken): array
+    {
         $existing->update([
             'request_hash' => $requestHash,
+            'owner_token' => $ownerToken,
             'response_status' => null,
             'response_body' => null,
             'processing_at' => Carbon::now(),
             'expires_at' => Carbon::now()->addSeconds(self::LeaseSeconds),
         ]);
 
-        return ['status' => 'reserved', 'record' => $existing];
+        return ['status' => 'reserved', 'record' => $existing->refresh()];
     }
 
     /**
      * @return array{status: string, record?: ApiIdempotencyKey, retry_after?: int}
      */
-    private function freshReservation(?int $tokenId, string $key, string $requestHash): array
+    private function freshReservation(?int $tokenId, string $key, string $requestHash, string $ownerToken): array
     {
         try {
             return [
@@ -177,6 +196,7 @@ class EnforceApiIdempotency
                     'token_id' => $tokenId,
                     'key' => $key,
                     'request_hash' => $requestHash,
+                    'owner_token' => $ownerToken,
                     'processing_at' => Carbon::now(),
                     'expires_at' => Carbon::now()->addSeconds(self::LeaseSeconds),
                 ]),
@@ -190,20 +210,33 @@ class EnforceApiIdempotency
      * Persist a completed response so an identical retry can replay it. Server errors (>= 500)
      * are treated as non-final and left un-cached so the caller can retry.
      */
-    private function complete(ApiIdempotencyKey $record, Response $response): void
+    private function complete(ApiIdempotencyKey $record, string $ownerToken, Response $response): void
     {
+        $owned = ApiIdempotencyKey::query()
+            ->whereKey($record->getKey())
+            ->where('owner_token', $ownerToken);
+
         if ($response->getStatusCode() >= 500) {
-            $record->delete();
+            $owned->delete();
 
             return;
         }
 
-        $record->update([
+        $owned->update([
             'response_status' => $response->getStatusCode(),
             'response_body' => $response->getContent() === false ? null : $response->getContent(),
+            'owner_token' => null,
             'processing_at' => null,
             'expires_at' => Carbon::now()->addSeconds(self::CompletedTtlSeconds),
         ]);
+    }
+
+    private function release(ApiIdempotencyKey $record, string $ownerToken): void
+    {
+        ApiIdempotencyKey::query()
+            ->whereKey($record->getKey())
+            ->where('owner_token', $ownerToken)
+            ->delete();
     }
 
     private function replay(ApiIdempotencyKey $record): Response

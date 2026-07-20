@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\StoreBotContactRequest;
 use App\Http\Resources\BotContactResource;
 use App\Models\BotContact;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Throwable;
 
 class BotContactController extends Controller
 {
@@ -31,15 +32,17 @@ class BotContactController extends Controller
 
         try {
             $contact = BotContact::create($data);
-        } catch (UniqueConstraintViolationException $exception) {
+        } catch (UniqueConstraintViolationException) {
             return response()->json([
-                'error' => 422,
-                'message' => 'This whatsapp number is already exists',
+                'error' => 'duplicate_whatsapp',
+                'message' => __('alerts.api.bot_contact_duplicate'),
             ], 422);
-        } catch (\Exception $exception) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return response()->json([
-                'error' => 500,
-                'message' => $exception->getMessage(),
+                'error' => 'server_error',
+                'message' => __('alerts.api.unexpected_error'),
             ], 500);
         }
 

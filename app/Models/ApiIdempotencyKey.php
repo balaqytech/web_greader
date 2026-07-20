@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $token_id
  * @property string $key
  * @property string $request_hash
+ * @property string|null $owner_token
  * @property int|null $response_status
  * @property string|null $response_body
  * @property Carbon|null $processing_at
@@ -32,6 +33,7 @@ class ApiIdempotencyKey extends Model
         'token_id',
         'key',
         'request_hash',
+        'owner_token',
         'response_status',
         'response_body',
         'processing_at',

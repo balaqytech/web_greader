@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Rules\ValidPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -41,7 +42,7 @@ class StoreBotContactRequest extends FormRequest
         return [
             'channel' => ['required', 'string'],
             'sender_name' => ['nullable', 'string'],
-            'whatsapp' => ['required', 'string', 'unique:bot_contacts,whatsapp'],
+            'whatsapp' => ['required', 'string', 'max:16', new ValidPhoneNumber, 'unique:bot_contacts,whatsapp'],
             'conversation_summary' => ['nullable', 'string'],
             'rejection_reason' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],

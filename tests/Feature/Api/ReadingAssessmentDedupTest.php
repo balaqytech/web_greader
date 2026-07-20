@@ -41,6 +41,52 @@ it('normalizes the whatsapp number before persisting', function () {
     expect($submission->whatsapp)->toBe(normalize_phone_number('099123456'));
 });
 
+it('lists and shows submissions across branches for the branchless service account', function () {
+    $branchA = Branch::factory()->create();
+    $branchB = Branch::factory()->create();
+    $first = app(CreateSubmission::class)->execute(assessmentPayload($branchA));
+    $second = app(CreateSubmission::class)->execute(assessmentPayload($branchB, [
+        'student_name' => 'Mona Ali',
+        'whatsapp' => '099765432',
+    ]));
+    [, $token] = fasihServiceToken();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/reading-assessment-form-submissions')
+        ->assertOk()
+        ->assertJsonCount(2, 'data');
+
+    $this->app['auth']->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/reading-assessment-form-submissions?whatsapp=099123456')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $first->id);
+
+    $this->app['auth']->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/reading-assessment-form-submissions/'.$second->id)
+        ->assertOk()
+        ->assertJsonPath('data.id', $second->id);
+});
+
+it('rejects invalid assessment phone input instead of throwing or persisting it', function () {
+    $branch = Branch::factory()->create();
+    [, $token] = fasihServiceToken();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->withHeader('Idempotency-Key', 'invalid-assessment-phone')
+        ->postJson('/api/v1/reading-assessment-form-submissions', assessmentPayload($branch, [
+            'whatsapp' => 'not-phone',
+        ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('whatsapp');
+
+    expect(ReadingAssessmentFormSubmission::withoutGlobalScopes()->count())->toBe(0);
+});
+
 it('propagates an unexpected database error rather than returning an uninitialized result', function () {
     $branch = Branch::factory()->create();
 

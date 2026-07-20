@@ -27,7 +27,9 @@ class EnsureFasihServiceAccount
             ? $user->currentAccessToken()
             : null;
 
-        if (! $token instanceof PersonalAccessToken || ! FasihServiceAccount::isServiceAccount($user)) {
+        if (! $token instanceof PersonalAccessToken
+            || ! FasihServiceAccount::isServiceAccount($user)
+            || ! FasihServiceAccount::isServiceToken($token)) {
             abort(Response::HTTP_FORBIDDEN, __('alerts.api.service_account_required'));
         }
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Affiliate;
+use App\Models\ApiIdempotencyKey;
 use App\Models\Branch;
 use App\Models\Program;
 use App\Models\User;
@@ -62,7 +63,43 @@ it('rejects a protected route with no token as 401', function () {
 it('rejects a token owned by a non-service user with 403', function () {
     // A plain user with the exact abilities but WITHOUT the service role must not pass.
     $user = User::factory()->create(['branch_id' => null]);
-    $token = $user->createToken('t', FasihServiceAbilities::all())->plainTextToken;
+    $token = $user->createToken(FasihServiceAccount::TokenName, FasihServiceAbilities::all())->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/bot-contacts')
+        ->assertForbidden();
+});
+
+it('rejects a service-role token when its owner is assigned to a branch', function () {
+    Role::findOrCreate(FasihServiceAccount::Role, 'web');
+    $user = User::factory()->create(['branch_id' => Branch::factory()]);
+    $user->assignRole(FasihServiceAccount::Role);
+    $token = $user->createToken(FasihServiceAccount::TokenName, FasihServiceAbilities::all())->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/bot-contacts')
+        ->assertForbidden();
+});
+
+it('rejects a service-role token when its owner also has another role', function () {
+    Role::findOrCreate(FasihServiceAccount::Role, 'web');
+    Role::findOrCreate('branch_manager', 'web');
+    $user = User::factory()->create(['branch_id' => null]);
+    $user->assignRole([FasihServiceAccount::Role, 'branch_manager']);
+    $token = $user->createToken(FasihServiceAccount::TokenName, FasihServiceAbilities::all())->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/bot-contacts')
+        ->assertForbidden();
+});
+
+it('rejects a service-role token when its owner has a Shield permission', function () {
+    Role::findOrCreate(FasihServiceAccount::Role, 'web');
+    Permission::findOrCreate('Access:Panel', 'web');
+    $user = User::factory()->create(['branch_id' => null]);
+    $user->assignRole(FasihServiceAccount::Role);
+    $user->givePermissionTo('Access:Panel');
+    $token = $user->createToken(FasihServiceAccount::TokenName, FasihServiceAbilities::all())->plainTextToken;
 
     $this->withHeader('Authorization', "Bearer {$token}")
         ->getJson('/api/v1/bot-contacts')
@@ -78,12 +115,40 @@ it('rejects a service token that lacks the exact ability with 403', function () 
         ->assertForbidden();
 });
 
+it('rejects a service-account token with the wrong token name or an unknown ability', function (string $name, array $abilities) {
+    Role::findOrCreate(FasihServiceAccount::Role, 'web');
+    $user = User::factory()->create(['branch_id' => null]);
+    $user->assignRole(FasihServiceAccount::Role);
+    $token = $user->createToken($name, $abilities)->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/bot-contacts')
+        ->assertForbidden();
+})->with([
+    'wrong name' => ['manual-token', FasihServiceAbilities::all()],
+    'wildcard ability' => [FasihServiceAccount::TokenName, ['*']],
+    'unknown ability' => [FasihServiceAccount::TokenName, ['unknown:ability']],
+]);
+
 it('allows a fully-scoped service token through', function () {
     [, $token] = fasihServiceToken();
 
     $this->withHeader('Authorization', "Bearer {$token}")
         ->getJson('/api/v1/bot-contacts')
         ->assertOk();
+});
+
+it('checks the token ability before requiring an idempotency key', function () {
+    [, $token] = fasihServiceToken([FasihServiceAbilities::LeadsRead]);
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/bot-contacts', [
+            'channel' => 'whatsapp',
+            'whatsapp' => '099123456',
+        ])
+        ->assertForbidden();
+
+    expect(ApiIdempotencyKey::count())->toBe(0);
 });
 
 /*

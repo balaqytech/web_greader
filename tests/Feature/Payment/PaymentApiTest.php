@@ -30,7 +30,7 @@ beforeEach(function () {
     Role::findOrCreate(FasihServiceAccount::Role, 'web');
     $this->tokenUser = User::factory()->create(['branch_id' => null]);
     $this->tokenUser->assignRole(FasihServiceAccount::Role);
-    $created = $this->tokenUser->createToken('test', ['payments:initiate', 'payments:upload-receipt']);
+    $created = $this->tokenUser->createToken(FasihServiceAccount::TokenName, ['payments:initiate', 'payments:upload-receipt']);
     $this->token = $created->plainTextToken;
 
     RateLimiter::clear('payments:'.$created->accessToken->id);
@@ -72,7 +72,7 @@ it('requires authentication', function () {
 
 it('requires the payments:initiate ability', function () {
     $application = paymentApiApplication();
-    $token = $this->tokenUser->createToken('no-abilities', ['some:other'])->plainTextToken;
+    $token = $this->tokenUser->createToken(FasihServiceAccount::TokenName, ['some:other'])->plainTextToken;
 
     callInitiate('/api/v1/payments/thawani', $token, [
         'application_reference' => $application->ref_no,

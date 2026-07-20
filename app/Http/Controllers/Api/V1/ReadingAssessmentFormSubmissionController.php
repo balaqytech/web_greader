@@ -8,6 +8,8 @@ use App\Http\Requests\Api\V1\IndexReadingAssessmentRequest;
 use App\Http\Requests\Api\V1\StoreReadingAssessmentRequest;
 use App\Http\Resources\ReadingAssessmentFormSubmissionResource;
 use App\Models\ReadingAssessmentFormSubmission;
+use App\Models\Scopes\BranchScope;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ReadingAssessmentFormSubmissionController extends Controller
 {
@@ -18,14 +20,15 @@ class ReadingAssessmentFormSubmissionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(IndexReadingAssessmentRequest $request)
+    public function index(IndexReadingAssessmentRequest $request): AnonymousResourceCollection
     {
-        $submissions = ReadingAssessmentFormSubmission::with('branch')
+        $submissions = ReadingAssessmentFormSubmission::withoutGlobalScope(BranchScope::class)
+            ->with('branch')
             ->when($request->filled('branch_id'), function ($query) use ($request) {
                 $query->where('branch_id', $request->integer('branch_id'));
             })
             ->when($request->filled('whatsapp'), function ($query) use ($request) {
-                $query->where('whatsapp', 'like', '%'.$request->string('whatsapp').'%');
+                $query->where('whatsapp', (string) $request->string('whatsapp'));
             })
             ->paginate(15);
 
@@ -45,8 +48,12 @@ class ReadingAssessmentFormSubmissionController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ReadingAssessmentFormSubmission $submission)
+    public function show(string $submission): ReadingAssessmentFormSubmissionResource
     {
-        return new ReadingAssessmentFormSubmissionResource($submission->load('branch'));
+        $submission = ReadingAssessmentFormSubmission::withoutGlobalScope(BranchScope::class)
+            ->with('branch')
+            ->findOrFail($submission);
+
+        return new ReadingAssessmentFormSubmissionResource($submission);
     }
 }

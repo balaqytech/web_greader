@@ -68,17 +68,17 @@ Route::middleware(['auth:sanctum', 'fasih.service'])->group(function () {
 
     // Writes — 10/min per token. Every mutating route is idempotency-guarded (Idempotency-Key
     // header required); the read-only status-check in Commit 18 is deliberately not.
-    Route::middleware(['throttle:api-write', 'api.idempotency'])->group(function () {
+    Route::middleware('throttle:api-write')->group(function () {
         Route::post('leads', [LeadController::class, 'store'])
-            ->middleware('abilities:'.Ability::LeadsCreate)
+            ->middleware(['abilities:'.Ability::LeadsCreate, 'api.idempotency'])
             ->name('leads.store');
 
         Route::post('bot-contacts', [BotContactController::class, 'store'])
-            ->middleware('abilities:'.Ability::BotContactsManage)
+            ->middleware(['abilities:'.Ability::BotContactsManage, 'api.idempotency'])
             ->name('bot-contacts.store');
 
         Route::post('reading-assessment-form-submissions', [ReadingAssessmentFormSubmissionController::class, 'store'])
-            ->middleware('abilities:'.Ability::AssessmentsManage)
+            ->middleware(['abilities:'.Ability::AssessmentsManage, 'api.idempotency'])
             ->name('reading-assessment-form-submissions.store');
     });
 
@@ -86,20 +86,20 @@ Route::middleware(['auth:sanctum', 'fasih.service'])->group(function () {
     // here (see PaymentMethod::isAvailableToChatbot()) — it is staff-only. 5/min per token.
     // The idempotency middleware supplements the Phase 2 payment-row backstop; it does not
     // replace it.
-    Route::middleware(['throttle:payments', 'api.idempotency'])
+    Route::middleware('throttle:payments')
         ->prefix('payments')
         ->name('api.payments.')
         ->group(function () {
             Route::post('thawani', [PaymentController::class, 'initiateThawani'])
-                ->middleware('abilities:'.Ability::PaymentsInitiate)
+                ->middleware(['abilities:'.Ability::PaymentsInitiate, 'api.idempotency'])
                 ->name('initiate-thawani');
 
             Route::post('bank-transfer', [PaymentController::class, 'initiateBankTransfer'])
-                ->middleware('abilities:'.Ability::PaymentsInitiate)
+                ->middleware(['abilities:'.Ability::PaymentsInitiate, 'api.idempotency'])
                 ->name('initiate-bank-transfer');
 
             Route::post('{payment}/receipt', [PaymentController::class, 'uploadReceipt'])
-                ->middleware('abilities:'.Ability::PaymentsUploadReceipt)
+                ->middleware(['abilities:'.Ability::PaymentsUploadReceipt, 'api.idempotency'])
                 ->name('upload-receipt');
         });
 });

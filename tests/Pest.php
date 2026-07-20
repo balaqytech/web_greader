@@ -70,5 +70,5 @@ function fasihServiceToken(?array $abilities = null): array
     $user = User::factory()->create(['branch_id' => null]);
     $user->assignRole(FasihServiceAccount::Role);
 
-    return [$user, $user->createToken('test', $abilities)->plainTextToken];
+    return [$user, $user->createToken(FasihServiceAccount::TokenName, $abilities)->plainTextToken];
 }

@@ -11,9 +11,10 @@ use App\Services\Fasih\Drivers\HttpFasihClient;
 use App\Services\Fasih\Drivers\NullFasihClient;
 use App\Services\Fasih\FasihClient;
 use App\Services\Fasih\FasihManager;
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Exceptions;
-use Illuminate\Support\Facades\Queue;
-use Spatie\WebhookServer\CallWebhookJob;
+use Illuminate\Support\Facades\Http;
 
 function signatureHeaderName(): string
 {
@@ -48,12 +49,12 @@ it('allows a custom driver to be registered via extend', function () {
 });
 
 it('is a no-op through the null driver', function () {
-    Queue::fake();
+    Http::fake();
 
     app(FasihClient::class)->leadCreated(['a' => 1]);
     app(FasihClient::class)->affiliateVerified(['a' => 1]);
 
-    Queue::assertNothingPushed();
+    Http::assertNothingSent();
 });
 
 /*
@@ -66,17 +67,20 @@ it('signs the lead-created notification when a secret is configured', function (
     $client = new HttpFasihClient([
         'secret' => 'top-secret',
         'timeout' => 7,
+        'connect_timeout' => 3,
         'lead_created' => ['url' => 'https://fasih.test/lead'],
     ]);
 
-    Queue::fake();
+    Http::fake();
     $client->leadCreated(['ref_no' => 'L-1']);
 
-    Queue::assertPushed(CallWebhookJob::class, function (CallWebhookJob $job) {
-        return $job->webhookUrl === 'https://fasih.test/lead'
-            && $job->payload === ['ref_no' => 'L-1']
-            && $job->requestTimeout === 7
-            && array_key_exists(signatureHeaderName(), $job->headers);
+    $expectedSignature = hash_hmac('sha256', json_encode(['ref_no' => 'L-1']), 'top-secret');
+
+    Http::assertSent(function (Request $request) use ($expectedSignature): bool {
+        return $request->url() === 'https://fasih.test/lead'
+            && $request->body() === json_encode(['ref_no' => 'L-1'])
+            && $request->data() === ['ref_no' => 'L-1']
+            && $request->hasHeader(signatureHeaderName(), $expectedSignature);
     });
 });
 
@@ -86,11 +90,11 @@ it('does not sign the lead-created notification when no secret is configured', f
         'lead_created' => ['url' => 'https://fasih.test/lead'],
     ]);
 
-    Queue::fake();
+    Http::fake();
     $client->leadCreated(['ref_no' => 'L-1']);
 
-    Queue::assertPushed(CallWebhookJob::class, function (CallWebhookJob $job) {
-        return ! array_key_exists(signatureHeaderName(), $job->headers);
+    Http::assertSent(function (Request $request): bool {
+        return ! $request->hasHeader(signatureHeaderName());
     });
 });
 
@@ -100,22 +104,23 @@ it('never signs the affiliate-verified notification', function () {
         'affiliate_verified' => ['url' => 'https://fasih.test/affiliate'],
     ]);
 
-    Queue::fake();
+    Http::fake();
     $client->affiliateVerified(['code' => 'AFF-1']);
 
-    Queue::assertPushed(CallWebhookJob::class, function (CallWebhookJob $job) {
-        return $job->webhookUrl === 'https://fasih.test/affiliate'
-            && ! array_key_exists(signatureHeaderName(), $job->headers);
+    Http::assertSent(function (Request $request): bool {
+        return $request->url() === 'https://fasih.test/affiliate'
+            && $request->data() === ['code' => 'AFF-1']
+            && ! $request->hasHeader(signatureHeaderName());
     });
 });
 
 it('sends nothing when the endpoint url is missing', function () {
     $client = new HttpFasihClient(['secret' => 's', 'lead_created' => ['url' => null]]);
 
-    Queue::fake();
+    Http::fake();
     $client->leadCreated(['ref_no' => 'L-1']);
 
-    Queue::assertNothingPushed();
+    Http::assertNothingSent();
 });
 
 /*
@@ -124,22 +129,19 @@ it('sends nothing when the endpoint url is missing', function () {
 |--------------------------------------------------------------------------
 */
 
-it('reports an adapter failure after commit without failing the domain operation', function () {
+it('reports a real HTTP adapter failure after commit without failing the domain operation', function () {
     Exceptions::fake();
+    Http::fake([
+        'https://fasih.test/lead' => Http::response(['error' => 'down'], 503),
+    ]);
 
     app()->instance('env', 'production');
-    config(['services.fasih.lead_created.enabled' => true]);
-
-    // A driver that always throws.
-    app()->bind(FasihClient::class, fn () => new class implements FasihClient
-    {
-        public function leadCreated(array $payload): void
-        {
-            throw new RuntimeException('fasih outage');
-        }
-
-        public function affiliateVerified(array $payload): void {}
-    });
+    config([
+        'services.fasih.driver' => 'http',
+        'services.fasih.lead_created.enabled' => true,
+        'services.fasih.lead_created.url' => 'https://fasih.test/lead',
+    ]);
+    app()->forgetInstance(FasihManager::class);
 
     $branch = Branch::factory()->create();
     $program = Program::factory()->create(['type' => ProgramType::Academic]);
@@ -157,7 +159,8 @@ it('reports an adapter failure after commit without failing the domain operation
     // The lead was committed and returned despite the notification failure.
     expect(Lead::withoutGlobalScopes()->whereKey($lead->id)->exists())->toBeTrue();
 
-    Exceptions::assertReported(RuntimeException::class);
+    Exceptions::assertReported(RequestException::class);
+    Http::assertSentCount(3);
 
     app()->instance('env', 'testing');
 });

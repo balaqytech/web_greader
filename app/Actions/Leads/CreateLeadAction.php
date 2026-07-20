@@ -183,7 +183,7 @@ final class CreateLeadAction
      * that don't wrap this in one.
      *
      * The transport lives entirely behind {@see FasihClient}: this action knows nothing about
-     * endpoints, signing, or the WebhookServer package. A notification outage is caught and
+     * endpoints, signing, or HTTP details. A notification outage is caught and
      * reported after commit so it can never roll back or misreport an already-committed lead.
      */
     private function dispatchWebhookIfNeeded(Lead $lead): void

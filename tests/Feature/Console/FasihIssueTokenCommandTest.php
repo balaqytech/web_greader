@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Support\Api\FasihServiceAbilities;
 use App\Support\Api\FasihServiceAccount;
 use Laravel\Sanctum\PersonalAccessToken;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
@@ -38,6 +39,16 @@ it('reuses an existing clean branchless service user without creating a duplicat
     expect(User::where('email', 'fasih@example.com')->count())->toBe(1);
 });
 
+it('refuses to adopt an existing roleless user as the service principal', function () {
+    User::factory()->create(['email' => 'fasih@example.com', 'branch_id' => null]);
+
+    $this->artisan('fasih:issue-token', ['email' => 'fasih@example.com'])
+        ->assertFailed();
+
+    expect(PersonalAccessToken::query()->count())->toBe(0)
+        ->and(User::where('email', 'fasih@example.com')->exists())->toBeTrue();
+});
+
 it('refuses to convert a user assigned to a branch', function () {
     $branch = Branch::factory()->create();
     User::factory()->create(['email' => 'staff@example.com', 'branch_id' => $branch->id]);
@@ -56,6 +67,29 @@ it('refuses to convert a user holding an operational role', function () {
         ->assertFailed();
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
+});
+
+it('refuses to reuse a user with a direct Shield permission', function () {
+    Permission::findOrCreate('Access:Panel', 'web');
+    $user = User::factory()->create(['email' => 'fasih@example.com', 'branch_id' => null]);
+    $user->assignRole(FasihServiceAccount::Role);
+    $user->givePermissionTo('Access:Panel');
+
+    $this->artisan('fasih:issue-token', ['email' => 'fasih@example.com'])
+        ->assertFailed();
+
+    expect(PersonalAccessToken::query()->count())->toBe(0);
+});
+
+it('refuses issuance when the service role itself has permission drift', function () {
+    Permission::findOrCreate('Access:Panel', 'web');
+    Role::findByName(FasihServiceAccount::Role, 'web')->givePermissionTo('Access:Panel');
+
+    $this->artisan('fasih:issue-token', ['email' => 'fasih@example.com'])
+        ->assertFailed();
+
+    expect(PersonalAccessToken::query()->count())->toBe(0)
+        ->and(User::where('email', 'fasih@example.com')->exists())->toBeFalse();
 });
 
 it('revokes existing tokens with --revoke-existing before issuing the new one', function () {

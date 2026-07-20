@@ -50,7 +50,20 @@ it('replays an identical request from the store without re-executing the control
         ->assertHeader('Idempotent-Replayed', 'true');
 
     expect($replay->getContent())->toBe($first->getContent())
-        ->and(BotContact::count())->toBe(1);
+        ->and(BotContact::count())->toBe(1)
+        ->and(ApiIdempotencyKey::where('key', 'k1')->value('owner_token'))->toBeNull();
+});
+
+it('rejects an invalid bot-contact phone without persisting it', function () {
+    [, $token] = fasihServiceToken();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->withHeader('Idempotency-Key', 'invalid-bot-phone')
+        ->postJson('/api/v1/bot-contacts', botContactPayload(['whatsapp' => 'not-phone']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('whatsapp');
+
+    expect(BotContact::count())->toBe(0);
 });
 
 it('returns a 409 conflict when the same key is reused for a different payload', function () {
@@ -142,6 +155,68 @@ it('releases the reservation when the controller throws so the request can be re
 
     // The reservation was released, so nothing is left to block a retry.
     expect(ApiIdempotencyKey::count())->toBe(0);
+});
+
+it('does not let a stale owner complete a successor reservation', function () {
+    Route::post('/_idem_stale_complete', function () {
+        ApiIdempotencyKey::query()->firstOrFail()->update([
+            'owner_token' => 'successor-owner',
+            'processing_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        return response()->json(['attempt' => 'stale'], 201);
+    })->middleware('api.idempotency');
+
+    $this->withHeader('Idempotency-Key', 'stale-complete')
+        ->postJson('/_idem_stale_complete')
+        ->assertCreated();
+
+    $record = ApiIdempotencyKey::where('key', 'stale-complete')->firstOrFail();
+
+    expect($record->owner_token)->toBe('successor-owner')
+        ->and($record->response_status)->toBeNull()
+        ->and($record->processing_at)->not->toBeNull();
+});
+
+it('does not let a stale owner delete a successor reservation after a server error', function () {
+    Route::post('/_idem_stale_server_error', function () {
+        ApiIdempotencyKey::query()->firstOrFail()->update([
+            'owner_token' => 'successor-owner',
+            'processing_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        return response()->json(['error' => 'temporary'], 503);
+    })->middleware('api.idempotency');
+
+    $this->withHeader('Idempotency-Key', 'stale-server-error')
+        ->postJson('/_idem_stale_server_error')
+        ->assertServiceUnavailable();
+
+    expect(ApiIdempotencyKey::where('key', 'stale-server-error')
+        ->where('owner_token', 'successor-owner')
+        ->exists())->toBeTrue();
+});
+
+it('does not let a stale owner release a successor reservation after an exception', function () {
+    Route::post('/_idem_stale_exception', function () {
+        ApiIdempotencyKey::query()->firstOrFail()->update([
+            'owner_token' => 'successor-owner',
+            'processing_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        throw new RuntimeException('stale attempt failed');
+    })->middleware('api.idempotency');
+
+    $this->withHeader('Idempotency-Key', 'stale-exception')
+        ->postJson('/_idem_stale_exception')
+        ->assertInternalServerError();
+
+    expect(ApiIdempotencyKey::where('key', 'stale-exception')
+        ->where('owner_token', 'successor-owner')
+        ->exists())->toBeTrue();
 });
 
 it('prunes expired idempotency records via model:prune', function () {

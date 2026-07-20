@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 /**
  * Issues the single credential the Fasih integration uses to reach the service API: a Sanctum
@@ -39,6 +40,14 @@ class IssueTokenCommand extends Command
             return self::FAILURE;
         }
 
+        $serviceRole = Role::findOrCreate(FasihServiceAccount::Role, 'web');
+
+        if ($serviceRole->permissions()->exists()) {
+            $this->error('The service_fasih role has Shield permissions. Remove that drift before issuing a token.');
+
+            return self::FAILURE;
+        }
+
         $user = User::query()->where('email', $email)->first();
 
         if ($user === null) {
@@ -47,7 +56,7 @@ class IssueTokenCommand extends Command
             return self::FAILURE;
         }
 
-        $user->syncRoles([FasihServiceAccount::Role]);
+        $user->syncRoles([$serviceRole]);
 
         if ($this->option('revoke-existing')) {
             $revoked = $user->tokens()->delete();
@@ -94,11 +103,23 @@ class IssueTokenCommand extends Command
             return false;
         }
 
-        $operationalRoles = $user->getRoleNames()
-            ->intersect(FasihServiceAccount::OperationalRoles);
+        if (! $user->hasRole(FasihServiceAccount::Role)) {
+            $this->error('That email already belongs to a non-service user. Refusing to adopt it as the service account.');
 
-        if ($operationalRoles->isNotEmpty()) {
-            $this->error('That user holds operational role(s): '.$operationalRoles->implode(', ').'. Refusing to convert it into a service account.');
+            return false;
+        }
+
+        $unexpectedRoles = $user->getRoleNames()
+            ->reject(fn (string $role): bool => $role === FasihServiceAccount::Role);
+
+        if ($unexpectedRoles->isNotEmpty()) {
+            $this->error('That user holds non-service role(s): '.$unexpectedRoles->implode(', ').'. Refusing to convert it into a service account.');
+
+            return false;
+        }
+
+        if ($user->getAllPermissions()->isNotEmpty()) {
+            $this->error('That user holds Shield permissions and cannot be used as the isolated service account.');
 
             return false;
         }

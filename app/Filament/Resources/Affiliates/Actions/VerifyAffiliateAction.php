@@ -38,7 +38,7 @@ class VerifyAffiliateAction extends Action
 
     /**
      * The transport lives entirely behind {@see FasihClient}; this action knows nothing about
-     * endpoints or the WebhookServer package. Registered after commit and its failure caught +
+     * endpoints or HTTP details. Registered after commit and its failure caught and
      * reported, so a notification outage cannot roll back or misreport a completed verification.
      */
     private function sendWebhook(Affiliate $affiliate): void

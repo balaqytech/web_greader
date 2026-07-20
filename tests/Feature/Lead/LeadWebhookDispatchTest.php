@@ -7,15 +7,13 @@ use App\Models\Branch;
 use App\Models\Program;
 use App\Models\Season;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
-use Spatie\WebhookServer\CallWebhookJob;
+use Illuminate\Support\Facades\Http;
 
 /**
  * The lead notification only fires when `services.fasih.lead_created.enabled` is true *and* the
  * app is in `production` — forced here rather than relying on APP_ENV=testing to keep the path
  * disabled, so the afterCommit wiring itself is exercised. The HTTP driver + endpoint are set
- * so the adapter actually reaches Spatie's WebhookServer (a CallWebhookJob) rather than the
- * default no-op null driver.
+ * so the adapter actually reaches Laravel's HTTP client rather than the default no-op driver.
  */
 function forceProductionWebhooks(): void
 {
@@ -40,9 +38,9 @@ afterEach(function () {
     app()->instance('env', 'testing');
 });
 
-it('dispatches the webhook job only after a successful transaction commits', function () {
+it('sends the webhook only after a successful transaction commits', function () {
     forceProductionWebhooks();
-    Queue::fake();
+    Http::fake();
     [$branch, $program] = leadWebhookContext();
 
     DB::transaction(function () use ($branch, $program) {
@@ -56,15 +54,15 @@ it('dispatches the webhook job only after a successful transaction commits', fun
         );
 
         // Still inside the transaction: the webhook must not have fired yet.
-        Queue::assertNothingPushed();
+        Http::assertNothingSent();
     });
 
-    Queue::assertPushed(CallWebhookJob::class, 1);
+    Http::assertSentCount(1);
 });
 
-it('never dispatches the webhook job when the enclosing transaction rolls back', function () {
+it('never sends the webhook when the enclosing transaction rolls back', function () {
     forceProductionWebhooks();
-    Queue::fake();
+    Http::fake();
     [$branch, $program] = leadWebhookContext();
 
     try {
@@ -84,12 +82,12 @@ it('never dispatches the webhook job when the enclosing transaction rolls back',
         // expected
     }
 
-    Queue::assertNothingPushed();
+    Http::assertNothingSent();
 });
 
 it('dispatches immediately when CreateLeadAction is called outside of any transaction', function () {
     forceProductionWebhooks();
-    Queue::fake();
+    Http::fake();
     [$branch, $program] = leadWebhookContext();
 
     app(CreateLeadAction::class)->execute(
@@ -101,7 +99,7 @@ it('dispatches immediately when CreateLeadAction is called outside of any transa
         source: Source::DASHBOARD->value,
     );
 
-    Queue::assertPushed(CallWebhookJob::class, 1);
+    Http::assertSentCount(1);
 });
 
 it('does not dispatch when the webhook feature is disabled, regardless of transaction state', function () {
@@ -111,7 +109,7 @@ it('does not dispatch when the webhook feature is disabled, regardless of transa
         'services.fasih.driver' => 'http',
         'services.fasih.lead_created.url' => 'https://fasih.test/lead-created',
     ]);
-    Queue::fake();
+    Http::fake();
     [$branch, $program] = leadWebhookContext();
 
     app(CreateLeadAction::class)->execute(
@@ -123,5 +121,5 @@ it('does not dispatch when the webhook feature is disabled, regardless of transa
         source: Source::DASHBOARD->value,
     );
 
-    Queue::assertNothingPushed();
+    Http::assertNothingSent();
 });

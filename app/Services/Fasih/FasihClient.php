@@ -7,10 +7,9 @@ namespace App\Services\Fasih;
 /**
  * The application's whole view of the Fasih (chatbot) notification channel.
  *
- * Callers depend only on this contract, never on the transport (Spatie WebhookServer, an HTTP
- * client, UChat URLs). That keeps every notification detail — endpoints, HMAC signing, timeouts
- * — behind the adapter, so the provider can change without touching the domain, and no
- * `WebhookCall` or endpoint URL ever appears in domain code again.
+ * Callers depend only on this contract, never on HTTP details or endpoint URLs. That keeps
+ * endpoints, HMAC signing, retries, and timeouts behind the adapter so the provider can change
+ * without touching the domain.
  */
 interface FasihClient
 {

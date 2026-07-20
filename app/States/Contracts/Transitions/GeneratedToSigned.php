@@ -8,6 +8,7 @@ use App\Events\ContractSigned;
 use App\Exceptions\ContractTransitionException;
 use App\Models\Application;
 use App\Models\ApplicationContract;
+use App\Models\Scopes\BranchScope;
 use App\States\Contracts\Signed;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
@@ -35,8 +36,9 @@ class GeneratedToSigned extends Transition
             $this->contract->status = Signed::class;
             $this->contract->save();
 
-            // Scope-less lookup: the signer/staff context may not share the application's branch.
-            $application = Application::withoutGlobalScopes()->find($this->contract->application_id);
+            // The signer/staff context may not share the application's branch.
+            $application = Application::withoutGlobalScope(BranchScope::class)
+                ->find($this->contract->application_id);
 
             // No token, signature, or artifact path is carried on the event.
             event(new ContractSigned(
