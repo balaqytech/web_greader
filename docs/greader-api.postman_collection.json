@@ -1,0 +1,232 @@
+{
+  "info": {
+    "_postman_id": "be87a9b9-1cf7-4b3a-a304-a61c93189b7f",
+    "name": "Greader API v1",
+    "description": "The versioned executable contract for every registered /api/v1 endpoint. Import this collection into Postman. Set baseUrl and fasihToken before protected requests. Never commit a real token or production IDs.\n\nProtected routes require a bearer token owned by the isolated service_fasih account. Every mutating route requires a unique Idempotency-Key; the collection uses Postman's {{$guid}} dynamic variable by default. Reuse the same key only to retry the exact same request.\n\nBrowser-session, Filament, Fortify, and Livewire routes are intentionally excluded: they are not API contracts and require browser cookies and CSRF protection."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://greader.test", "type": "string" },
+    { "key": "fasihToken", "value": "", "type": "string" },
+    { "key": "branchId", "value": "1", "type": "string" },
+    { "key": "programId", "value": "1", "type": "string" },
+    { "key": "guardianPhone", "value": "9689000000", "type": "string" },
+    { "key": "applicationReference", "value": "", "type": "string" },
+    { "key": "paymentReference", "value": "", "type": "string" },
+    { "key": "botContactId", "value": "1", "type": "string" },
+    { "key": "assessmentId", "value": "1", "type": "string" },
+    { "key": "receiptFile", "value": "/absolute/path/to/receipt.pdf", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{fasihToken}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Public catalogs",
+      "auth": { "type": "noauth" },
+      "description": "Public, throttled reference data used to build chatbot menus. No PII is returned.",
+      "item": [
+        {
+          "name": "List branches",
+          "request": {
+            "method": "GET",
+            "description": "Optional case-insensitive name search. Returns active branches only.",
+            "url": { "raw": "{{baseUrl}}/api/v1/branches?name=", "query": [{ "key": "name", "value": "", "disabled": true }] }
+          }
+        },
+        {
+          "name": "Show branch",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/branches/{{branchId}}" }
+          }
+        },
+        {
+          "name": "List programs",
+          "request": {
+            "method": "GET",
+            "description": "Optional filters: type is academic or summer; branch_id restricts to programs offered at that branch.",
+            "url": { "raw": "{{baseUrl}}/api/v1/programs?type=academic&branch_id={{branchId}}", "query": [{ "key": "type", "value": "academic", "disabled": true }, { "key": "branch_id", "value": "{{branchId}}", "disabled": true }] }
+          }
+        },
+        {
+          "name": "Show program",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/programs/{{programId}}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "description": "Requires Fasih service token abilities: leads:read or leads:create. Lead lookup is an exact WhatsApp-number lookup, never a browsable list.",
+      "item": [
+        {
+          "name": "Get lead counts",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/leads/counts?branch_id={{branchId}}", "query": [{ "key": "branch_id", "value": "{{branchId}}", "disabled": true }, { "key": "program_id", "value": "{{programId}}", "disabled": true }, { "key": "season_id", "value": "", "disabled": true }, { "key": "status", "value": "", "disabled": true }, { "key": "source", "value": "", "disabled": true }, { "key": "created_from", "value": "", "disabled": true }, { "key": "created_to", "value": "", "disabled": true }] }
+          }
+        },
+        {
+          "name": "Lookup leads by WhatsApp",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/leads?whatsapp={{guardianPhone}}", "query": [{ "key": "whatsapp", "value": "{{guardianPhone}}" }] }
+          }
+        },
+        {
+          "name": "Create or resolve lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"program_id\": {{programId}},\n  \"branch_id\": {{branchId}},\n  \"guardian_name\": \"Test Guardian\",\n  \"student_name\": \"Test Student\",\n  \"source\": \"whatsapp_bot\",\n  \"mother_phone\": \"9689111111\",\n  \"data\": {\n    \"utm_campaign\": \"postman\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/leads" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bot contacts",
+      "description": "Requires bot-contacts:manage. Write requests are idempotent.",
+      "item": [
+        {
+          "name": "List bot contacts",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/bot-contacts" } }
+        },
+        {
+          "name": "Show bot contact",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/bot-contacts/{{botContactId}}" } }
+        },
+        {
+          "name": "Create bot contact",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"whatsapp\",\n  \"sender_name\": \"Test Guardian\",\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"conversation_summary\": \"Asked about registration.\",\n  \"notes\": \"Created from Postman.\",\n  \"additional_data\": {\n    \"language\": \"ar\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/bot-contacts" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reading assessments",
+      "description": "Requires assessments:manage. Source must be website, whatsapp_bot, or dashboard. Write requests are idempotent.",
+      "item": [
+        {
+          "name": "List assessment submissions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/reading-assessment-form-submissions?branch_id={{branchId}}&whatsapp={{guardianPhone}}", "query": [{ "key": "branch_id", "value": "{{branchId}}", "disabled": true }, { "key": "whatsapp", "value": "{{guardianPhone}}", "disabled": true }] }
+          }
+        },
+        {
+          "name": "Show assessment submission",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/reading-assessment-form-submissions/{{assessmentId}}" } }
+        },
+        {
+          "name": "Create assessment submission",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"student_name\": \"Test Student\",\n  \"age\": 7,\n  \"grade_level\": \"Grade 2\",\n  \"guardian_name\": \"Test Guardian\",\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"branch_id\": {{branchId}},\n  \"source\": \"whatsapp_bot\",\n  \"additional_info\": {\n    \"notes\": \"Created from Postman.\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/reading-assessment-form-submissions" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Application status",
+      "description": "Requires applications:status. The reference and guardian phone must match; any mismatch returns the same 404 to avoid revealing application data. This is read-only and does not need Idempotency-Key.",
+      "item": [
+        {
+          "name": "Check application status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"application_reference\": \"{{applicationReference}}\",\n  \"guardian_phone\": \"{{guardianPhone}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/applications/status-check" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "description": "Requires payments:initiate or payments:upload-receipt. Every request needs both the application reference and the guardian phone; cash is staff-only and has no chatbot API endpoint. All write requests are idempotent.",
+      "item": [
+        {
+          "name": "Initiate Thawani payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"application_reference\": \"{{applicationReference}}\",\n  \"guardian_phone\": \"{{guardianPhone}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/payments/thawani" }
+          }
+        },
+        {
+          "name": "Initiate bank-transfer payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"application_reference\": \"{{applicationReference}}\",\n  \"guardian_phone\": \"{{guardianPhone}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/payments/bank-transfer" }
+          }
+        },
+        {
+          "name": "Upload bank-transfer receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "application_reference", "value": "{{applicationReference}}", "type": "text" },
+                { "key": "guardian_phone", "value": "{{guardianPhone}}", "type": "text" },
+                { "key": "receipt", "src": "{{receiptFile}}", "type": "file" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/payments/{{paymentReference}}/receipt" }
+          }
+        }
+      ]
+    }
+  ]
+}

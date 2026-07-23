@@ -59,6 +59,8 @@ This project has domain-specific skills available. You MUST activate the relevan
 ## Documentation Files
 
 - You must only create documentation files if explicitly requested by the user.
+- `docs/greader-api.postman_collection.json` is the versioned, executable contract for every registered `/api/v1` endpoint. Any API route, HTTP method, authentication or ability requirement, required header, request shape, or response-contract change must update this collection in the same change.
+- Run `php artisan test --compact tests/Feature/Api/PostmanCollectionTest.php` whenever the collection or an API route changes. The test ensures the collection and the registered `/api/v1` route set remain synchronized.
 
 ## Replies
 
