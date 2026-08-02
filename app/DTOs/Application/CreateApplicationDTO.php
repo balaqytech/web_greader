@@ -121,6 +121,7 @@ class CreateApplicationDTO
             student_name: $lead->student_name,
             father_name: $lead->guardian_name,
             father_phone: $lead->whatsapp,
+            father_is_guardian: true,
             mother_phone: $lead->mother_phone,
         );
     }
