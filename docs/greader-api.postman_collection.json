@@ -1,15 +1,16 @@
 {
   "info": {
     "_postman_id": "be87a9b9-1cf7-4b3a-a304-a61c93189b7f",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "name": "Greader API v1",
-    "description": "The versioned executable contract for every registered /api/v1 endpoint. Import this collection into Postman. Set baseUrl and fasihToken before protected requests. Never commit a real token or production IDs.\n\nProtected routes require a bearer token owned by the isolated service_fasih account. Every mutating route requires a unique Idempotency-Key; the collection uses Postman's {{$guid}} dynamic variable by default. Reuse the same key only to retry the exact same request.\n\nBrowser-session, Filament, Fortify, and Livewire routes are intentionally excluded: they are not API contracts and require browser cookies and CSRF protection."
+    "description": "The versioned executable contract for every registered /api/v1 endpoint. Import this collection into Postman. Requests use the base_url collection variable, which defaults to http://greader.test; replace it for staging or production. Set fasihToken before protected requests. Never commit a real token or production IDs.\n\nEvery request explicitly accepts application/json so Laravel returns API errors instead of browser redirects and HTML pages. Protected routes require a bearer token owned by the isolated service_fasih account. Every mutating route requires a unique Idempotency-Key; the collection uses Postman's {{$guid}} dynamic variable by default. Reuse the same key only to retry the exact same request.\n\nBrowser-session, Filament, Fortify, and Livewire routes are intentionally excluded: they are not API contracts and require browser cookies and CSRF protection."
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://greader.test", "type": "string" },
+    { "key": "base_url", "value": "http://greader.test", "type": "string" },
     { "key": "fasihToken", "value": "", "type": "string" },
     { "key": "branchId", "value": "1", "type": "string" },
     { "key": "programId", "value": "1", "type": "string" },
-    { "key": "guardianPhone", "value": "9689000000", "type": "string" },
+    { "key": "guardianPhone", "value": "+96890000000", "type": "string" },
     { "key": "applicationReference", "value": "", "type": "string" },
     { "key": "paymentReference", "value": "", "type": "string" },
     { "key": "botContactId", "value": "1", "type": "string" },
@@ -33,14 +34,16 @@
           "request": {
             "method": "GET",
             "description": "Optional case-insensitive name search. Returns active branches only.",
-            "url": { "raw": "{{baseUrl}}/api/v1/branches?name=", "query": [{ "key": "name", "value": "", "disabled": true }] }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/branches?name="
           }
         },
         {
           "name": "Show branch",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/branches/{{branchId}}" }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/branches/{{branchId}}"
           }
         },
         {
@@ -48,14 +51,16 @@
           "request": {
             "method": "GET",
             "description": "Optional filters: type is academic or summer; branch_id restricts to programs offered at that branch.",
-            "url": { "raw": "{{baseUrl}}/api/v1/programs?type=academic&branch_id={{branchId}}", "query": [{ "key": "type", "value": "academic", "disabled": true }, { "key": "branch_id", "value": "{{branchId}}", "disabled": true }] }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/programs?type=academic&branch_id={{branchId}}"
           }
         },
         {
           "name": "Show program",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/programs/{{programId}}" }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/programs/{{programId}}"
           }
         }
       ]
@@ -68,14 +73,16 @@
           "name": "Get lead counts",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/leads/counts?branch_id={{branchId}}", "query": [{ "key": "branch_id", "value": "{{branchId}}", "disabled": true }, { "key": "program_id", "value": "{{programId}}", "disabled": true }, { "key": "season_id", "value": "", "disabled": true }, { "key": "status", "value": "", "disabled": true }, { "key": "source", "value": "", "disabled": true }, { "key": "created_from", "value": "", "disabled": true }, { "key": "created_to", "value": "", "disabled": true }] }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/leads/counts?branch_id={{branchId}}"
           }
         },
         {
           "name": "Lookup leads by WhatsApp",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/leads?whatsapp={{guardianPhone}}", "query": [{ "key": "whatsapp", "value": "{{guardianPhone}}" }] }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/leads?whatsapp={{guardianPhone}}"
           }
         },
         {
@@ -83,14 +90,15 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "Accept", "value": "application/json" },
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"program_id\": {{programId}},\n  \"branch_id\": {{branchId}},\n  \"guardian_name\": \"Test Guardian\",\n  \"student_name\": \"Test Student\",\n  \"source\": \"whatsapp_bot\",\n  \"mother_phone\": \"9689111111\",\n  \"data\": {\n    \"utm_campaign\": \"postman\"\n  }\n}"
+              "raw": "{\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"program_id\": {{programId}},\n  \"branch_id\": {{branchId}},\n  \"guardian_name\": \"Test Guardian\",\n  \"student_name\": \"Test Student\",\n  \"source\": \"whatsapp_bot\",\n  \"mother_phone\": \"+96891111111\",\n  \"data\": {\n    \"utm_campaign\": \"postman\"\n  }\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/leads" }
+            "url": "{{base_url}}/api/v1/leads"
           }
         }
       ]
@@ -101,17 +109,26 @@
       "item": [
         {
           "name": "List bot contacts",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/bot-contacts" } }
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/bot-contacts"
+          }
         },
         {
           "name": "Show bot contact",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/bot-contacts/{{botContactId}}" } }
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/bot-contacts/{{botContactId}}"
+          }
         },
         {
           "name": "Create bot contact",
           "request": {
             "method": "POST",
             "header": [
+              { "key": "Accept", "value": "application/json" },
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
@@ -119,7 +136,7 @@
               "mode": "raw",
               "raw": "{\n  \"channel\": \"whatsapp\",\n  \"sender_name\": \"Test Guardian\",\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"conversation_summary\": \"Asked about registration.\",\n  \"notes\": \"Created from Postman.\",\n  \"additional_data\": {\n    \"language\": \"ar\"\n  }\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/bot-contacts" }
+            "url": "{{base_url}}/api/v1/bot-contacts"
           }
         }
       ]
@@ -132,18 +149,24 @@
           "name": "List assessment submissions",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/reading-assessment-form-submissions?branch_id={{branchId}}&whatsapp={{guardianPhone}}", "query": [{ "key": "branch_id", "value": "{{branchId}}", "disabled": true }, { "key": "whatsapp", "value": "{{guardianPhone}}", "disabled": true }] }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/reading-assessment-form-submissions?branch_id={{branchId}}&whatsapp={{guardianPhone}}"
           }
         },
         {
           "name": "Show assessment submission",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/reading-assessment-form-submissions/{{assessmentId}}" } }
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/reading-assessment-form-submissions/{{assessmentId}}"
+          }
         },
         {
           "name": "Create assessment submission",
           "request": {
             "method": "POST",
             "header": [
+              { "key": "Accept", "value": "application/json" },
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
@@ -151,7 +174,7 @@
               "mode": "raw",
               "raw": "{\n  \"student_name\": \"Test Student\",\n  \"age\": 7,\n  \"grade_level\": \"Grade 2\",\n  \"guardian_name\": \"Test Guardian\",\n  \"whatsapp\": \"{{guardianPhone}}\",\n  \"branch_id\": {{branchId}},\n  \"source\": \"whatsapp_bot\",\n  \"additional_info\": {\n    \"notes\": \"Created from Postman.\"\n  }\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/reading-assessment-form-submissions" }
+            "url": "{{base_url}}/api/v1/reading-assessment-form-submissions"
           }
         }
       ]
@@ -164,12 +187,15 @@
           "name": "Check application status",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"application_reference\": \"{{applicationReference}}\",\n  \"guardian_phone\": \"{{guardianPhone}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/applications/status-check" }
+            "url": "{{base_url}}/api/v1/applications/status-check"
           }
         }
       ]
@@ -183,6 +209,7 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "Accept", "value": "application/json" },
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
@@ -190,7 +217,7 @@
               "mode": "raw",
               "raw": "{\n  \"application_reference\": \"{{applicationReference}}\",\n  \"guardian_phone\": \"{{guardianPhone}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/payments/thawani" }
+            "url": "{{base_url}}/api/v1/payments/thawani"
           }
         },
         {
@@ -198,6 +225,7 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "Accept", "value": "application/json" },
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
@@ -205,7 +233,7 @@
               "mode": "raw",
               "raw": "{\n  \"application_reference\": \"{{applicationReference}}\",\n  \"guardian_phone\": \"{{guardianPhone}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/payments/bank-transfer" }
+            "url": "{{base_url}}/api/v1/payments/bank-transfer"
           }
         },
         {
@@ -213,6 +241,7 @@
           "request": {
             "method": "POST",
             "header": [
+              { "key": "Accept", "value": "application/json" },
               { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
             "body": {
@@ -223,7 +252,7 @@
                 { "key": "receipt", "src": "{{receiptFile}}", "type": "file" }
               ]
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/payments/{{paymentReference}}/receipt" }
+            "url": "{{base_url}}/api/v1/payments/{{paymentReference}}/receipt"
           }
         }
       ]
